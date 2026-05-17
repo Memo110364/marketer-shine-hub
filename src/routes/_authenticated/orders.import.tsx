@@ -13,10 +13,24 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { SYSTEM_FIELDS, normalizeStatus, type SystemField } from "@/lib/constants";
 import { parseExcelDate } from "@/lib/format";
-import { Upload, Loader2, Save, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, Loader2, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
+
+type ImportError = {
+  rowNumber: number | null; // Excel row (1-based with header), null for batch-level errors
+  stage: "validation" | "insert" | "batch";
+  message: string;
+  details?: string | null;
+  hint?: string | null;
+  code?: string | null;
+  rowData?: Record<string, any> | null;
+  payload?: Record<string, any> | null;
+};
 
 export const Route = createFileRoute("/_authenticated/orders/import")({
   component: ImportPage,
@@ -32,7 +46,8 @@ function ImportPage() {
   const [mapping, setMapping] = useState<Partial<Record<SystemField, string>>>({});
   const [mappingName, setMappingName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [report, setReport] = useState<{ success: number; errors: string[] } | null>(null);
+  const [report, setReport] = useState<{ success: number; errors: ImportError[] } | null>(null);
+  const [selectedError, setSelectedError] = useState<ImportError | null>(null);
 
   const { data: savedMappings = [] } = useQuery({
     queryKey: ["mappings"],
@@ -118,9 +133,8 @@ function ImportPage() {
     const { data: shippingsAll } = await supabase.from("shipping_companies").select("id, name");
     const shippingByName = new Map((shippingsAll ?? []).map((s) => [s.name, s.id]));
 
-    const errors: string[] = [];
-    let success = 0;
-    const toInsert: any[] = [];
+    const errors: ImportError[] = [];
+    const toInsert: { payload: any; rowIndex: number; rowData: Record<string, any> }[] = [];
 
     function pick(row: Record<string, any>, field: SystemField) {
       const col = mapping[field];
@@ -134,38 +148,38 @@ function ImportPage() {
         if (!marketerCode) throw new Error("كود المسوّق فارغ");
         let marketerId = marketerByCode.get(marketerCode);
         if (!marketerId) {
-          // Auto-create marketer
-          const { data: nm } = await supabase.from("marketers").insert({
+          const { data: nm, error: mErr } = await supabase.from("marketers").insert({
             marketer_code: marketerCode, name: marketerCode,
           }).select().single();
+          if (mErr) throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}": ${mErr.message}`);
           if (nm) { marketerId = nm.id; marketerByCode.set(marketerCode, nm.id); }
         }
 
-        // Product
         let productId: string | null = null;
         const sku = String(pick(r, "product_sku") ?? "").trim();
         const pname = String(pick(r, "product_name") ?? "").trim();
         if (sku) productId = productBySku.get(sku) ?? null;
         if (!productId && pname) productId = productByName.get(pname) ?? null;
         if (!productId && (sku || pname)) {
-          const { data: np } = await supabase.from("products").insert({
+          const { data: np, error: pErr } = await supabase.from("products").insert({
             sku: sku || null, name: pname || sku,
           }).select().single();
+          if (pErr) throw new Error(`تعذّر إنشاء المنتج: ${pErr.message}`);
           if (np) { productId = np.id; if (sku) productBySku.set(sku, np.id); if (pname) productByName.set(pname, np.id); }
         }
 
-        // Shipping
         let shippingId: string | null = null;
         const sname = String(pick(r, "shipping_company") ?? "").trim();
         if (sname) {
           shippingId = shippingByName.get(sname) ?? null;
           if (!shippingId) {
-            const { data: ns } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
+            const { data: ns, error: sErr } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
+            if (sErr) throw new Error(`تعذّر إنشاء شركة الشحن: ${sErr.message}`);
             if (ns) { shippingId = ns.id; shippingByName.set(sname, ns.id); }
           }
         }
 
-        toInsert.push({
+        const payload = {
           external_order_id: String(pick(r, "external_order_id") ?? "") || null,
           marketer_id: marketerId,
           product_id: productId,
@@ -181,28 +195,51 @@ function ImportPage() {
           delivered_date: parseExcelDate(pick(r, "delivered_date")),
           import_batch_id: batch.id,
           raw_data: r,
-        });
-        success++;
+        };
+        toInsert.push({ payload, rowIndex: i, rowData: r });
       } catch (err: any) {
-        errors.push(`صف ${i + 2}: ${err.message}`);
+        errors.push({
+          rowNumber: i + 2,
+          stage: "validation",
+          message: err?.message ?? String(err),
+          rowData: r,
+        });
       }
     }
 
-    // Bulk insert in chunks
+    // Bulk insert in chunks; on failure, retry row-by-row to pinpoint
     let inserted = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
       const chunk = toInsert.slice(i, i + 200);
-      const { error: insErr } = await supabase.from("orders").insert(chunk);
-      if (insErr) {
-        console.error("Chunk insert error:", insErr);
-        errors.push(`دفعة ${i / 200 + 1}: ${insErr.message}`);
-      } else {
+      const { error: insErr } = await supabase.from("orders").insert(chunk.map((c) => c.payload));
+      if (!insErr) {
         inserted += chunk.length;
+        continue;
+      }
+      console.error("Chunk insert error, retrying row-by-row:", insErr);
+      for (const item of chunk) {
+        const { error: rowErr } = await supabase.from("orders").insert(item.payload);
+        if (rowErr) {
+          errors.push({
+            rowNumber: item.rowIndex + 2,
+            stage: "insert",
+            message: rowErr.message,
+            details: (rowErr as any).details ?? null,
+            hint: (rowErr as any).hint ?? null,
+            code: (rowErr as any).code ?? null,
+            rowData: item.rowData,
+            payload: item.payload,
+          });
+        } else {
+          inserted++;
+        }
       }
     }
 
     await supabase.from("import_batches").update({
-      success_count: inserted, error_count: errors.length, errors: errors.length ? errors : null,
+      success_count: inserted,
+      error_count: errors.length,
+      errors: errors.length ? (errors as any) : null,
     }).eq("id", batch.id);
 
     setReport({ success: inserted, errors });
@@ -304,23 +341,136 @@ function ImportPage() {
 
       {report && (
         <Card className={report.errors.length === 0 ? "border-success" : "border-warning"}>
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2 font-medium">
               {report.errors.length === 0
                 ? <><CheckCircle2 className="h-5 w-5 text-success" /> تم بنجاح</>
                 : <><AlertTriangle className="h-5 w-5 text-warning-foreground" /> اكتمل بأخطاء</>}
             </div>
-            <div>نجح: {report.success} — فشل: {report.errors.length}</div>
+            <div className="text-sm">نجح: <b className="text-success">{report.success}</b> — فشل: <b className="text-destructive">{report.errors.length}</b></div>
+
             {report.errors.length > 0 && (
-              <details><summary className="cursor-pointer text-sm">عرض الأخطاء</summary>
-                <ul className="text-xs mt-2 space-y-1 max-h-60 overflow-auto">
-                  {report.errors.map((e, i) => <li key={i} className="text-destructive">{e}</li>)}
-                </ul>
-              </details>
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">الصف</TableHead>
+                      <TableHead className="w-24">المرحلة</TableHead>
+                      <TableHead>رسالة الخطأ</TableHead>
+                      <TableHead className="w-24 text-left">تفاصيل</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.errors.map((e, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs">{e.rowNumber ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {e.stage === "validation" ? "تحقق" : e.stage === "insert" ? "إدراج DB" : "دفعة"}
+                        </TableCell>
+                        <TableCell className="text-xs text-destructive break-all">{e.message}</TableCell>
+                        <TableCell className="text-left">
+                          <Button variant="outline" size="sm" onClick={() => setSelectedError(e)}>
+                            <Eye className="h-3.5 w-3.5 ml-1" /> عرض
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!selectedError} onOpenChange={(o) => !o && setSelectedError(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              تفاصيل خطأ الاستيراد
+              {selectedError?.rowNumber && (
+                <span className="text-sm font-normal text-muted-foreground">— صف #{selectedError.rowNumber}</span>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              المرحلة:{" "}
+              {selectedError?.stage === "validation"
+                ? "فشل أثناء التحقق من البيانات قبل الإدراج"
+                : selectedError?.stage === "insert"
+                ? "فشل أثناء إدراج الصف في قاعدة البيانات (Supabase)"
+                : "خطأ على مستوى الدفعة"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedError && (
+            <div className="space-y-4 text-sm">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">رسالة الخطأ</div>
+                <div className="rounded-md bg-destructive/10 border border-destructive/30 p-3 text-destructive text-xs font-mono whitespace-pre-wrap">
+                  {selectedError.message}
+                </div>
+              </div>
+
+              {(selectedError.code || selectedError.details || selectedError.hint) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {selectedError.code && (
+                    <div className="rounded-md border p-2">
+                      <div className="text-xs text-muted-foreground">رمز الخطأ</div>
+                      <div className="text-xs font-mono">{selectedError.code}</div>
+                    </div>
+                  )}
+                  {selectedError.details && (
+                    <div className="rounded-md border p-2 md:col-span-2">
+                      <div className="text-xs text-muted-foreground">التفاصيل</div>
+                      <div className="text-xs font-mono break-all">{selectedError.details}</div>
+                    </div>
+                  )}
+                  {selectedError.hint && (
+                    <div className="rounded-md border p-2 md:col-span-3">
+                      <div className="text-xs text-muted-foreground">اقتراح</div>
+                      <div className="text-xs">{selectedError.hint}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedError.rowData && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">بيانات الصف من الملف</div>
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-1/3">العمود</TableHead>
+                          <TableHead>القيمة</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(selectedError.rowData).map(([k, v]) => (
+                          <TableRow key={k}>
+                            <TableCell className="text-xs font-medium">{k}</TableCell>
+                            <TableCell className="text-xs break-all">{v === "" || v == null ? <span className="text-muted-foreground">—</span> : String(v)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {selectedError.payload && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">البيانات المرسلة إلى قاعدة البيانات</div>
+                  <pre className="rounded-md bg-muted p-3 text-xs overflow-x-auto" dir="ltr">
+{JSON.stringify(selectedError.payload, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
