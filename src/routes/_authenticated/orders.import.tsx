@@ -209,7 +209,12 @@ function ImportPage() {
         <>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base">ربط الأعمدة</CardTitle>
+              <div>
+                <CardTitle className="text-base">ربط الأعمدة</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  مطلوب: <b>كود المسوّق</b>. باقي الحقول اختيارية — اربط ما يناسب ملفك.
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <Select onValueChange={loadMapping}>
                   <SelectTrigger className="w-48 h-9"><SelectValue placeholder="تحميل قالب محفوظ" /></SelectTrigger>
@@ -226,7 +231,10 @@ function ImportPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {SYSTEM_FIELDS.map((f) => (
                   <div key={f.key} className="flex items-center gap-2">
-                    <Label className="w-40 shrink-0">{f.label}</Label>
+                    <Label className="w-40 shrink-0">
+                      {f.label}
+                      {f.key === "marketer_code" && <span className="text-destructive mr-1">*</span>}
+                    </Label>
                     <Select
                       value={mapping[f.key] ?? NONE}
                       onValueChange={(v) =>

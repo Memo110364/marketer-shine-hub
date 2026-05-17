@@ -22,6 +22,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
+import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
 import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
 
@@ -90,6 +91,12 @@ const AuthenticatedSettingsMappingsRoute =
     path: '/settings/mappings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedOrdersUpdateStatusRoute =
+  AuthenticatedOrdersUpdateStatusRouteImport.update({
+    id: '/update-status',
+    path: '/update-status',
+    getParentRoute: () => AuthenticatedOrdersRoute,
+  } as any)
 const AuthenticatedOrdersImportRoute =
   AuthenticatedOrdersImportRouteImport.update({
     id: '/import',
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/shipping': typeof AuthenticatedShippingRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
+  '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
 }
 export interface FileRoutesByTo {
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
   '/shipping': typeof AuthenticatedShippingRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
+  '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
 }
 export interface FileRoutesById {
@@ -151,6 +160,7 @@ export interface FileRoutesById {
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
   '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
+  '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
 }
 export interface FileRouteTypes {
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/shipping'
     | '/marketers/$id'
     | '/orders/import'
+    | '/orders/update-status'
     | '/settings/mappings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/shipping'
     | '/marketers/$id'
     | '/orders/import'
+    | '/orders/update-status'
     | '/settings/mappings'
   id:
     | '__root__'
@@ -202,6 +214,7 @@ export interface FileRouteTypes {
     | '/_authenticated/shipping'
     | '/_authenticated/marketers/$id'
     | '/_authenticated/orders/import'
+    | '/_authenticated/orders/update-status'
     | '/_authenticated/settings/mappings'
   fileRoutesById: FileRoutesById
 }
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/orders/update-status': {
+      id: '/_authenticated/orders/update-status'
+      path: '/update-status'
+      fullPath: '/orders/update-status'
+      preLoaderRoute: typeof AuthenticatedOrdersUpdateStatusRouteImport
+      parentRoute: typeof AuthenticatedOrdersRoute
+    }
     '/_authenticated/orders/import': {
       id: '/_authenticated/orders/import'
       path: '/import'
@@ -339,10 +359,12 @@ const AuthenticatedMarketersRouteWithChildren =
 
 interface AuthenticatedOrdersRouteChildren {
   AuthenticatedOrdersImportRoute: typeof AuthenticatedOrdersImportRoute
+  AuthenticatedOrdersUpdateStatusRoute: typeof AuthenticatedOrdersUpdateStatusRoute
 }
 
 const AuthenticatedOrdersRouteChildren: AuthenticatedOrdersRouteChildren = {
   AuthenticatedOrdersImportRoute: AuthenticatedOrdersImportRoute,
+  AuthenticatedOrdersUpdateStatusRoute: AuthenticatedOrdersUpdateStatusRoute,
 }
 
 const AuthenticatedOrdersRouteWithChildren =
