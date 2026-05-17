@@ -85,13 +85,29 @@ function ImportPage() {
     if (!mapping.marketer_code) { toast.error("يجب ربط حقل كود المسوّق"); return; }
     setBusy(true);
     setReport(null);
+    try {
+      await doImport();
+    } catch (e: any) {
+      console.error("Import failed:", e);
+      toast.error("فشل الاستيراد: " + (e?.message ?? String(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
 
+  async function doImport() {
     const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) { toast.error("يجب تسجيل الدخول"); return; }
+
     // Create batch
     const { data: batch, error: batchErr } = await supabase.from("import_batches").insert({
-      filename, row_count: rows.length, mapping_used: mapping, created_by: userData.user?.id,
+      filename, row_count: rows.length, mapping_used: mapping, created_by: userData.user.id,
     }).select().single();
-    if (batchErr || !batch) { setBusy(false); toast.error(batchErr?.message); return; }
+    if (batchErr || !batch) {
+      console.error("Batch insert error:", batchErr);
+      toast.error("فشل إنشاء دفعة الاستيراد: " + (batchErr?.message ?? "خطأ غير معروف"));
+      return;
+    }
 
     // Cache lookups
     const { data: marketersAll } = await supabase.from("marketers").select("id, marketer_code");
@@ -173,21 +189,27 @@ function ImportPage() {
     }
 
     // Bulk insert in chunks
+    let inserted = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
       const chunk = toInsert.slice(i, i + 200);
       const { error: insErr } = await supabase.from("orders").insert(chunk);
-      if (insErr) errors.push(`دفعة ${i / 200 + 1}: ${insErr.message}`);
+      if (insErr) {
+        console.error("Chunk insert error:", insErr);
+        errors.push(`دفعة ${i / 200 + 1}: ${insErr.message}`);
+      } else {
+        inserted += chunk.length;
+      }
     }
 
     await supabase.from("import_batches").update({
-      success_count: success, error_count: errors.length, errors: errors.length ? errors : null,
+      success_count: inserted, error_count: errors.length, errors: errors.length ? errors : null,
     }).eq("id", batch.id);
 
-    setBusy(false);
-    setReport({ success, errors });
+    setReport({ success: inserted, errors });
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (errors.length === 0) toast.success(`تم استيراد ${success} طلب بنجاح`);
-    else toast.warning(`نجح ${success}، فشل ${errors.length}`);
+    if (errors.length === 0) toast.success(`تم استيراد ${inserted} طلب بنجاح`);
+    else if (inserted > 0) toast.warning(`نجح ${inserted}، فشل ${errors.length}`);
+    else toast.error(`فشل الاستيراد بالكامل. تحقق من الأخطاء أدناه.`);
   }
 
   return (
