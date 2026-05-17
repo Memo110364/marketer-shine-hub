@@ -47,7 +47,7 @@ function OrdersPage() {
     queryKey: ["orders", { status, marketerId, productId, shippingId, from, to }],
     queryFn: async () => {
       let q = supabase.from("orders").select("*").order("order_date", { ascending: false }).limit(500);
-      if (status !== "all") q = q.eq("status", status);
+      if (status !== "all") q = q.eq("status", status as OrderStatus);
       if (marketerId !== "all") q = q.eq("marketer_id", marketerId);
       if (productId !== "all") q = q.eq("product_id", productId);
       if (shippingId !== "all") q = q.eq("shipping_company_id", shippingId);

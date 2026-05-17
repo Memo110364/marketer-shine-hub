@@ -181,7 +181,7 @@ function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip formatter={(v: number) => fmtCurrency(v)} />
+                  <Tooltip formatter={(v) => fmtCurrency(Number(v))} />
                   <Bar dataKey="net" fill="var(--primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
