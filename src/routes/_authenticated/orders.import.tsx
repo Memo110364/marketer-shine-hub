@@ -231,7 +231,10 @@ function ImportPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {SYSTEM_FIELDS.map((f) => (
                   <div key={f.key} className="flex items-center gap-2">
-                    <Label className="w-40 shrink-0">{f.label}</Label>
+                    <Label className="w-40 shrink-0">
+                      {f.label}
+                      {f.key === "marketer_code" && <span className="text-destructive mr-1">*</span>}
+                    </Label>
                     <Select
                       value={mapping[f.key] ?? NONE}
                       onValueChange={(v) =>
