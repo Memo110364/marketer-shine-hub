@@ -46,7 +46,8 @@ function ImportPage() {
   const [mapping, setMapping] = useState<Partial<Record<SystemField, string>>>({});
   const [mappingName, setMappingName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [report, setReport] = useState<{ success: number; errors: string[] } | null>(null);
+  const [report, setReport] = useState<{ success: number; errors: ImportError[] } | null>(null);
+  const [selectedError, setSelectedError] = useState<ImportError | null>(null);
 
   const { data: savedMappings = [] } = useQuery({
     queryKey: ["mappings"],
