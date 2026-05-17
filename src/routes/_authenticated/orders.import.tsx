@@ -189,21 +189,27 @@ function ImportPage() {
     }
 
     // Bulk insert in chunks
+    let inserted = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
       const chunk = toInsert.slice(i, i + 200);
       const { error: insErr } = await supabase.from("orders").insert(chunk);
-      if (insErr) errors.push(`دفعة ${i / 200 + 1}: ${insErr.message}`);
+      if (insErr) {
+        console.error("Chunk insert error:", insErr);
+        errors.push(`دفعة ${i / 200 + 1}: ${insErr.message}`);
+      } else {
+        inserted += chunk.length;
+      }
     }
 
     await supabase.from("import_batches").update({
-      success_count: success, error_count: errors.length, errors: errors.length ? errors : null,
+      success_count: inserted, error_count: errors.length, errors: errors.length ? errors : null,
     }).eq("id", batch.id);
 
-    setBusy(false);
-    setReport({ success, errors });
+    setReport({ success: inserted, errors });
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (errors.length === 0) toast.success(`تم استيراد ${success} طلب بنجاح`);
-    else toast.warning(`نجح ${success}، فشل ${errors.length}`);
+    if (errors.length === 0) toast.success(`تم استيراد ${inserted} طلب بنجاح`);
+    else if (inserted > 0) toast.warning(`نجح ${inserted}، فشل ${errors.length}`);
+    else toast.error(`فشل الاستيراد بالكامل. تحقق من الأخطاء أدناه.`);
   }
 
   return (
