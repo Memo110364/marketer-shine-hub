@@ -9,38 +9,200 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
+import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
+import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
+import { Route as AuthenticatedMarketersRouteImport } from './routes/_authenticated/marketers'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
+import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
+import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
+import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
+import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedShippingRoute = AuthenticatedShippingRouteImport.update({
+  id: '/shipping',
+  path: '/shipping',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMarketersRoute = AuthenticatedMarketersRouteImport.update({
+  id: '/marketers',
+  path: '/marketers',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdSpendRoute = AuthenticatedAdSpendRouteImport.update({
+  id: '/ad-spend',
+  path: '/ad-spend',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdAccountsRoute = AuthenticatedAdAccountsRouteImport.update({
+  id: '/ad-accounts',
+  path: '/ad-accounts',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedSettingsMappingsRoute =
+  AuthenticatedSettingsMappingsRouteImport.update({
+    id: '/settings/mappings',
+    path: '/settings/mappings',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedOrdersImportRoute =
+  AuthenticatedOrdersImportRouteImport.update({
+    id: '/import',
+    path: '/import',
+    getParentRoute: () => AuthenticatedOrdersRoute,
+  } as any)
+const AuthenticatedMarketersIdRoute =
+  AuthenticatedMarketersIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedMarketersRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/ad-accounts': typeof AuthenticatedAdAccountsRoute
+  '/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/marketers': typeof AuthenticatedMarketersRouteWithChildren
+  '/orders': typeof AuthenticatedOrdersRouteWithChildren
+  '/products': typeof AuthenticatedProductsRoute
+  '/shipping': typeof AuthenticatedShippingRoute
+  '/marketers/$id': typeof AuthenticatedMarketersIdRoute
+  '/orders/import': typeof AuthenticatedOrdersImportRoute
+  '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/ad-accounts': typeof AuthenticatedAdAccountsRoute
+  '/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/marketers': typeof AuthenticatedMarketersRouteWithChildren
+  '/orders': typeof AuthenticatedOrdersRouteWithChildren
+  '/products': typeof AuthenticatedProductsRoute
+  '/shipping': typeof AuthenticatedShippingRoute
+  '/marketers/$id': typeof AuthenticatedMarketersIdRoute
+  '/orders/import': typeof AuthenticatedOrdersImportRoute
+  '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_authenticated/ad-accounts': typeof AuthenticatedAdAccountsRoute
+  '/_authenticated/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/marketers': typeof AuthenticatedMarketersRouteWithChildren
+  '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
+  '/_authenticated/products': typeof AuthenticatedProductsRoute
+  '/_authenticated/shipping': typeof AuthenticatedShippingRoute
+  '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRoute
+  '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
+  '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/ad-accounts'
+    | '/ad-spend'
+    | '/dashboard'
+    | '/marketers'
+    | '/orders'
+    | '/products'
+    | '/shipping'
+    | '/marketers/$id'
+    | '/orders/import'
+    | '/settings/mappings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/ad-accounts'
+    | '/ad-spend'
+    | '/dashboard'
+    | '/marketers'
+    | '/orders'
+    | '/products'
+    | '/shipping'
+    | '/marketers/$id'
+    | '/orders/import'
+    | '/settings/mappings'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/_authenticated/ad-accounts'
+    | '/_authenticated/ad-spend'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/marketers'
+    | '/_authenticated/orders'
+    | '/_authenticated/products'
+    | '/_authenticated/shipping'
+    | '/_authenticated/marketers/$id'
+    | '/_authenticated/orders/import'
+    | '/_authenticated/settings/mappings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +210,134 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/shipping': {
+      id: '/_authenticated/shipping'
+      path: '/shipping'
+      fullPath: '/shipping'
+      preLoaderRoute: typeof AuthenticatedShippingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/products': {
+      id: '/_authenticated/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AuthenticatedProductsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders': {
+      id: '/_authenticated/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof AuthenticatedOrdersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/marketers': {
+      id: '/_authenticated/marketers'
+      path: '/marketers'
+      fullPath: '/marketers'
+      preLoaderRoute: typeof AuthenticatedMarketersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ad-spend': {
+      id: '/_authenticated/ad-spend'
+      path: '/ad-spend'
+      fullPath: '/ad-spend'
+      preLoaderRoute: typeof AuthenticatedAdSpendRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/ad-accounts': {
+      id: '/_authenticated/ad-accounts'
+      path: '/ad-accounts'
+      fullPath: '/ad-accounts'
+      preLoaderRoute: typeof AuthenticatedAdAccountsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/settings/mappings': {
+      id: '/_authenticated/settings/mappings'
+      path: '/settings/mappings'
+      fullPath: '/settings/mappings'
+      preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders/import': {
+      id: '/_authenticated/orders/import'
+      path: '/import'
+      fullPath: '/orders/import'
+      preLoaderRoute: typeof AuthenticatedOrdersImportRouteImport
+      parentRoute: typeof AuthenticatedOrdersRoute
+    }
+    '/_authenticated/marketers/$id': {
+      id: '/_authenticated/marketers/$id'
+      path: '/$id'
+      fullPath: '/marketers/$id'
+      preLoaderRoute: typeof AuthenticatedMarketersIdRouteImport
+      parentRoute: typeof AuthenticatedMarketersRoute
+    }
   }
 }
 
+interface AuthenticatedMarketersRouteChildren {
+  AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
+}
+
+const AuthenticatedMarketersRouteChildren: AuthenticatedMarketersRouteChildren =
+  {
+    AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
+  }
+
+const AuthenticatedMarketersRouteWithChildren =
+  AuthenticatedMarketersRoute._addFileChildren(
+    AuthenticatedMarketersRouteChildren,
+  )
+
+interface AuthenticatedOrdersRouteChildren {
+  AuthenticatedOrdersImportRoute: typeof AuthenticatedOrdersImportRoute
+}
+
+const AuthenticatedOrdersRouteChildren: AuthenticatedOrdersRouteChildren = {
+  AuthenticatedOrdersImportRoute: AuthenticatedOrdersImportRoute,
+}
+
+const AuthenticatedOrdersRouteWithChildren =
+  AuthenticatedOrdersRoute._addFileChildren(AuthenticatedOrdersRouteChildren)
+
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
+  AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedMarketersRoute: typeof AuthenticatedMarketersRouteWithChildren
+  AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
+  AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
+  AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
+  AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdAccountsRoute: AuthenticatedAdAccountsRoute,
+  AuthenticatedAdSpendRoute: AuthenticatedAdSpendRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedMarketersRoute: AuthenticatedMarketersRouteWithChildren,
+  AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
+  AuthenticatedProductsRoute: AuthenticatedProductsRoute,
+  AuthenticatedShippingRoute: AuthenticatedShippingRoute,
+  AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
