@@ -13,10 +13,24 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from "@/components/ui/dialog";
 import { SYSTEM_FIELDS, normalizeStatus, type SystemField } from "@/lib/constants";
 import { parseExcelDate } from "@/lib/format";
-import { Upload, Loader2, Save, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, Loader2, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
+
+type ImportError = {
+  rowNumber: number | null; // Excel row (1-based with header), null for batch-level errors
+  stage: "validation" | "insert" | "batch";
+  message: string;
+  details?: string | null;
+  hint?: string | null;
+  code?: string | null;
+  rowData?: Record<string, any> | null;
+  payload?: Record<string, any> | null;
+};
 
 export const Route = createFileRoute("/_authenticated/orders/import")({
   component: ImportPage,
