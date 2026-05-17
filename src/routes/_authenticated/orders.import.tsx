@@ -209,7 +209,12 @@ function ImportPage() {
         <>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-              <CardTitle className="text-base">ربط الأعمدة</CardTitle>
+              <div>
+                <CardTitle className="text-base">ربط الأعمدة</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  مطلوب: <b>كود المسوّق</b>. باقي الحقول اختيارية — اربط ما يناسب ملفك.
+                </p>
+              </div>
               <div className="flex items-center gap-2">
                 <Select onValueChange={loadMapping}>
                   <SelectTrigger className="w-48 h-9"><SelectValue placeholder="تحميل قالب محفوظ" /></SelectTrigger>
