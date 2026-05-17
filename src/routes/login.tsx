@@ -86,6 +86,11 @@ function LoginPage() {
                   {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                   دخول
                 </Button>
+                <div className="text-center">
+                  <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                    نسيت كلمة المرور؟
+                  </Link>
+                </div>
               </form>
             </TabsContent>
             <TabsContent value="signup">
