@@ -133,9 +133,8 @@ function ImportPage() {
     const { data: shippingsAll } = await supabase.from("shipping_companies").select("id, name");
     const shippingByName = new Map((shippingsAll ?? []).map((s) => [s.name, s.id]));
 
-    const errors: string[] = [];
-    let success = 0;
-    const toInsert: any[] = [];
+    const errors: ImportError[] = [];
+    const toInsert: { payload: any; rowIndex: number; rowData: Record<string, any> }[] = [];
 
     function pick(row: Record<string, any>, field: SystemField) {
       const col = mapping[field];
@@ -149,38 +148,38 @@ function ImportPage() {
         if (!marketerCode) throw new Error("كود المسوّق فارغ");
         let marketerId = marketerByCode.get(marketerCode);
         if (!marketerId) {
-          // Auto-create marketer
-          const { data: nm } = await supabase.from("marketers").insert({
+          const { data: nm, error: mErr } = await supabase.from("marketers").insert({
             marketer_code: marketerCode, name: marketerCode,
           }).select().single();
+          if (mErr) throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}": ${mErr.message}`);
           if (nm) { marketerId = nm.id; marketerByCode.set(marketerCode, nm.id); }
         }
 
-        // Product
         let productId: string | null = null;
         const sku = String(pick(r, "product_sku") ?? "").trim();
         const pname = String(pick(r, "product_name") ?? "").trim();
         if (sku) productId = productBySku.get(sku) ?? null;
         if (!productId && pname) productId = productByName.get(pname) ?? null;
         if (!productId && (sku || pname)) {
-          const { data: np } = await supabase.from("products").insert({
+          const { data: np, error: pErr } = await supabase.from("products").insert({
             sku: sku || null, name: pname || sku,
           }).select().single();
+          if (pErr) throw new Error(`تعذّر إنشاء المنتج: ${pErr.message}`);
           if (np) { productId = np.id; if (sku) productBySku.set(sku, np.id); if (pname) productByName.set(pname, np.id); }
         }
 
-        // Shipping
         let shippingId: string | null = null;
         const sname = String(pick(r, "shipping_company") ?? "").trim();
         if (sname) {
           shippingId = shippingByName.get(sname) ?? null;
           if (!shippingId) {
-            const { data: ns } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
+            const { data: ns, error: sErr } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
+            if (sErr) throw new Error(`تعذّر إنشاء شركة الشحن: ${sErr.message}`);
             if (ns) { shippingId = ns.id; shippingByName.set(sname, ns.id); }
           }
         }
 
-        toInsert.push({
+        const payload = {
           external_order_id: String(pick(r, "external_order_id") ?? "") || null,
           marketer_id: marketerId,
           product_id: productId,
@@ -196,28 +195,51 @@ function ImportPage() {
           delivered_date: parseExcelDate(pick(r, "delivered_date")),
           import_batch_id: batch.id,
           raw_data: r,
-        });
-        success++;
+        };
+        toInsert.push({ payload, rowIndex: i, rowData: r });
       } catch (err: any) {
-        errors.push(`صف ${i + 2}: ${err.message}`);
+        errors.push({
+          rowNumber: i + 2,
+          stage: "validation",
+          message: err?.message ?? String(err),
+          rowData: r,
+        });
       }
     }
 
-    // Bulk insert in chunks
+    // Bulk insert in chunks; on failure, retry row-by-row to pinpoint
     let inserted = 0;
     for (let i = 0; i < toInsert.length; i += 200) {
       const chunk = toInsert.slice(i, i + 200);
-      const { error: insErr } = await supabase.from("orders").insert(chunk);
-      if (insErr) {
-        console.error("Chunk insert error:", insErr);
-        errors.push(`دفعة ${i / 200 + 1}: ${insErr.message}`);
-      } else {
+      const { error: insErr } = await supabase.from("orders").insert(chunk.map((c) => c.payload));
+      if (!insErr) {
         inserted += chunk.length;
+        continue;
+      }
+      console.error("Chunk insert error, retrying row-by-row:", insErr);
+      for (const item of chunk) {
+        const { error: rowErr } = await supabase.from("orders").insert(item.payload);
+        if (rowErr) {
+          errors.push({
+            rowNumber: item.rowIndex + 2,
+            stage: "insert",
+            message: rowErr.message,
+            details: (rowErr as any).details ?? null,
+            hint: (rowErr as any).hint ?? null,
+            code: (rowErr as any).code ?? null,
+            rowData: item.rowData,
+            payload: item.payload,
+          });
+        } else {
+          inserted++;
+        }
       }
     }
 
     await supabase.from("import_batches").update({
-      success_count: inserted, error_count: errors.length, errors: errors.length ? errors : null,
+      success_count: inserted,
+      error_count: errors.length,
+      errors: errors.length ? (errors as any) : null,
     }).eq("id", batch.id);
 
     setReport({ success: inserted, errors });
