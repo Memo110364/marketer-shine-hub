@@ -341,23 +341,136 @@ function ImportPage() {
 
       {report && (
         <Card className={report.errors.length === 0 ? "border-success" : "border-warning"}>
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2 font-medium">
               {report.errors.length === 0
                 ? <><CheckCircle2 className="h-5 w-5 text-success" /> تم بنجاح</>
                 : <><AlertTriangle className="h-5 w-5 text-warning-foreground" /> اكتمل بأخطاء</>}
             </div>
-            <div>نجح: {report.success} — فشل: {report.errors.length}</div>
+            <div className="text-sm">نجح: <b className="text-success">{report.success}</b> — فشل: <b className="text-destructive">{report.errors.length}</b></div>
+
             {report.errors.length > 0 && (
-              <details><summary className="cursor-pointer text-sm">عرض الأخطاء</summary>
-                <ul className="text-xs mt-2 space-y-1 max-h-60 overflow-auto">
-                  {report.errors.map((e, i) => <li key={i} className="text-destructive">{e}</li>)}
-                </ul>
-              </details>
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">الصف</TableHead>
+                      <TableHead className="w-24">المرحلة</TableHead>
+                      <TableHead>رسالة الخطأ</TableHead>
+                      <TableHead className="w-24 text-left">تفاصيل</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.errors.map((e, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs">{e.rowNumber ?? "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          {e.stage === "validation" ? "تحقق" : e.stage === "insert" ? "إدراج DB" : "دفعة"}
+                        </TableCell>
+                        <TableCell className="text-xs text-destructive break-all">{e.message}</TableCell>
+                        <TableCell className="text-left">
+                          <Button variant="outline" size="sm" onClick={() => setSelectedError(e)}>
+                            <Eye className="h-3.5 w-3.5 ml-1" /> عرض
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!selectedError} onOpenChange={(o) => !o && setSelectedError(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              تفاصيل خطأ الاستيراد
+              {selectedError?.rowNumber && (
+                <span className="text-sm font-normal text-muted-foreground">— صف #{selectedError.rowNumber}</span>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              المرحلة:{" "}
+              {selectedError?.stage === "validation"
+                ? "فشل أثناء التحقق من البيانات قبل الإدراج"
+                : selectedError?.stage === "insert"
+                ? "فشل أثناء إدراج الصف في قاعدة البيانات (Supabase)"
+                : "خطأ على مستوى الدفعة"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedError && (
+            <div className="space-y-4 text-sm">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">رسالة الخطأ</div>
+                <div className="rounded-md bg-destructive/10 border border-destructive/30 p-3 text-destructive text-xs font-mono whitespace-pre-wrap">
+                  {selectedError.message}
+                </div>
+              </div>
+
+              {(selectedError.code || selectedError.details || selectedError.hint) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {selectedError.code && (
+                    <div className="rounded-md border p-2">
+                      <div className="text-xs text-muted-foreground">رمز الخطأ</div>
+                      <div className="text-xs font-mono">{selectedError.code}</div>
+                    </div>
+                  )}
+                  {selectedError.details && (
+                    <div className="rounded-md border p-2 md:col-span-2">
+                      <div className="text-xs text-muted-foreground">التفاصيل</div>
+                      <div className="text-xs font-mono break-all">{selectedError.details}</div>
+                    </div>
+                  )}
+                  {selectedError.hint && (
+                    <div className="rounded-md border p-2 md:col-span-3">
+                      <div className="text-xs text-muted-foreground">اقتراح</div>
+                      <div className="text-xs">{selectedError.hint}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedError.rowData && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">بيانات الصف من الملف</div>
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-1/3">العمود</TableHead>
+                          <TableHead>القيمة</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(selectedError.rowData).map(([k, v]) => (
+                          <TableRow key={k}>
+                            <TableCell className="text-xs font-medium">{k}</TableCell>
+                            <TableCell className="text-xs break-all">{v === "" || v == null ? <span className="text-muted-foreground">—</span> : String(v)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {selectedError.payload && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">البيانات المرسلة إلى قاعدة البيانات</div>
+                  <pre className="rounded-md bg-muted p-3 text-xs overflow-x-auto" dir="ltr">
+{JSON.stringify(selectedError.payload, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
