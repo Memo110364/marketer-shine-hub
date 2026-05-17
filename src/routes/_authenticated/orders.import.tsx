@@ -85,13 +85,29 @@ function ImportPage() {
     if (!mapping.marketer_code) { toast.error("يجب ربط حقل كود المسوّق"); return; }
     setBusy(true);
     setReport(null);
+    try {
+      await doImport();
+    } catch (e: any) {
+      console.error("Import failed:", e);
+      toast.error("فشل الاستيراد: " + (e?.message ?? String(e)));
+    } finally {
+      setBusy(false);
+    }
+  }
 
+  async function doImport() {
     const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) { toast.error("يجب تسجيل الدخول"); return; }
+
     // Create batch
     const { data: batch, error: batchErr } = await supabase.from("import_batches").insert({
-      filename, row_count: rows.length, mapping_used: mapping, created_by: userData.user?.id,
+      filename, row_count: rows.length, mapping_used: mapping, created_by: userData.user.id,
     }).select().single();
-    if (batchErr || !batch) { setBusy(false); toast.error(batchErr?.message); return; }
+    if (batchErr || !batch) {
+      console.error("Batch insert error:", batchErr);
+      toast.error("فشل إنشاء دفعة الاستيراد: " + (batchErr?.message ?? "خطأ غير معروف"));
+      return;
+    }
 
     // Cache lookups
     const { data: marketersAll } = await supabase.from("marketers").select("id, marketer_code");
