@@ -16,9 +16,34 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from "@/lib/format";
 import { ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
 import {
-  ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp,
+  ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp, Package,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Parse raw_data.Products like:
+//   "1 * ترنج مارسيليا جيب [بيج-XXL]"
+//   "2 * تيشيرت [اسود-L] , 1 * شورت [ازرق-M]"
+// Returns array of { name, qty } where size/color in [...] is stripped.
+function parseProducts(raw: unknown): Array<{ name: string; qty: number }> {
+  if (!raw || typeof raw !== "string") return [];
+  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const out: Array<{ name: string; qty: number }> = [];
+  for (const part of parts) {
+    const starIdx = part.indexOf("*");
+    let qty = 1;
+    let rest = part;
+    if (starIdx !== -1) {
+      const q = parseInt(part.slice(0, starIdx).trim(), 10);
+      if (!isNaN(q) && q > 0) qty = q;
+      rest = part.slice(starIdx + 1).trim();
+    }
+    // Remove [...] groups (size/color), keep anything else (incl. text after ])
+    const cleaned = rest.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
+    if (!cleaned) continue;
+    out.push({ name: cleaned, qty });
+  }
+  return out;
+}
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -74,17 +99,15 @@ function MarketerDetails() {
     },
   });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ["products-min"],
-    queryFn: async () => {
-      const { data } = await supabase.from("products").select("id,name,sku");
-      return data ?? [];
-    },
-  });
-  const productMap = useMemo(
-    () => new Map(products.map((p: any) => [p.id, p])),
-    [products],
-  );
+  const lifetimePieces = useMemo(() => {
+    let total = 0;
+    for (const o of allOrders) {
+      if (COMMISSION_EXCLUDED.includes(o.status as OrderStatus)) continue;
+      for (const it of parseProducts((o.raw_data as any)?.Products)) total += it.qty;
+    }
+    return total;
+  }, [allOrders]);
+
 
   const inRange = (d: string | null | undefined) => {
     if (!d) return false;
@@ -123,18 +146,30 @@ function MarketerDetails() {
   const lifetimeSpend = allSpend.reduce((s, t) => s + Number(t.amount || 0), 0);
   const lifetimeProfit = lifetimeNet - lifetimeSpend;
 
-  // top 5 products by name (in range)
-  const topProducts = useMemo(() => {
-    const map = new Map<string, { name: string; count: number }>();
+  // Parse products from raw_data — aggregate by clean name, summing quantities.
+  // Exclude refunded orders from piece counts.
+  const { topProducts, totalPiecesInRange } = useMemo(() => {
+    const map = new Map<string, { name: string; qty: number; orders: number }>();
+    let totalQty = 0;
     for (const o of orders) {
-      const p: any = o.product_id ? productMap.get(o.product_id) : null;
-      const name = (p?.name ?? "غير معروف").trim();
-      const entry = map.get(name) ?? { name, count: 0 };
-      entry.count += 1;
-      map.set(name, entry);
+      if (COMMISSION_EXCLUDED.includes(o.status as OrderStatus)) continue;
+      const items = parseProducts((o.raw_data as any)?.Products);
+      const seenInOrder = new Set<string>();
+      for (const it of items) {
+        const key = it.name;
+        const entry = map.get(key) ?? { name: it.name, qty: 0, orders: 0 };
+        entry.qty += it.qty;
+        if (!seenInOrder.has(key)) {
+          entry.orders += 1;
+          seenInOrder.add(key);
+        }
+        map.set(key, entry);
+        totalQty += it.qty;
+      }
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 5);
-  }, [orders, productMap]);
+    const top = Array.from(map.values()).sort((a, b) => b.qty - a.qty).slice(0, 5);
+    return { topProducts: top, totalPiecesInRange: totalQty };
+  }, [orders]);
 
   async function addSpend() {
     if (!amount || Number(amount) <= 0) { toast.error("أدخل مبلغًا صحيحًا"); return; }
@@ -223,7 +258,7 @@ function MarketerDetails() {
           <Trophy className="h-5 w-5 text-primary" />
           <h3 className="font-display font-bold">الإجمالي منذ بداية العمل</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Card className="border-primary/30">
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -231,6 +266,15 @@ function MarketerDetails() {
                 <div className="text-sm text-muted-foreground">إجمالي الطلبات</div>
               </div>
               <div className="text-3xl font-display font-bold">{fmtNumber(allOrders.length)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary"><Package className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي القطع المباعة</div>
+              </div>
+              <div className="text-3xl font-display font-bold">{fmtNumber(lifetimePieces)}</div>
             </CardContent>
           </Card>
           <Card className="border-success/30">
@@ -307,28 +351,59 @@ function MarketerDetails() {
 
       {/* Top 5 products chart */}
       <Card>
-        <CardHeader><CardTitle className="text-base">أهم 5 منتجات في الفترة</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between gap-3 flex-wrap">
+            <span>أهم 5 منتجات في الفترة</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              إجمالي القطع في الفترة:{" "}
+              <span className="font-bold text-foreground">{fmtNumber(totalPiecesInRange)}</span>
+            </span>
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           {topProducts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">لا توجد بيانات</div>
           ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts} layout="vertical" margin={{ left: 20, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" allowDecimals={false} className="text-xs" />
-                  <YAxis type="category" dataKey="name" width={140} className="text-xs" />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: any) => [v, "عدد الطلبات"]}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topProducts} layout="vertical" margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis type="number" allowDecimals={false} className="text-xs" />
+                    <YAxis type="category" dataKey="name" width={180} className="text-xs" />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                      formatter={(v: any) => [v, "عدد القطع"]}
+                    />
+                    <Bar dataKey="qty" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>المنتج</TableHead>
+                      <TableHead className="text-center">عدد القطع</TableHead>
+                      <TableHead className="text-center">عدد الطلبات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topProducts.map((p) => (
+                      <TableRow key={p.name}>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="text-center font-bold">{fmtNumber(p.qty)}</TableCell>
+                        <TableCell className="text-center">{fmtNumber(p.orders)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base">معاملات الإنفاق الإعلاني في الفترة</CardTitle></CardHeader>
