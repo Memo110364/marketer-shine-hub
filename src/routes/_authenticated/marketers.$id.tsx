@@ -258,7 +258,7 @@ function MarketerDetails() {
           <Trophy className="h-5 w-5 text-primary" />
           <h3 className="font-display font-bold">الإجمالي منذ بداية العمل</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Card className="border-primary/30">
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -266,6 +266,15 @@ function MarketerDetails() {
                 <div className="text-sm text-muted-foreground">إجمالي الطلبات</div>
               </div>
               <div className="text-3xl font-display font-bold">{fmtNumber(allOrders.length)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary"><Package className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي القطع المباعة</div>
+              </div>
+              <div className="text-3xl font-display font-bold">{fmtNumber(lifetimePieces)}</div>
             </CardContent>
           </Card>
           <Card className="border-success/30">
