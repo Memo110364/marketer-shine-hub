@@ -148,18 +148,30 @@ function MarketerDetails() {
   const lifetimeSpend = allSpend.reduce((s, t) => s + Number(t.amount || 0), 0);
   const lifetimeProfit = lifetimeNet - lifetimeSpend;
 
-  // top 5 products by name (in range)
-  const topProducts = useMemo(() => {
-    const map = new Map<string, { name: string; count: number }>();
+  // Parse products from raw_data — aggregate by clean name, summing quantities.
+  // Exclude refunded orders from piece counts.
+  const { topProducts, totalPiecesInRange } = useMemo(() => {
+    const map = new Map<string, { name: string; qty: number; orders: number }>();
+    let totalQty = 0;
     for (const o of orders) {
-      const p: any = o.product_id ? productMap.get(o.product_id) : null;
-      const name = (p?.name ?? "غير معروف").trim();
-      const entry = map.get(name) ?? { name, count: 0 };
-      entry.count += 1;
-      map.set(name, entry);
+      if (COMMISSION_EXCLUDED.includes(o.status as OrderStatus)) continue;
+      const items = parseProducts((o.raw_data as any)?.Products);
+      const seenInOrder = new Set<string>();
+      for (const it of items) {
+        const key = it.name;
+        const entry = map.get(key) ?? { name: it.name, qty: 0, orders: 0 };
+        entry.qty += it.qty;
+        if (!seenInOrder.has(key)) {
+          entry.orders += 1;
+          seenInOrder.add(key);
+        }
+        map.set(key, entry);
+        totalQty += it.qty;
+      }
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 5);
-  }, [orders, productMap]);
+    const top = Array.from(map.values()).sort((a, b) => b.qty - a.qty).slice(0, 5);
+    return { topProducts: top, totalPiecesInRange: totalQty };
+  }, [orders]);
 
   async function addSpend() {
     if (!amount || Number(amount) <= 0) { toast.error("أدخل مبلغًا صحيحًا"); return; }
