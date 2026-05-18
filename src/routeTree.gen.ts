@@ -17,11 +17,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
-import { Route as AuthenticatedMarketersRouteImport } from './routes/_authenticated/marketers'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
+import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
@@ -66,11 +66,6 @@ const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
   path: '/orders',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedMarketersRoute = AuthenticatedMarketersRouteImport.update({
-  id: '/marketers',
-  path: '/marketers',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -92,6 +87,12 @@ const AuthenticatedOrdersIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedOrdersRoute,
   } as any)
+const AuthenticatedMarketersIndexRoute =
+  AuthenticatedMarketersIndexRouteImport.update({
+    id: '/marketers/',
+    path: '/marketers/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedSettingsMappingsRoute =
   AuthenticatedSettingsMappingsRouteImport.update({
     id: '/settings/mappings',
@@ -112,9 +113,9 @@ const AuthenticatedOrdersImportRoute =
   } as any)
 const AuthenticatedMarketersIdRoute =
   AuthenticatedMarketersIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedMarketersRoute,
+    id: '/marketers/$id',
+    path: '/marketers/$id',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -125,7 +126,6 @@ export interface FileRoutesByFullPath {
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/marketers': typeof AuthenticatedMarketersRouteWithChildren
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/shipping': typeof AuthenticatedShippingRoute
@@ -133,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
+  '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRoutesByTo {
@@ -143,13 +144,13 @@ export interface FileRoutesByTo {
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/marketers': typeof AuthenticatedMarketersRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/shipping': typeof AuthenticatedShippingRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
+  '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRoutesById {
@@ -162,7 +163,6 @@ export interface FileRoutesById {
   '/_authenticated/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/_authenticated/ad-spend': typeof AuthenticatedAdSpendRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/marketers': typeof AuthenticatedMarketersRouteWithChildren
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
@@ -170,6 +170,7 @@ export interface FileRoutesById {
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
+  '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRouteTypes {
@@ -182,7 +183,6 @@ export interface FileRouteTypes {
     | '/ad-accounts'
     | '/ad-spend'
     | '/dashboard'
-    | '/marketers'
     | '/orders'
     | '/products'
     | '/shipping'
@@ -190,6 +190,7 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/update-status'
     | '/settings/mappings'
+    | '/marketers/'
     | '/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -200,13 +201,13 @@ export interface FileRouteTypes {
     | '/ad-accounts'
     | '/ad-spend'
     | '/dashboard'
-    | '/marketers'
     | '/products'
     | '/shipping'
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
     | '/settings/mappings'
+    | '/marketers'
     | '/orders'
   id:
     | '__root__'
@@ -218,7 +219,6 @@ export interface FileRouteTypes {
     | '/_authenticated/ad-accounts'
     | '/_authenticated/ad-spend'
     | '/_authenticated/dashboard'
-    | '/_authenticated/marketers'
     | '/_authenticated/orders'
     | '/_authenticated/products'
     | '/_authenticated/shipping'
@@ -226,6 +226,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
     | '/_authenticated/settings/mappings'
+    | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
   fileRoutesById: FileRoutesById
 }
@@ -295,13 +296,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrdersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/marketers': {
-      id: '/_authenticated/marketers'
-      path: '/marketers'
-      fullPath: '/marketers'
-      preLoaderRoute: typeof AuthenticatedMarketersRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -330,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrdersIndexRouteImport
       parentRoute: typeof AuthenticatedOrdersRoute
     }
+    '/_authenticated/marketers/': {
+      id: '/_authenticated/marketers/'
+      path: '/marketers'
+      fullPath: '/marketers/'
+      preLoaderRoute: typeof AuthenticatedMarketersIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/settings/mappings': {
       id: '/_authenticated/settings/mappings'
       path: '/settings/mappings'
@@ -353,27 +354,13 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/marketers/$id': {
       id: '/_authenticated/marketers/$id'
-      path: '/$id'
+      path: '/marketers/$id'
       fullPath: '/marketers/$id'
       preLoaderRoute: typeof AuthenticatedMarketersIdRouteImport
-      parentRoute: typeof AuthenticatedMarketersRoute
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
-
-interface AuthenticatedMarketersRouteChildren {
-  AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
-}
-
-const AuthenticatedMarketersRouteChildren: AuthenticatedMarketersRouteChildren =
-  {
-    AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
-  }
-
-const AuthenticatedMarketersRouteWithChildren =
-  AuthenticatedMarketersRoute._addFileChildren(
-    AuthenticatedMarketersRouteChildren,
-  )
 
 interface AuthenticatedOrdersRouteChildren {
   AuthenticatedOrdersImportRoute: typeof AuthenticatedOrdersImportRoute
@@ -394,22 +381,24 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
   AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedMarketersRoute: typeof AuthenticatedMarketersRouteWithChildren
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
+  AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
+  AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdAccountsRoute: AuthenticatedAdAccountsRoute,
   AuthenticatedAdSpendRoute: AuthenticatedAdSpendRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedMarketersRoute: AuthenticatedMarketersRouteWithChildren,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,
+  AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
+  AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -426,3 +415,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
