@@ -12,20 +12,21 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { KpiCard } from "@/components/KpiCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from "@/lib/format";
 import { ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
 import {
-  ArrowRight, ShoppingBag, DollarSign, Wallet, TrendingUp, Plus, Loader2, Trophy,
+  ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
 
 export const Route = createFileRoute("/_authenticated/marketers/$id")({
   component: MarketerDetails,
 });
 
-// commissions excluded for: refunded, refund_request
 const COMMISSION_EXCLUDED: OrderStatus[] = ["refunded", "refund_request"];
 const NET_PROFIT_STATUSES: OrderStatus[] = ["delivered", "done"];
 
@@ -33,12 +34,12 @@ function MarketerDetails() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
 
-  // default range: last 30 days
   const today = new Date().toISOString().slice(0, 10);
   const thirtyAgo = new Date(Date.now() - 30 * 86400 * 1000).toISOString().slice(0, 10);
   const [fromDate, setFromDate] = useState(thirtyAgo);
   const [toDate, setToDate] = useState(today);
 
+  const [infoOpen, setInfoOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [fawry, setFawry] = useState("");
@@ -85,7 +86,6 @@ function MarketerDetails() {
     [products],
   );
 
-  // filter by range
   const inRange = (d: string | null | undefined) => {
     if (!d) return false;
     return d >= fromDate && d <= toDate;
@@ -99,16 +99,12 @@ function MarketerDetails() {
     [allSpend, fromDate, toDate],
   );
 
-  // KPI counts in range
   const counts = ORDER_STATUS_KEYS.reduce((a, k) => {
     a[k] = orders.filter((o) => o.status === k).length;
     return a;
   }, {} as Record<OrderStatus, number>);
 
   const total = orders.length;
-  const gross = orders
-    .filter((o) => !COMMISSION_EXCLUDED.includes(o.status as OrderStatus))
-    .reduce((s, o) => s + Number(o.commission || 0), 0);
   const netCommissions = orders
     .filter((o) => NET_PROFIT_STATUSES.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
@@ -117,7 +113,7 @@ function MarketerDetails() {
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;
 
-  // lifetime (all time) totals
+  // lifetime
   const lifetimeGross = allOrders
     .filter((o) => !COMMISSION_EXCLUDED.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
@@ -127,32 +123,17 @@ function MarketerDetails() {
   const lifetimeSpend = allSpend.reduce((s, t) => s + Number(t.amount || 0), 0);
   const lifetimeProfit = lifetimeNet - lifetimeSpend;
 
-  // products breakdown (within range)
-  const productStats = useMemo(() => {
-    const map = new Map<string, { name: string; sku: string; count: number; delivered: number; commissions: number; revenue: number }>();
+  // top 5 products by name (in range)
+  const topProducts = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
     for (const o of orders) {
-      const pid = o.product_id ?? "unknown";
-      const p: any = pid !== "unknown" ? productMap.get(pid) : null;
-      const key = pid;
-      const entry = map.get(key) ?? {
-        name: p?.name ?? "—",
-        sku: p?.sku ?? "—",
-        count: 0,
-        delivered: 0,
-        commissions: 0,
-        revenue: 0,
-      };
+      const p: any = o.product_id ? productMap.get(o.product_id) : null;
+      const name = (p?.name ?? "غير معروف").trim();
+      const entry = map.get(name) ?? { name, count: 0 };
       entry.count += 1;
-      if (NET_PROFIT_STATUSES.includes(o.status as OrderStatus)) {
-        entry.delivered += 1;
-        entry.revenue += Number(o.price || 0);
-      }
-      if (!COMMISSION_EXCLUDED.includes(o.status as OrderStatus)) {
-        entry.commissions += Number(o.commission || 0);
-      }
-      map.set(key, entry);
+      map.set(name, entry);
     }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+    return Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 5);
   }, [orders, productMap]);
 
   async function addSpend() {
@@ -189,8 +170,33 @@ function MarketerDetails() {
           <Button asChild variant="ghost" size="sm" className="mb-2">
             <Link to="/marketers"><ArrowRight className="h-4 w-4 ml-1" /> رجوع</Link>
           </Button>
-          <h2 className="text-2xl font-display font-bold">{m.name}</h2>
-          <div className="text-sm text-muted-foreground">كود: {m.marketer_code}</div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-display font-bold">{m.name}</h2>
+            <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" title="بيانات المسوق">
+                  <Info className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>بيانات المسوق</DialogTitle></DialogHeader>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><div className="text-muted-foreground">الاسم</div><div>{m.name}</div></div>
+                  <div><div className="text-muted-foreground">كود</div><div dir="ltr">{m.marketer_code}</div></div>
+                  <div><div className="text-muted-foreground">الهاتف</div><div dir="ltr">{m.phone ?? "—"}</div></div>
+                  <div><div className="text-muted-foreground">واتساب</div><div dir="ltr">{m.whatsapp ?? "—"}</div></div>
+                  <div><div className="text-muted-foreground">البريد</div><div dir="ltr">{m.email ?? "—"}</div></div>
+                  <div><div className="text-muted-foreground">الحالة</div><div>{m.status}</div></div>
+                  <div><div className="text-muted-foreground">فيسبوك</div><div dir="ltr">{m.facebook_profile ?? "—"}</div></div>
+                  <div><div className="text-muted-foreground">تيك توك</div><div dir="ltr">{m.tiktok_profile ?? "—"}</div></div>
+                  {m.notes && (
+                    <div className="col-span-2"><div className="text-muted-foreground">ملاحظات</div><div>{m.notes}</div></div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="text-sm text-muted-foreground mt-1">كود: {m.marketer_code}</div>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild><Button><Plus className="h-4 w-4 ml-1" /> إضافة معاملة محفظة</Button></DialogTrigger>
@@ -211,43 +217,55 @@ function MarketerDetails() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardContent className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div><div className="text-muted-foreground">الهاتف</div><div dir="ltr">{m.phone ?? "—"}</div></div>
-          <div><div className="text-muted-foreground">واتساب</div><div dir="ltr">{m.whatsapp ?? "—"}</div></div>
-          <div><div className="text-muted-foreground">البريد</div><div dir="ltr">{m.email ?? "—"}</div></div>
-          <div><div className="text-muted-foreground">الحالة</div><div>{m.status}</div></div>
-        </CardContent>
-      </Card>
-
-      {/* Lifetime card */}
-      <Card className="border-primary/30">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-primary" /> الإجمالي منذ بداية العمل
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div>
-            <div className="text-muted-foreground">إجمالي الطلبات</div>
-            <div className="text-lg font-bold">{fmtNumber(allOrders.length)}</div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">إجمالي العمولات</div>
-            <div className="text-lg font-bold text-success">{fmtCurrency(lifetimeGross)}</div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">إجمالي الإنفاق الإعلاني</div>
-            <div className="text-lg font-bold text-warning">{fmtCurrency(lifetimeSpend)}</div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">صافي الربح</div>
-            <div className={`text-lg font-bold ${lifetimeProfit >= 0 ? "text-success" : "text-destructive"}`}>
-              {fmtCurrency(lifetimeProfit)}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Lifetime — 4 big cards */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Trophy className="h-5 w-5 text-primary" />
+          <h3 className="font-display font-bold">الإجمالي منذ بداية العمل</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border-primary/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary"><ShoppingBag className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي الطلبات</div>
+              </div>
+              <div className="text-3xl font-display font-bold">{fmtNumber(allOrders.length)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-success/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-success/15 text-success"><DollarSign className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي العمولات</div>
+              </div>
+              <div className="text-3xl font-display font-bold text-success">{fmtCurrency(lifetimeGross)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-warning/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-warning/15 text-warning-foreground"><Wallet className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي الإنفاق الإعلاني</div>
+              </div>
+              <div className="text-3xl font-display font-bold text-warning-foreground">{fmtCurrency(lifetimeSpend)}</div>
+            </CardContent>
+          </Card>
+          <Card className={lifetimeProfit >= 0 ? "border-success/30" : "border-destructive/30"}>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`p-3 rounded-xl ${lifetimeProfit >= 0 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div className="text-sm text-muted-foreground">صافي الربح</div>
+              </div>
+              <div className={`text-3xl font-display font-bold ${lifetimeProfit >= 0 ? "text-success" : "text-destructive"}`}>
+                {fmtCurrency(lifetimeProfit)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Date range filter */}
       <Card>
@@ -269,79 +287,47 @@ function MarketerDetails() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} />
-        <KpiCard label="إجمالي العمولات" value={fmtCurrency(gross)} icon={DollarSign} tone="success" />
-        <KpiCard label="الإنفاق الإعلاني" value={fmtCurrency(totalSpend)} icon={Wallet} tone="warning" />
-        <KpiCard label="صافي الربح" value={fmtCurrency(net)} icon={TrendingUp}
-          tone={net >= 0 ? "success" : "destructive"} />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
-        {ORDER_STATUS_KEYS.map((k) => (
-          <Card key={k}><CardContent className="p-3">
-            <StatusBadge status={k} />
-            <div className="text-lg font-bold mt-2">{fmtNumber(counts[k])}</div>
-          </CardContent></Card>
-        ))}
-      </div>
-
+      {/* Status counts only */}
       <Card>
-        <CardHeader><CardTitle className="text-base">معدل التسليم: {fmtPercent(deliveryRate)}</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">عدد الطلبات حسب الحالة في الفترة</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
+            {ORDER_STATUS_KEYS.map((k) => (
+              <div key={k} className="rounded-lg border p-3">
+                <StatusBadge status={k} />
+                <div className="text-lg font-bold mt-2">{fmtNumber(counts[k])}</div>
+              </div>
+            ))}
+          </div>
+          <div className="text-sm text-muted-foreground mt-4">
+            معدل التسليم: <span className="font-medium text-foreground">{fmtPercent(deliveryRate)}</span>
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Products worked on */}
+      {/* Top 5 products chart */}
       <Card>
-        <CardHeader><CardTitle className="text-base">المنتجات اللي اشتغل عليها</CardTitle></CardHeader>
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>المنتج</TableHead>
-            <TableHead>SKU</TableHead>
-            <TableHead>عدد الطلبات</TableHead>
-            <TableHead>تم التسليم</TableHead>
-            <TableHead>الإيراد</TableHead>
-            <TableHead>العمولات</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {productStats.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
-            ) : productStats.map((p, i) => (
-              <TableRow key={i}>
-                <TableCell className="font-medium">{p.name}</TableCell>
-                <TableCell dir="ltr">{p.sku}</TableCell>
-                <TableCell>{fmtNumber(p.count)}</TableCell>
-                <TableCell>{fmtNumber(p.delivered)}</TableCell>
-                <TableCell>{fmtCurrency(p.revenue)}</TableCell>
-                <TableCell className="text-success">{fmtCurrency(p.commissions)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">آخر الطلبات في الفترة</CardTitle></CardHeader>
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>التاريخ</TableHead><TableHead>رقم الطلب</TableHead>
-            <TableHead>العميل</TableHead><TableHead>السعر</TableHead>
-            <TableHead>العمولة</TableHead><TableHead>الحالة</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {orders.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">لا توجد طلبات</TableCell></TableRow>
-            ) : orders.slice(0, 50).map((o) => (
-              <TableRow key={o.id}>
-                <TableCell>{fmtDate(o.order_date)}</TableCell>
-                <TableCell dir="ltr">{o.external_order_id ?? "—"}</TableCell>
-                <TableCell>{o.customer_name ?? "—"}</TableCell>
-                <TableCell>{fmtCurrency(Number(o.price))}</TableCell>
-                <TableCell>{fmtCurrency(Number(o.commission))}</TableCell>
-                <TableCell><StatusBadge status={o.status as OrderStatus} /></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <CardHeader><CardTitle className="text-base">أهم 5 منتجات في الفترة</CardTitle></CardHeader>
+        <CardContent>
+          {topProducts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">لا توجد بيانات</div>
+          ) : (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProducts} layout="vertical" margin={{ left: 20, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" allowDecimals={false} className="text-xs" />
+                  <YAxis type="category" dataKey="name" width={140} className="text-xs" />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    formatter={(v: any) => [v, "عدد الطلبات"]}
+                  />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <Card>
