@@ -21,7 +21,7 @@ function MappingsSettings() {
   async function remove(id: string) {
     if (!confirm("حذف هذا القالب؟")) return;
     const { error } = await supabase.from("column_mappings").delete().eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) { console.error("Delete mapping error:", error); toast.error("فشل الحذف"); }
     else { toast.success("تم الحذف"); qc.invalidateQueries({ queryKey: ["mappings"] }); }
   }
 
