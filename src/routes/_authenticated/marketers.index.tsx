@@ -20,7 +20,7 @@ import { Plus, Search, Eye, Loader2 } from "lucide-react";
 import { MARKETER_STATUS } from "@/lib/constants";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/marketers")({
+export const Route = createFileRoute("/_authenticated/marketers/")({
   component: MarketersPage,
 });
 
