@@ -152,11 +152,13 @@ function DashboardPage() {
         <KpiCard label="معدل التسليم" value={fmtPercent(deliveryRate)} icon={Percent} tone="success" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="إجمالي العمولات" value={fmtCurrency(grossProfit)} icon={DollarSign} tone="success" />
         <KpiCard label="الإنفاق الإعلاني" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
         <KpiCard label="صافي الربح" value={fmtCurrency(netProfit)} icon={TrendingUp}
           tone={netProfit >= 0 ? "success" : "destructive"} />
+        <KpiCard label="الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
+          tone={expectedProfit >= 0 ? "success" : "destructive"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
