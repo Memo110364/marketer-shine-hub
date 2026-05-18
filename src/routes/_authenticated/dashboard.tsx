@@ -69,9 +69,15 @@ function DashboardPage() {
   }, {} as Record<string, number>);
 
   const total = orders.length;
-  const grossProfit = orders.reduce((s, o) => s + Number(o.commission || 0), 0);
+  const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request"]);
+  const grossProfit = orders
+    .filter((o) => !EXCLUDED_FROM_GROSS.has(o.status as string))
+    .reduce((s, o) => s + Number(o.commission || 0), 0);
+  const deliveredCommissions = orders
+    .filter((o) => o.status === "delivered" || o.status === "done")
+    .reduce((s, o) => s + Number(o.commission || 0), 0);
   const adSpend = spend.reduce((s, t) => s + Number(t.amount || 0), 0);
-  const netProfit = grossProfit - adSpend;
+  const netProfit = deliveredCommissions - adSpend;
   const delivered = counts.delivered + counts.done;
   const refunded = counts.refunded + counts.refund_request;
   const deliveryRate = total > 0 ? delivered / total : 0;
