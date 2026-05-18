@@ -184,7 +184,7 @@ function MarketerDetails() {
       created_by: userData.user?.id,
     });
     setBusy(false);
-    if (error) { toast.error("فشل الحفظ", { description: error.message }); return; }
+    if (error) { console.error("Add transaction error:", error); toast.error("فشل الحفظ"); return; }
     toast.success("تم إضافة المعاملة");
     setAddOpen(false);
     setAmount(""); setFawry(""); setNotes("");
