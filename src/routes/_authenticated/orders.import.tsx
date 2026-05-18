@@ -164,7 +164,7 @@ function ImportPage() {
           const { data: np, error: pErr } = await supabase.from("products").insert({
             sku: sku || null, name: pname || sku,
           }).select().single();
-          if (pErr) throw new Error(`تعذّر إنشاء المنتج: ${pErr.message}`);
+          if (pErr) { console.error("Product insert error:", pErr); throw new Error("تعذّر إنشاء المنتج"); }
           if (np) { productId = np.id; if (sku) productBySku.set(sku, np.id); if (pname) productByName.set(pname, np.id); }
         }
 
