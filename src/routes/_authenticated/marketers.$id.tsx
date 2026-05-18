@@ -99,17 +99,15 @@ function MarketerDetails() {
     },
   });
 
-  const { data: products = [] } = useQuery({
-    queryKey: ["products-min"],
-    queryFn: async () => {
-      const { data } = await supabase.from("products").select("id,name,sku");
-      return data ?? [];
-    },
-  });
-  const productMap = useMemo(
-    () => new Map(products.map((p: any) => [p.id, p])),
-    [products],
-  );
+  const lifetimePieces = useMemo(() => {
+    let total = 0;
+    for (const o of allOrders) {
+      if (COMMISSION_EXCLUDED.includes(o.status as OrderStatus)) continue;
+      for (const it of parseProducts((o.raw_data as any)?.Products)) total += it.qty;
+    }
+    return total;
+  }, [allOrders]);
+
 
   const inRange = (d: string | null | undefined) => {
     if (!d) return false;
