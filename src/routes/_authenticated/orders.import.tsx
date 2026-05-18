@@ -120,7 +120,7 @@ function ImportPage() {
     }).select().single();
     if (batchErr || !batch) {
       console.error("Batch insert error:", batchErr);
-      toast.error("فشل إنشاء دفعة الاستيراد: " + (batchErr?.message ?? "خطأ غير معروف"));
+      toast.error("فشل إنشاء دفعة الاستيراد");
       return;
     }
 
