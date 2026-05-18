@@ -151,7 +151,7 @@ function ImportPage() {
           const { data: nm, error: mErr } = await supabase.from("marketers").insert({
             marketer_code: marketerCode, name: marketerCode,
           }).select().single();
-          if (mErr) throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}": ${mErr.message}`);
+          if (mErr) { console.error("Marketer insert error:", mErr); throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}"`); }
           if (nm) { marketerId = nm.id; marketerByCode.set(marketerCode, nm.id); }
         }
 
