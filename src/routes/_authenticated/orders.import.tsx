@@ -220,15 +220,12 @@ function ImportPage() {
       for (const item of chunk) {
         const { error: rowErr } = await supabase.from("orders").insert(item.payload);
         if (rowErr) {
+          console.error("Row insert failed:", { row: item.rowIndex + 2, err: rowErr, payload: item.payload });
           errors.push({
             rowNumber: item.rowIndex + 2,
             stage: "insert",
-            message: rowErr.message,
-            details: (rowErr as any).details ?? null,
-            hint: (rowErr as any).hint ?? null,
-            code: (rowErr as any).code ?? null,
+            message: "تعذّر إدراج الصف في قاعدة البيانات. راجع بيانات الصف وحاول مجددًا.",
             rowData: item.rowData,
-            payload: item.payload,
           });
         } else {
           inserted++;
