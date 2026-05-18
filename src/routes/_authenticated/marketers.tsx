@@ -177,7 +177,11 @@ function MarketersPage() {
             ) : filtered.map((m) => (
               <TableRow key={m.id}>
                 <TableCell className="font-mono">{m.marketer_code}</TableCell>
-                <TableCell className="font-medium">{m.name}</TableCell>
+                <TableCell className="font-medium">
+                  <Link to="/marketers/$id" params={{ id: m.id }} className="hover:underline text-primary">
+                    {m.name}
+                  </Link>
+                </TableCell>
                 <TableCell dir="ltr">{m.phone ?? "—"}</TableCell>
                 <TableCell dir="ltr">{m.whatsapp ?? "—"}</TableCell>
                 <TableCell>
