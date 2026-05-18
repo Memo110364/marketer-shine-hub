@@ -82,6 +82,10 @@ function DashboardPage() {
   const refunded = counts.refunded + counts.refund_request;
   const deliveryRate = total > 0 ? delivered / total : 0;
   const refundRate = total > 0 ? refunded / total : 0;
+  const inDeliveryCommissions = orders
+    .filter((o) => o.status === "in_delivery")
+    .reduce((s, o) => s + Number(o.commission || 0), 0);
+  const expectedProfit = netProfit + inDeliveryCommissions * deliveryRate;
 
   const pieData = ORDER_STATUS_KEYS.map((k) => ({
     name: ORDER_STATUS[k].label,
