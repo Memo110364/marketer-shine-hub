@@ -174,7 +174,7 @@ function ImportPage() {
           shippingId = shippingByName.get(sname) ?? null;
           if (!shippingId) {
             const { data: ns, error: sErr } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
-            if (sErr) throw new Error(`تعذّر إنشاء شركة الشحن: ${sErr.message}`);
+            if (sErr) { console.error("Shipping insert error:", sErr); throw new Error("تعذّر إنشاء شركة الشحن"); }
             if (ns) { shippingId = ns.id; shippingByName.set(sname, ns.id); }
           }
         }
