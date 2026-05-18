@@ -21,6 +21,7 @@ import { Route as AuthenticatedMarketersRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
+import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
@@ -85,6 +86,12 @@ const AuthenticatedAdAccountsRoute = AuthenticatedAdAccountsRouteImport.update({
   path: '/ad-accounts',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedOrdersIndexRoute =
+  AuthenticatedOrdersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedOrdersRoute,
+  } as any)
 const AuthenticatedSettingsMappingsRoute =
   AuthenticatedSettingsMappingsRouteImport.update({
     id: '/settings/mappings',
@@ -126,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
+  '/orders/': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -136,13 +144,13 @@ export interface FileRoutesByTo {
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/marketers': typeof AuthenticatedMarketersRouteWithChildren
-  '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRoute
   '/shipping': typeof AuthenticatedShippingRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
+  '/orders': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
+  '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/update-status'
     | '/settings/mappings'
+    | '/orders/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -191,13 +201,13 @@ export interface FileRouteTypes {
     | '/ad-spend'
     | '/dashboard'
     | '/marketers'
-    | '/orders'
     | '/products'
     | '/shipping'
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
     | '/settings/mappings'
+    | '/orders'
   id:
     | '__root__'
     | '/'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
     | '/_authenticated/settings/mappings'
+    | '/_authenticated/orders/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -312,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdAccountsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/orders/': {
+      id: '/_authenticated/orders/'
+      path: '/'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof AuthenticatedOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedOrdersRoute
+    }
     '/_authenticated/settings/mappings': {
       id: '/_authenticated/settings/mappings'
       path: '/settings/mappings'
@@ -360,11 +378,13 @@ const AuthenticatedMarketersRouteWithChildren =
 interface AuthenticatedOrdersRouteChildren {
   AuthenticatedOrdersImportRoute: typeof AuthenticatedOrdersImportRoute
   AuthenticatedOrdersUpdateStatusRoute: typeof AuthenticatedOrdersUpdateStatusRoute
+  AuthenticatedOrdersIndexRoute: typeof AuthenticatedOrdersIndexRoute
 }
 
 const AuthenticatedOrdersRouteChildren: AuthenticatedOrdersRouteChildren = {
   AuthenticatedOrdersImportRoute: AuthenticatedOrdersImportRoute,
   AuthenticatedOrdersUpdateStatusRoute: AuthenticatedOrdersUpdateStatusRoute,
+  AuthenticatedOrdersIndexRoute: AuthenticatedOrdersIndexRoute,
 }
 
 const AuthenticatedOrdersRouteWithChildren =
