@@ -90,7 +90,7 @@ function ImportPage() {
     const { error } = await supabase.from("column_mappings").insert({
       name: mappingName, mapping, created_by: u.user?.id,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { console.error("Save mapping error:", error); toast.error("فشل حفظ القالب"); return; }
     toast.success("تم حفظ القالب");
     qc.invalidateQueries({ queryKey: ["mappings"] });
   }
