@@ -220,15 +220,12 @@ function ImportPage() {
       for (const item of chunk) {
         const { error: rowErr } = await supabase.from("orders").insert(item.payload);
         if (rowErr) {
+          console.error("Row insert failed:", { row: item.rowIndex + 2, err: rowErr, payload: item.payload });
           errors.push({
             rowNumber: item.rowIndex + 2,
             stage: "insert",
-            message: rowErr.message,
-            details: (rowErr as any).details ?? null,
-            hint: (rowErr as any).hint ?? null,
-            code: (rowErr as any).code ?? null,
+            message: "تعذّر إدراج الصف في قاعدة البيانات. راجع بيانات الصف وحاول مجددًا.",
             rowData: item.rowData,
-            payload: item.payload,
           });
         } else {
           inserted++;
@@ -412,29 +409,6 @@ function ImportPage() {
                 </div>
               </div>
 
-              {(selectedError.code || selectedError.details || selectedError.hint) && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {selectedError.code && (
-                    <div className="rounded-md border p-2">
-                      <div className="text-xs text-muted-foreground">رمز الخطأ</div>
-                      <div className="text-xs font-mono">{selectedError.code}</div>
-                    </div>
-                  )}
-                  {selectedError.details && (
-                    <div className="rounded-md border p-2 md:col-span-2">
-                      <div className="text-xs text-muted-foreground">التفاصيل</div>
-                      <div className="text-xs font-mono break-all">{selectedError.details}</div>
-                    </div>
-                  )}
-                  {selectedError.hint && (
-                    <div className="rounded-md border p-2 md:col-span-3">
-                      <div className="text-xs text-muted-foreground">اقتراح</div>
-                      <div className="text-xs">{selectedError.hint}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {selectedError.rowData && (
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">بيانات الصف من الملف</div>
@@ -456,15 +430,6 @@ function ImportPage() {
                       </TableBody>
                     </Table>
                   </div>
-                </div>
-              )}
-
-              {selectedError.payload && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">البيانات المرسلة إلى قاعدة البيانات</div>
-                  <pre className="rounded-md bg-muted p-3 text-xs overflow-x-auto" dir="ltr">
-{JSON.stringify(selectedError.payload, null, 2)}
-                  </pre>
                 </div>
               )}
             </div>

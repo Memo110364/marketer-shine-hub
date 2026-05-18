@@ -47,7 +47,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           حدث خطأ غير متوقع
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {error.message || "حاول مرة أخرى أو ارجع للرئيسية."}
+          حاول مرة أخرى أو ارجع للرئيسية.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
