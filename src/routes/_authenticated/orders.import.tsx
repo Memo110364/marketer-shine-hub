@@ -90,7 +90,7 @@ function ImportPage() {
     const { error } = await supabase.from("column_mappings").insert({
       name: mappingName, mapping, created_by: u.user?.id,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { console.error("Save mapping error:", error); toast.error("فشل حفظ القالب"); return; }
     toast.success("تم حفظ القالب");
     qc.invalidateQueries({ queryKey: ["mappings"] });
   }
@@ -104,7 +104,7 @@ function ImportPage() {
       await doImport();
     } catch (e: any) {
       console.error("Import failed:", e);
-      toast.error("فشل الاستيراد: " + (e?.message ?? String(e)));
+      toast.error("فشل الاستيراد، حاول مرة أخرى");
     } finally {
       setBusy(false);
     }
@@ -120,7 +120,7 @@ function ImportPage() {
     }).select().single();
     if (batchErr || !batch) {
       console.error("Batch insert error:", batchErr);
-      toast.error("فشل إنشاء دفعة الاستيراد: " + (batchErr?.message ?? "خطأ غير معروف"));
+      toast.error("فشل إنشاء دفعة الاستيراد");
       return;
     }
 
@@ -151,7 +151,7 @@ function ImportPage() {
           const { data: nm, error: mErr } = await supabase.from("marketers").insert({
             marketer_code: marketerCode, name: marketerCode,
           }).select().single();
-          if (mErr) throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}": ${mErr.message}`);
+          if (mErr) { console.error("Marketer insert error:", mErr); throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}"`); }
           if (nm) { marketerId = nm.id; marketerByCode.set(marketerCode, nm.id); }
         }
 
@@ -164,7 +164,7 @@ function ImportPage() {
           const { data: np, error: pErr } = await supabase.from("products").insert({
             sku: sku || null, name: pname || sku,
           }).select().single();
-          if (pErr) throw new Error(`تعذّر إنشاء المنتج: ${pErr.message}`);
+          if (pErr) { console.error("Product insert error:", pErr); throw new Error("تعذّر إنشاء المنتج"); }
           if (np) { productId = np.id; if (sku) productBySku.set(sku, np.id); if (pname) productByName.set(pname, np.id); }
         }
 
@@ -174,7 +174,7 @@ function ImportPage() {
           shippingId = shippingByName.get(sname) ?? null;
           if (!shippingId) {
             const { data: ns, error: sErr } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
-            if (sErr) throw new Error(`تعذّر إنشاء شركة الشحن: ${sErr.message}`);
+            if (sErr) { console.error("Shipping insert error:", sErr); throw new Error("تعذّر إنشاء شركة الشحن"); }
             if (ns) { shippingId = ns.id; shippingByName.set(sname, ns.id); }
           }
         }

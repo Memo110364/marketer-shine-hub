@@ -96,7 +96,7 @@ function UpdateStatusPage() {
         .eq("external_order_id", oid)
         .select("id");
 
-      if (error) { errors.push(`صف ${i + 2} (${oid}): ${error.message}`); continue; }
+      if (error) { console.error("Update error:", error); errors.push(`صف ${i + 2} (${oid}): فشل التحديث`); continue; }
       if (!data || data.length === 0) { notFound.push(oid); continue; }
       updated += data.length;
     }

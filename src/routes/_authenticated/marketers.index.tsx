@@ -69,7 +69,8 @@ function MarketersPage() {
       : await supabase.from("marketers").insert(payload);
     setBusy(false);
     if (error) {
-      toast.error("فشل الحفظ", { description: error.message });
+      console.error("Save marketer error:", error);
+      toast.error("فشل الحفظ");
       return;
     }
     toast.success(editing ? "تم التحديث" : "تم إضافة المسوّق");
