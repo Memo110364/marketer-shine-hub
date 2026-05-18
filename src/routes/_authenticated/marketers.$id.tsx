@@ -351,28 +351,59 @@ function MarketerDetails() {
 
       {/* Top 5 products chart */}
       <Card>
-        <CardHeader><CardTitle className="text-base">أهم 5 منتجات في الفترة</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center justify-between gap-3 flex-wrap">
+            <span>أهم 5 منتجات في الفترة</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              إجمالي القطع في الفترة:{" "}
+              <span className="font-bold text-foreground">{fmtNumber(totalPiecesInRange)}</span>
+            </span>
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           {topProducts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">لا توجد بيانات</div>
           ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topProducts} layout="vertical" margin={{ left: 20, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" allowDecimals={false} className="text-xs" />
-                  <YAxis type="category" dataKey="name" width={140} className="text-xs" />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: any) => [v, "عدد الطلبات"]}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <>
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={topProducts} layout="vertical" margin={{ left: 20, right: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis type="number" allowDecimals={false} className="text-xs" />
+                    <YAxis type="category" dataKey="name" width={180} className="text-xs" />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                      formatter={(v: any) => [v, "عدد القطع"]}
+                    />
+                    <Bar dataKey="qty" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>المنتج</TableHead>
+                      <TableHead className="text-center">عدد القطع</TableHead>
+                      <TableHead className="text-center">عدد الطلبات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topProducts.map((p) => (
+                      <TableRow key={p.name}>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell className="text-center font-bold">{fmtNumber(p.qty)}</TableCell>
+                        <TableCell className="text-center">{fmtNumber(p.orders)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base">معاملات الإنفاق الإعلاني في الفترة</CardTitle></CardHeader>
