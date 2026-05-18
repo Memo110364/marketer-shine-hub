@@ -104,7 +104,7 @@ function ImportPage() {
       await doImport();
     } catch (e: any) {
       console.error("Import failed:", e);
-      toast.error("فشل الاستيراد: " + (e?.message ?? String(e)));
+      toast.error("فشل الاستيراد، حاول مرة أخرى");
     } finally {
       setBusy(false);
     }
