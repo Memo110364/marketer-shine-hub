@@ -4,10 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "admin" | "account_manager" | "marketer";
 
+export type UserStatus = "pending" | "approved" | "rejected";
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   role: AppRole | null;
+  status: UserStatus | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -17,25 +20,30 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [status, setStatus] = useState<UserStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Subscribe first
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s?.user) {
-        // Defer DB call
-        setTimeout(() => fetchRole(s.user.id), 0);
+        setTimeout(() => {
+          fetchRole(s.user.id);
+          fetchStatus(s.user.id);
+        }, 0);
       } else {
         setRole(null);
+        setStatus(null);
       }
     });
 
-    // Then load existing session
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       if (data.session?.user) {
-        fetchRole(data.session.user.id).finally(() => setLoading(false));
+        Promise.all([
+          fetchRole(data.session.user.id),
+          fetchStatus(data.session.user.id),
+        ]).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -51,7 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId)
       .order("role", { ascending: true });
     if (data && data.length > 0) {
-      // Priority: admin > account_manager > marketer
       const roles = data.map((r) => r.role as AppRole);
       if (roles.includes("admin")) setRole("admin");
       else if (roles.includes("account_manager")) setRole("account_manager");
@@ -61,14 +68,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function fetchStatus(userId: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("status")
+      .eq("id", userId)
+      .maybeSingle();
+    setStatus((data?.status as UserStatus) ?? null);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     setSession(null);
     setRole(null);
+    setStatus(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user: session?.user ?? null, session, role, loading, signOut }}>
+    <AuthContext.Provider value={{ user: session?.user ?? null, session, role, status, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
