@@ -359,6 +359,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          status: Database["public"]["Enums"]["user_status"]
           updated_at: string
         }
         Insert: {
@@ -368,6 +369,7 @@ export type Database = {
           full_name?: string | null
           id: string
           phone?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
         Update: {
@@ -377,6 +379,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
         }
         Relationships: []
@@ -436,6 +439,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_my_marketer: { Args: { _marketer_id: string }; Returns: boolean }
     }
     Enums: {
       ad_platform: "meta" | "tiktok" | "manual"
@@ -448,6 +452,7 @@ export type Database = {
         | "done"
         | "refunded"
         | "refund_request"
+      user_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -586,6 +591,7 @@ export const Constants = {
         "refunded",
         "refund_request",
       ],
+      user_status: ["pending", "approved", "rejected"],
     },
   },
 } as const
