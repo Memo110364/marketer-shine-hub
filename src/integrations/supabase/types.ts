@@ -243,6 +243,7 @@ export type Database = {
           product_id: string | null
           quantity: number | null
           raw_data: Json | null
+          return_reason: string | null
           shipping_company_id: string | null
           status: Database["public"]["Enums"]["order_status"]
           updated_at: string
@@ -263,6 +264,7 @@ export type Database = {
           product_id?: string | null
           quantity?: number | null
           raw_data?: Json | null
+          return_reason?: string | null
           shipping_company_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
@@ -283,6 +285,7 @@ export type Database = {
           product_id?: string | null
           quantity?: number | null
           raw_data?: Json | null
+          return_reason?: string | null
           shipping_company_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
