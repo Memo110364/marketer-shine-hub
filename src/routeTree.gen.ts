@@ -20,6 +20,7 @@ import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
+import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users.index'
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
 import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
@@ -81,6 +82,11 @@ const AuthenticatedAdAccountsRoute = AuthenticatedAdAccountsRouteImport.update({
   path: '/ad-accounts',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedOrdersIndexRoute =
   AuthenticatedOrdersIndexRouteImport.update({
     id: '/',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
+  '/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
+  '/users': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
+  '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/settings/mappings'
     | '/marketers/'
     | '/orders/'
+    | '/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/settings/mappings'
     | '/marketers'
     | '/orders'
+    | '/users'
   id:
     | '__root__'
     | '/'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/mappings'
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
+    | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdAccountsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/users/': {
+      id: '/_authenticated/users/'
+      path: '/users'
+      fullPath: '/users/'
+      preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/orders/': {
       id: '/_authenticated/orders/'
       path: '/'
@@ -387,6 +406,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
+  AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -399,6 +419,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
+  AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
