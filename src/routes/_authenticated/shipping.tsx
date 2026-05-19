@@ -162,7 +162,12 @@ function ShippingPerf() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle className="text-base">تحليل تفصيلي</CardTitle>
+          <div>
+            <CardTitle className="text-base">تحليل تفصيلي</CardTitle>
+            {activeCompany && (
+              <div className="text-xs text-muted-foreground mt-1">{activeCompany.name}</div>
+            )}
+          </div>
           <Select value={activeCompanyId} onValueChange={setSelectedCompany}>
             <SelectTrigger className="h-9 w-60"><SelectValue placeholder="اختر شركة" /></SelectTrigger>
             <SelectContent>
@@ -172,53 +177,124 @@ function ShippingPerf() {
             </SelectContent>
           </Select>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <div className="text-sm font-medium mb-2">
-              معدل التسليم حسب المحافظة {activeCompany && `— ${activeCompany.name}`}
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">إجمالي الطلبات</div>
+              <div className="text-xl font-bold mt-1">{fmtNumber(activeStats.total)}</div>
             </div>
-            {govData.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-12 text-center">لا توجد بيانات</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(280, govData.length * 28)}>
-                <BarChart data={govData} layout="vertical" margin={{ left: 60, right: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" domain={[0, 100]} unit="%" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis dataKey="governorate" type="category" width={90} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: any, _n: any, p: any) => [`${v}% (${p.payload.delivered}/${p.payload.total})`, "معدل التسليم"]}
-                  />
-                  <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
-                    {govData.map((d, i) => <Cell key={i} fill={rateColor(d.rate)} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+            <div className="rounded-lg border p-3 bg-success/5">
+              <div className="text-xs text-muted-foreground">تم التسليم</div>
+              <div className="text-xl font-bold mt-1 text-success">{fmtNumber(activeStats.delivered)}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">{fmtPercent(activeStats.deliveryRate)} من الإجمالي</div>
+            </div>
+            <div className="rounded-lg border p-3 bg-destructive/5">
+              <div className="text-xs text-muted-foreground">مرتجع</div>
+              <div className="text-xl font-bold mt-1 text-destructive">{fmtNumber(activeStats.refunded)}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">{fmtPercent(activeStats.refundRate)} من الإجمالي</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">في الشحن</div>
+              <div className="text-xl font-bold mt-1">{fmtNumber(activeStats.inDelivery)}</div>
+            </div>
+            <div className="rounded-lg border p-3">
+              <div className="text-xs text-muted-foreground">معدل النجاح (للمغلقة)</div>
+              <div className="text-xl font-bold mt-1">{fmtPercent(activeStats.closedRate)}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">تسليم ÷ (تسليم + مرتجع)</div>
+            </div>
           </div>
 
           <div>
-            <div className="text-sm font-medium mb-2">
-              أهم أسباب الإرجاع {activeCompany && `— ${activeCompany.name}`}
-            </div>
-            {reasonsData.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-12 text-center">
-                لا توجد بيانات أسباب إرجاع — يمكنك إضافة عمود "سبب الإرجاع" عند تحديث حالات الطلبات.
-              </div>
+            <div className="text-sm font-medium mb-2">التفاصيل حسب المحافظة</div>
+            {govData.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-8 text-center border rounded-lg">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(280, reasonsData.length * 32)}>
-                <BarChart data={reasonsData} layout="vertical" margin={{ left: 80, right: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis dataKey="reason" type="category" width={140} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: any) => [`${v} طلب`, "عدد المرتجعات"]}
-                  />
-                  <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>المحافظة</TableHead>
+                      <TableHead className="text-center">الإجمالي</TableHead>
+                      <TableHead className="text-center">تم التسليم</TableHead>
+                      <TableHead className="text-center">مرتجع</TableHead>
+                      <TableHead className="text-center">في الشحن</TableHead>
+                      <TableHead className="text-center">جديد</TableHead>
+                      <TableHead className="w-56">معدل التسليم</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {govData.map((g) => (
+                      <TableRow key={g.governorate}>
+                        <TableCell className="font-medium">{g.governorate}</TableCell>
+                        <TableCell className="text-center">{fmtNumber(g.total)}</TableCell>
+                        <TableCell className="text-center text-success font-medium">{fmtNumber(g.delivered)}</TableCell>
+                        <TableCell className="text-center text-destructive">{fmtNumber(g.refunded)}</TableCell>
+                        <TableCell className="text-center text-muted-foreground">{fmtNumber(g.inDelivery)}</TableCell>
+                        <TableCell className="text-center text-muted-foreground">{fmtNumber(g.pending)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={g.rate} className="h-2 flex-1" />
+                            <Badge
+                              variant="outline"
+                              style={{ color: rateColor(g.rate), borderColor: rateColor(g.rate) }}
+                              className="min-w-[3rem] justify-center"
+                            >
+                              {g.rate}%
+                            </Badge>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <div className="text-sm font-medium mb-2">معدل التسليم — رسم بياني</div>
+              {govData.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-12 text-center">لا توجد بيانات</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(280, Math.min(govData.length, 15) * 28)}>
+                  <BarChart data={govData.slice(0, 15)} layout="vertical" margin={{ left: 60, right: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" domain={[0, 100]} unit="%" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis dataKey="governorate" type="category" width={90} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                      formatter={(v: any, _n: any, p: any) => [`${v}% (${p.payload.delivered}/${p.payload.total})`, "معدل التسليم"]}
+                    />
+                    <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
+                      {govData.slice(0, 15).map((d, i) => <Cell key={i} fill={rateColor(d.rate)} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div>
+              <div className="text-sm font-medium mb-2">أهم أسباب الإرجاع</div>
+              {reasonsData.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-12 text-center">
+                  لا توجد بيانات أسباب إرجاع — يمكنك إضافة عمود "سبب الإرجاع" عند تحديث حالات الطلبات.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.max(280, reasonsData.length * 32)}>
+                  <BarChart data={reasonsData} layout="vertical" margin={{ left: 80, right: 30 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <YAxis dataKey="reason" type="category" width={140} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                      formatter={(v: any) => [`${v} طلب`, "عدد المرتجعات"]}
+                    />
+                    <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
