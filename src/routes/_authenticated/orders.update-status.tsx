@@ -23,12 +23,13 @@ export const Route = createFileRoute("/_authenticated/orders/update-status")({
 
 const NONE = "__none__";
 
-type FieldKey = "external_order_id" | "status" | "delivered_date";
+type FieldKey = "external_order_id" | "status" | "delivered_date" | "return_reason";
 
 const FIELDS: { key: FieldKey; label: string; required?: boolean }[] = [
   { key: "external_order_id", label: "رقم الطلب", required: true },
   { key: "status", label: "الحالة الجديدة", required: true },
   { key: "delivered_date", label: "تاريخ التسليم (اختياري)" },
+  { key: "return_reason", label: "سبب الإرجاع (اختياري)" },
 ];
 
 function UpdateStatusPage() {
