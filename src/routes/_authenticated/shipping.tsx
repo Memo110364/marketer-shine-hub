@@ -168,7 +168,7 @@ function ShippingPerf() {
                   <YAxis dataKey="governorate" type="category" width={90} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <Tooltip
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: number, _n, p: any) => [`${v}% (${p.payload.delivered}/${p.payload.total})`, "معدل التسليم"]}
+                    formatter={(v: any, _n: any, p: any) => [`${v}% (${p.payload.delivered}/${p.payload.total})`, "معدل التسليم"]}
                   />
                   <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
                     {govData.map((d, i) => <Cell key={i} fill={rateColor(d.rate)} />)}
