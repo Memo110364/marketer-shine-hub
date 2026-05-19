@@ -268,17 +268,14 @@ function AssignMarketersDialog({ user, onClose }: { user: ProfileRow | null; onC
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  // Sync selected on open
-  useState(() => {
+  useEffect(() => {
     if (user) {
       setSelected(new Set(marketers.filter((m) => m.account_manager_id === user.id).map((m) => m.id)));
+    } else {
+      setSelected(new Set());
     }
-  });
-
-  // Reset whenever user changes
-  if (user && selected.size === 0 && marketers.some((m) => m.account_manager_id === user.id)) {
-    setSelected(new Set(marketers.filter((m) => m.account_manager_id === user.id).map((m) => m.id)));
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, marketers]);
 
   function toggle(id: string) {
     const next = new Set(selected);
