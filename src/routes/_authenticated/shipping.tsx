@@ -194,7 +194,7 @@ function ShippingPerf() {
                   <YAxis dataKey="reason" type="category" width={140} stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <Tooltip
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: number) => [`${v} طلب`, "عدد المرتجعات"]}
+                    formatter={(v: any) => [`${v} طلب`, "عدد المرتجعات"]}
                   />
                   <Bar dataKey="count" fill="hsl(var(--destructive))" radius={[0, 4, 4, 0]} />
                 </BarChart>
