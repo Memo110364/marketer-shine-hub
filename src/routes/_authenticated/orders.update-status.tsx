@@ -23,12 +23,13 @@ export const Route = createFileRoute("/_authenticated/orders/update-status")({
 
 const NONE = "__none__";
 
-type FieldKey = "external_order_id" | "status" | "delivered_date";
+type FieldKey = "external_order_id" | "status" | "delivered_date" | "return_reason";
 
 const FIELDS: { key: FieldKey; label: string; required?: boolean }[] = [
   { key: "external_order_id", label: "رقم الطلب", required: true },
   { key: "status", label: "الحالة الجديدة", required: true },
   { key: "delivered_date", label: "تاريخ التسليم (اختياري)" },
+  { key: "return_reason", label: "سبب الإرجاع (اختياري)" },
 ];
 
 function UpdateStatusPage() {
@@ -57,9 +58,11 @@ function UpdateStatusPage() {
     const oid = hdrs.find((h) => /order|طلب|رقم/i.test(h));
     const st = hdrs.find((h) => /status|حال/i.test(h));
     const dd = hdrs.find((h) => /deliver|تسليم|delivery/i.test(h));
+    const rr = hdrs.find((h) => /reason|سبب|ارجاع|إرجاع|مرتجع/i.test(h));
     if (oid) guess.external_order_id = oid;
     if (st) guess.status = st;
     if (dd) guess.delivered_date = dd;
+    if (rr) guess.return_reason = rr;
     setMapping(guess);
     toast.success(`تم تحميل ${json.length} صف`);
   }
@@ -85,6 +88,10 @@ function UpdateStatusPage() {
       if (mapping.delivered_date) {
         const dd = parseExcelDate(r[mapping.delivered_date]);
         if (dd) payload.delivered_date = dd;
+      }
+      if (mapping.return_reason) {
+        const rr = String(r[mapping.return_reason] ?? "").trim();
+        if (rr) payload.return_reason = rr;
       }
       if (newStatus === "delivered" && !payload.delivered_date) {
         payload.delivered_date = new Date().toISOString().slice(0, 10);
