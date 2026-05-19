@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { to: "/shipping", label: "شركات الشحن", icon: Truck, roles: ["admin", "account_manager"] },
   { to: "/ad-accounts", label: "حسابات الإعلانات", icon: Megaphone, roles: ["admin", "account_manager"] },
   { to: "/settings/mappings", label: "إعدادات الاستيراد", icon: Settings, roles: ["admin", "account_manager"] },
+  { to: "/users", label: "إدارة المستخدمين", icon: UserCog, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
