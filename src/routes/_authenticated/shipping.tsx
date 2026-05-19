@@ -53,29 +53,45 @@ function ShippingPerf() {
   const activeCompanyId = selectedCompany || rows[0]?.id || "";
   const activeCompany = companies.find((c) => c.id === activeCompanyId);
 
+  const activeStats = useMemo(() => {
+    const list = orders.filter((o) => o.shipping_company_id === activeCompanyId);
+    const total = list.length;
+    const delivered = list.filter((o) => o.status === "delivered" || o.status === "done").length;
+    const refunded = list.filter((o) => o.status === "refunded" || o.status === "refund_request").length;
+    const inDelivery = list.filter((o) => o.status === "in_delivery").length;
+    const pending = list.filter((o) => o.status === "pending").length;
+    const closed = delivered + refunded;
+    return {
+      total, delivered, refunded, inDelivery, pending,
+      deliveryRate: total > 0 ? delivered / total : 0,
+      closedRate: closed > 0 ? delivered / closed : 0,
+      refundRate: total > 0 ? refunded / total : 0,
+    };
+  }, [orders, activeCompanyId]);
+
   const govData = useMemo(() => {
     if (!activeCompanyId) return [];
     const list = orders.filter((o) => o.shipping_company_id === activeCompanyId);
-    const byGov = new Map<string, { total: number; delivered: number; refunded: number }>();
+    const byGov = new Map<string, { total: number; delivered: number; refunded: number; inDelivery: number; pending: number }>();
     for (const o of list) {
       const g = (o.governorate ?? "غير محدد").trim() || "غير محدد";
-      const e = byGov.get(g) ?? { total: 0, delivered: 0, refunded: 0 };
+      const e = byGov.get(g) ?? { total: 0, delivered: 0, refunded: 0, inDelivery: 0, pending: 0 };
       e.total += 1;
       if (o.status === "delivered" || o.status === "done") e.delivered += 1;
-      if (o.status === "refunded" || o.status === "refund_request") e.refunded += 1;
+      else if (o.status === "refunded" || o.status === "refund_request") e.refunded += 1;
+      else if (o.status === "in_delivery") e.inDelivery += 1;
+      else if (o.status === "pending") e.pending += 1;
       byGov.set(g, e);
     }
     return Array.from(byGov.entries())
       .map(([governorate, v]) => ({
         governorate,
-        total: v.total,
-        delivered: v.delivered,
-        refunded: v.refunded,
+        ...v,
         rate: v.total > 0 ? Math.round((v.delivered / v.total) * 100) : 0,
       }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 15);
+      .sort((a, b) => b.total - a.total);
   }, [orders, activeCompanyId]);
+
 
   const reasonsData = useMemo(() => {
     if (!activeCompanyId) return [];
