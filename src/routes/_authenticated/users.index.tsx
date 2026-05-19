@@ -1,11 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,8 +20,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS } from "@/lib/constants";
-import { Loader2, CheckCircle2, XCircle, Users as UsersIcon } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { adminCreateUser } from "@/lib/users.functions";
 
 export const Route = createFileRoute("/_authenticated/users/")({
   component: UsersPage,
@@ -135,12 +138,22 @@ function UsersPage() {
     qc.invalidateQueries({ queryKey: ["all-user-roles"] });
   }
 
+  const [createOpen, setCreateOpen] = useState(false);
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-display font-bold">إدارة المستخدمين</h2>
-        <p className="text-sm text-muted-foreground">موافقة على التسجيلات وتعيين الأدوار وإسناد المسوّقين</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-display font-bold">إدارة المستخدمين</h2>
+          <p className="text-sm text-muted-foreground">إضافة مستخدمين، الموافقة على التسجيلات، تعيين الأدوار وإسناد المسوّقين</p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <UserPlus className="h-4 w-4 ml-1" /> إضافة مستخدم
+        </Button>
       </div>
+
+      <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
 
       <Card>
         <Table>
@@ -346,6 +359,80 @@ function AssignMarketersDialog({ user, onClose }: { user: ProfileRow | null; onC
           <Button onClick={save} disabled={busy}>
             {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             حفظ
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
+  const create = useServerFn(adminCreateUser);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<AppRole>("marketer");
+  const [busy, setBusy] = useState(false);
+
+  function reset() {
+    setFullName(""); setEmail(""); setPassword(""); setRole("marketer");
+  }
+
+  async function submit() {
+    if (!fullName || !email || password.length < 8) {
+      toast.error("املأ جميع الحقول (كلمة السر 8 أحرف على الأقل)");
+      return;
+    }
+    setBusy(true);
+    try {
+      await create({ data: { full_name: fullName, email, password, role } });
+      toast.success("تم إنشاء المستخدم");
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+      qc.invalidateQueries({ queryKey: ["all-user-roles"] });
+      reset();
+      onClose();
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل إنشاء المستخدم");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>إضافة مستخدم جديد</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>الاسم الكامل</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>البريد الإلكتروني</Label>
+            <Input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>كلمة السر (8 أحرف على الأقل)</Label>
+            <Input type="text" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>الدور</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={busy}>
+            {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            إنشاء
           </Button>
         </DialogFooter>
       </DialogContent>
