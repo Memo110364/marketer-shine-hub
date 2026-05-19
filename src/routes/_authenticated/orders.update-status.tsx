@@ -58,9 +58,11 @@ function UpdateStatusPage() {
     const oid = hdrs.find((h) => /order|طلب|رقم/i.test(h));
     const st = hdrs.find((h) => /status|حال/i.test(h));
     const dd = hdrs.find((h) => /deliver|تسليم|delivery/i.test(h));
+    const rr = hdrs.find((h) => /reason|سبب|ارجاع|إرجاع|مرتجع/i.test(h));
     if (oid) guess.external_order_id = oid;
     if (st) guess.status = st;
     if (dd) guess.delivered_date = dd;
+    if (rr) guess.return_reason = rr;
     setMapping(guess);
     toast.success(`تم تحميل ${json.length} صف`);
   }
