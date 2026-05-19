@@ -365,3 +365,77 @@ function AssignMarketersDialog({ user, onClose }: { user: ProfileRow | null; onC
     </Dialog>
   );
 }
+
+function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const qc = useQueryClient();
+  const create = useServerFn(adminCreateUser);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<AppRole>("marketer");
+  const [busy, setBusy] = useState(false);
+
+  function reset() {
+    setFullName(""); setEmail(""); setPassword(""); setRole("marketer");
+  }
+
+  async function submit() {
+    if (!fullName || !email || password.length < 8) {
+      toast.error("املأ جميع الحقول (كلمة السر 8 أحرف على الأقل)");
+      return;
+    }
+    setBusy(true);
+    try {
+      await create({ data: { full_name: fullName, email, password, role } });
+      toast.success("تم إنشاء المستخدم");
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+      qc.invalidateQueries({ queryKey: ["all-user-roles"] });
+      reset();
+      onClose();
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل إنشاء المستخدم");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>إضافة مستخدم جديد</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>الاسم الكامل</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>البريد الإلكتروني</Label>
+            <Input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>كلمة السر (8 أحرف على الأقل)</Label>
+            <Input type="text" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>الدور</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={busy}>
+            {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            إنشاء
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
