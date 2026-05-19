@@ -89,6 +89,10 @@ function UpdateStatusPage() {
         const dd = parseExcelDate(r[mapping.delivered_date]);
         if (dd) payload.delivered_date = dd;
       }
+      if (mapping.return_reason) {
+        const rr = String(r[mapping.return_reason] ?? "").trim();
+        if (rr) payload.return_reason = rr;
+      }
       if (newStatus === "delivered" && !payload.delivered_date) {
         payload.delivered_date = new Date().toISOString().slice(0, 10);
       }
