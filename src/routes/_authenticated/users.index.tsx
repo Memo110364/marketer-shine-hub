@@ -1,11 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -18,8 +20,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS } from "@/lib/constants";
-import { Loader2, CheckCircle2, XCircle, Users as UsersIcon } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { adminCreateUser } from "@/lib/users.functions";
 
 export const Route = createFileRoute("/_authenticated/users/")({
   component: UsersPage,
