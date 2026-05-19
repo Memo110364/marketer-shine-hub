@@ -138,12 +138,22 @@ function UsersPage() {
     qc.invalidateQueries({ queryKey: ["all-user-roles"] });
   }
 
+  const [createOpen, setCreateOpen] = useState(false);
+
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-display font-bold">إدارة المستخدمين</h2>
-        <p className="text-sm text-muted-foreground">موافقة على التسجيلات وتعيين الأدوار وإسناد المسوّقين</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-display font-bold">إدارة المستخدمين</h2>
+          <p className="text-sm text-muted-foreground">إضافة مستخدمين، الموافقة على التسجيلات، تعيين الأدوار وإسناد المسوّقين</p>
+        </div>
+        <Button onClick={() => setCreateOpen(true)}>
+          <UserPlus className="h-4 w-4 ml-1" /> إضافة مستخدم
+        </Button>
       </div>
+
+      <CreateUserDialog open={createOpen} onClose={() => setCreateOpen(false)} />
+
 
       <Card>
         <Table>
