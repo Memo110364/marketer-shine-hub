@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
+import { fetchAll } from "@/lib/fetch-all";
 
 export const Route = createFileRoute("/_authenticated/products")({
   component: ProductsPerf,
@@ -23,12 +24,13 @@ function ProductsPerf() {
 
   const { data: orders = [] } = useQuery({
     queryKey: ["products-orders", from, to],
-    queryFn: async () => {
-      let q = supabase.from("orders").select("product_id, status, commission, price");
-      if (from) q = q.gte("order_date", from);
-      if (to) q = q.lte("order_date", to);
-      return (await q).data ?? [];
-    },
+    queryFn: () =>
+      fetchAll<{ product_id: string | null; status: string; commission: number | null; price: number | null }>((a, b) => {
+        let q = supabase.from("orders").select("product_id, status, commission, price");
+        if (from) q = q.gte("order_date", from);
+        if (to) q = q.lte("order_date", to);
+        return q.range(a, b);
+      }),
   });
 
   const rows = useMemo(() => products.map((p) => {

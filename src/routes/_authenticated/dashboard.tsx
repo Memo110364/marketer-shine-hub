@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { fetchAll } from "@/lib/fetch-all";
 import { KpiCard } from "@/components/KpiCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,28 +32,28 @@ function DashboardPage() {
 
   const { data: orders = [] } = useQuery({
     queryKey: ["orders-dash", from, to],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id, status, commission, marketer_id, order_date, product_id")
-        .gte("order_date", from)
-        .lte("order_date", to);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAll<{ id: string; status: string; commission: number | null; marketer_id: string | null; order_date: string | null; product_id: string | null }>((a, b) =>
+        supabase
+          .from("orders")
+          .select("id, status, commission, marketer_id, order_date, product_id")
+          .gte("order_date", from)
+          .lte("order_date", to)
+          .range(a, b),
+      ),
   });
 
   const { data: spend = [] } = useQuery({
     queryKey: ["spend-dash", from, to],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ad_spend_transactions")
-        .select("amount, marketer_id, transaction_date")
-        .gte("transaction_date", from)
-        .lte("transaction_date", to);
-      if (error) throw error;
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAll<{ amount: number; marketer_id: string | null; transaction_date: string }>((a, b) =>
+        supabase
+          .from("ad_spend_transactions")
+          .select("amount, marketer_id, transaction_date")
+          .gte("transaction_date", from)
+          .lte("transaction_date", to)
+          .range(a, b),
+      ),
   });
 
   const { data: marketers = [] } = useQuery({
