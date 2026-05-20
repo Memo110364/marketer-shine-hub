@@ -32,6 +32,18 @@ type ImportError = {
   payload?: Record<string, any> | null;
 };
 
+type PreparedRow = { payload: any; rowIndex: number; rowData: Record<string, any> };
+
+type ImportPreview = {
+  totalRows: number;
+  validationErrors: ImportError[];
+  toInsert: PreparedRow[];
+  inFileDuplicates: number;
+  dbDuplicates: number;
+  oldDbDuplicateExtIds: string[];
+  oldDbDuplicateExtraCount: number;
+};
+
 export const Route = createFileRoute("/_authenticated/orders/import")({
   component: ImportPage,
 });
