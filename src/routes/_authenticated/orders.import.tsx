@@ -108,36 +108,28 @@ function ImportPage() {
     qc.invalidateQueries({ queryKey: ["mappings"] });
   }
 
-  async function runImport() {
+  async function runPreview() {
     if (rows.length === 0) { toast.error("لا توجد بيانات"); return; }
     if (!mapping.marketer_code) { toast.error("يجب ربط حقل كود المسوّق"); return; }
     setBusy(true);
     setReport(null);
+    setPreview(null);
     try {
-      await doImport();
+      const p = await buildPreview();
+      if (p) setPreview(p);
     } catch (e: any) {
-      console.error("Import failed:", e);
-      toast.error("فشل الاستيراد، حاول مرة أخرى");
+      console.error("Preview failed:", e);
+      toast.error("فشل تحضير المعاينة");
     } finally {
       setBusy(false);
     }
   }
 
-  async function doImport() {
+  async function buildPreview(): Promise<ImportPreview | null> {
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) { toast.error("يجب تسجيل الدخول"); return; }
+    if (!userData.user) { toast.error("يجب تسجيل الدخول"); return null; }
 
-    // Create batch
-    const { data: batch, error: batchErr } = await supabase.from("import_batches").insert({
-      filename, row_count: rows.length, mapping_used: mapping, created_by: userData.user.id,
-    }).select().single();
-    if (batchErr || !batch) {
-      console.error("Batch insert error:", batchErr);
-      toast.error("فشل إنشاء دفعة الاستيراد");
-      return;
-    }
-
-    // Cache lookups
+    // Cache lookups (read-only here)
     const { data: marketersAll } = await supabase.from("marketers").select("id, marketer_code");
     const marketerByCode = new Map((marketersAll ?? []).map((m) => [m.marketer_code, m.id]));
     const { data: productsAll } = await supabase.from("products").select("id, sku, name");
@@ -146,51 +138,31 @@ function ImportPage() {
     const { data: shippingsAll } = await supabase.from("shipping_companies").select("id, name");
     const shippingByName = new Map((shippingsAll ?? []).map((s) => [s.name, s.id]));
 
-    const errors: ImportError[] = [];
-    const toInsert: { payload: any; rowIndex: number; rowData: Record<string, any> }[] = [];
+    const validationErrors: ImportError[] = [];
+    const prepared: PreparedRow[] = [];
 
     function pick(row: Record<string, any>, field: SystemField) {
       const col = mapping[field];
       return col ? row[col] : null;
     }
 
+    // Build payloads WITHOUT writing to DB (marketers/products/shipping resolved
+    // only if cached; missing entries are left null and created during confirm).
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       try {
         const marketerCode = String(pick(r, "marketer_code") ?? "").trim();
         if (!marketerCode) throw new Error("كود المسوّق فارغ");
-        let marketerId = marketerByCode.get(marketerCode);
-        if (!marketerId) {
-          const { data: nm, error: mErr } = await supabase.from("marketers").insert({
-            marketer_code: marketerCode, name: marketerCode,
-          }).select().single();
-          if (mErr) { console.error("Marketer insert error:", mErr); throw new Error(`تعذّر إنشاء المسوّق "${marketerCode}"`); }
-          if (nm) { marketerId = nm.id; marketerByCode.set(marketerCode, nm.id); }
-        }
+        const marketerId = marketerByCode.get(marketerCode) ?? null;
 
-        let productId: string | null = null;
         const sku = String(pick(r, "product_sku") ?? "").trim();
         const pname = String(pick(r, "product_name") ?? "").trim();
+        let productId: string | null = null;
         if (sku) productId = productBySku.get(sku) ?? null;
         if (!productId && pname) productId = productByName.get(pname) ?? null;
-        if (!productId && (sku || pname)) {
-          const { data: np, error: pErr } = await supabase.from("products").insert({
-            sku: sku || null, name: pname || sku,
-          }).select().single();
-          if (pErr) { console.error("Product insert error:", pErr); throw new Error("تعذّر إنشاء المنتج"); }
-          if (np) { productId = np.id; if (sku) productBySku.set(sku, np.id); if (pname) productByName.set(pname, np.id); }
-        }
 
-        let shippingId: string | null = null;
         const sname = String(pick(r, "shipping_company") ?? "").trim();
-        if (sname) {
-          shippingId = shippingByName.get(sname) ?? null;
-          if (!shippingId) {
-            const { data: ns, error: sErr } = await supabase.from("shipping_companies").insert({ name: sname }).select().single();
-            if (sErr) { console.error("Shipping insert error:", sErr); throw new Error("تعذّر إنشاء شركة الشحن"); }
-            if (ns) { shippingId = ns.id; shippingByName.set(sname, ns.id); }
-          }
-        }
+        const shippingId: string | null = sname ? (shippingByName.get(sname) ?? null) : null;
 
         const payload = {
           external_order_id: String(pick(r, "external_order_id") ?? "") || null,
@@ -206,12 +178,13 @@ function ImportPage() {
           status: normalizeStatus(pick(r, "status")),
           order_date: parseExcelDate(pick(r, "order_date")),
           delivered_date: parseExcelDate(pick(r, "delivered_date")),
-          import_batch_id: batch.id,
+          // store raw resolution hints so confirm step can resolve/create missing refs
+          __resolve: { marketerCode, sku, pname, sname },
           raw_data: r,
         };
-        toInsert.push({ payload, rowIndex: i, rowData: r });
+        prepared.push({ payload, rowIndex: i, rowData: r });
       } catch (err: any) {
-        errors.push({
+        validationErrors.push({
           rowNumber: i + 2,
           stage: "validation",
           message: err?.message ?? String(err),
@@ -220,27 +193,25 @@ function ImportPage() {
       }
     }
 
-    // ===== Auto-deduplication =====
-    // 1) Inside-file dedup by external_order_id, else by phone+product+date signature.
-    // 2) Against DB: drop external_order_ids that already exist.
+    // In-file dedup
     const seenInFile = new Set<string>();
-    const dedupedToInsert: typeof toInsert = [];
-    let skipped = 0;
-    for (const item of toInsert) {
+    const dedupedToInsert: PreparedRow[] = [];
+    let inFileDuplicates = 0;
+    for (const item of prepared) {
       const ext = (item.payload.external_order_id as string | null)?.trim();
       const sig = ext
         ? `ext:${ext}`
-        : `sig:${item.payload.customer_phone ?? ""}|${item.payload.product_id ?? ""}|${item.payload.order_date ?? ""}|${item.payload.marketer_id ?? ""}`;
-      if (seenInFile.has(sig)) { skipped++; continue; }
+        : `sig:${item.payload.customer_phone ?? ""}|${item.payload.__resolve.sku}|${item.payload.order_date ?? ""}|${item.payload.__resolve.marketerCode}`;
+      if (seenInFile.has(sig)) { inFileDuplicates++; continue; }
       seenInFile.add(sig);
       dedupedToInsert.push(item);
     }
 
-    // Check DB for existing external_order_ids (chunked to keep URL small)
+    // DB dedup + old DB duplicate detection
     const externalIds = dedupedToInsert
       .map((c) => (c.payload.external_order_id as string | null)?.trim())
       .filter((x): x is string => !!x);
-    const existingExt = new Set<string>();
+    const dbCounts = new Map<string, number>();
     for (let i = 0; i < externalIds.length; i += 500) {
       const slice = externalIds.slice(i, i + 500);
       const { data: existing } = await supabase
@@ -248,53 +219,183 @@ function ImportPage() {
         .select("external_order_id")
         .in("external_order_id", slice);
       (existing ?? []).forEach((r: { external_order_id: string | null }) => {
-        if (r.external_order_id) existingExt.add(r.external_order_id);
+        if (!r.external_order_id) return;
+        dbCounts.set(r.external_order_id, (dbCounts.get(r.external_order_id) ?? 0) + 1);
       });
     }
+
+    let dbDuplicates = 0;
     const finalToInsert = dedupedToInsert.filter((c) => {
       const ext = (c.payload.external_order_id as string | null)?.trim();
-      if (ext && existingExt.has(ext)) { skipped++; return false; }
+      if (ext && (dbCounts.get(ext) ?? 0) > 0) { dbDuplicates++; return false; }
       return true;
     });
 
-    // Bulk insert in chunks; on failure, retry row-by-row to pinpoint
-    let inserted = 0;
-    for (let i = 0; i < finalToInsert.length; i += 200) {
-      const chunk = finalToInsert.slice(i, i + 200);
-      const { error: insErr } = await supabase.from("orders").insert(chunk.map((c) => c.payload));
-      if (!insErr) {
-        inserted += chunk.length;
-        continue;
+    const oldDbDuplicateExtIds: string[] = [];
+    let oldDbDuplicateExtraCount = 0;
+    dbCounts.forEach((count, ext) => {
+      if (count > 1) {
+        oldDbDuplicateExtIds.push(ext);
+        oldDbDuplicateExtraCount += count - 1;
       }
-      console.error("Chunk insert error, retrying row-by-row:", insErr);
-      for (const item of chunk) {
-        const { error: rowErr } = await supabase.from("orders").insert(item.payload);
-        if (rowErr) {
-          console.error("Row insert failed:", { row: item.rowIndex + 2, err: rowErr, payload: item.payload });
-          errors.push({
-            rowNumber: item.rowIndex + 2,
-            stage: "insert",
-            message: "تعذّر إدراج الصف في قاعدة البيانات. راجع بيانات الصف وحاول مجددًا.",
-            rowData: item.rowData,
-          });
-        } else {
-          inserted++;
+    });
+
+    return {
+      totalRows: rows.length,
+      validationErrors,
+      toInsert: finalToInsert,
+      inFileDuplicates,
+      dbDuplicates,
+      oldDbDuplicateExtIds,
+      oldDbDuplicateExtraCount,
+    };
+  }
+
+  async function confirmImport() {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) { toast.error("يجب تسجيل الدخول"); return; }
+
+      // 1) Cleanup old DB duplicates — keep oldest row per external_order_id
+      let deletedOldDup = 0;
+      for (let i = 0; i < preview.oldDbDuplicateExtIds.length; i += 200) {
+        const slice = preview.oldDbDuplicateExtIds.slice(i, i + 200);
+        const { data: dupRows } = await supabase
+          .from("orders")
+          .select("id, external_order_id, created_at")
+          .in("external_order_id", slice)
+          .order("created_at", { ascending: true });
+        const keepers = new Set<string>();
+        const idsToDelete: string[] = [];
+        (dupRows ?? []).forEach((r) => {
+          const ext = r.external_order_id!;
+          if (!keepers.has(ext)) { keepers.add(ext); return; }
+          idsToDelete.push(r.id);
+        });
+        if (idsToDelete.length) {
+          const { error: delErr } = await supabase.from("orders").delete().in("id", idsToDelete);
+          if (delErr) console.error("Old dup delete error:", delErr);
+          else deletedOldDup += idsToDelete.length;
         }
       }
+
+      // 2) Create batch
+      const { data: batch, error: batchErr } = await supabase.from("import_batches").insert({
+        filename, row_count: preview.totalRows, mapping_used: mapping, created_by: userData.user.id,
+      }).select().single();
+      if (batchErr || !batch) {
+        console.error("Batch insert error:", batchErr);
+        toast.error("فشل إنشاء دفعة الاستيراد");
+        return;
+      }
+
+      // 3) Resolve missing marketer/product/shipping (create-on-demand)
+      const errors: ImportError[] = [...preview.validationErrors];
+      const { data: marketersAll } = await supabase.from("marketers").select("id, marketer_code");
+      const marketerByCode = new Map((marketersAll ?? []).map((m) => [m.marketer_code, m.id]));
+      const { data: productsAll } = await supabase.from("products").select("id, sku, name");
+      const productBySku = new Map((productsAll ?? []).map((p) => [p.sku ?? "", p.id]));
+      const productByName = new Map((productsAll ?? []).map((p) => [p.name, p.id]));
+      const { data: shippingsAll } = await supabase.from("shipping_companies").select("id, name");
+      const shippingByName = new Map((shippingsAll ?? []).map((s) => [s.name, s.id]));
+
+      const resolved: PreparedRow[] = [];
+      for (const item of preview.toInsert) {
+        const meta = item.payload.__resolve as { marketerCode: string; sku: string; pname: string; sname: string };
+        try {
+          let marketerId: string | null | undefined = item.payload.marketer_id ?? marketerByCode.get(meta.marketerCode);
+          if (!marketerId) {
+            const { data: nm, error: mErr } = await supabase.from("marketers").insert({
+              marketer_code: meta.marketerCode, name: meta.marketerCode,
+            }).select().single();
+            if (mErr) throw new Error(`تعذّر إنشاء المسوّق "${meta.marketerCode}"`);
+            if (nm) { marketerId = nm.id; marketerByCode.set(meta.marketerCode, nm.id); }
+          }
+
+          let productId: string | null = item.payload.product_id ?? null;
+          if (!productId && (meta.sku || meta.pname)) {
+            if (meta.sku) productId = productBySku.get(meta.sku) ?? null;
+            if (!productId && meta.pname) productId = productByName.get(meta.pname) ?? null;
+            if (!productId) {
+              const { data: np, error: pErr } = await supabase.from("products").insert({
+                sku: meta.sku || null, name: meta.pname || meta.sku,
+              }).select().single();
+              if (pErr) throw new Error("تعذّر إنشاء المنتج");
+              if (np) { productId = np.id; if (meta.sku) productBySku.set(meta.sku, np.id); if (meta.pname) productByName.set(meta.pname, np.id); }
+            }
+          }
+
+          let shippingId: string | null = item.payload.shipping_company_id ?? null;
+          if (!shippingId && meta.sname) {
+            shippingId = shippingByName.get(meta.sname) ?? null;
+            if (!shippingId) {
+              const { data: ns, error: sErr } = await supabase.from("shipping_companies").insert({ name: meta.sname }).select().single();
+              if (sErr) throw new Error("تعذّر إنشاء شركة الشحن");
+              if (ns) { shippingId = ns.id; shippingByName.set(meta.sname, ns.id); }
+            }
+          }
+
+          const { __resolve: _r, ...rest } = item.payload;
+          resolved.push({
+            payload: { ...rest, marketer_id: marketerId, product_id: productId, shipping_company_id: shippingId, import_batch_id: batch.id },
+            rowIndex: item.rowIndex,
+            rowData: item.rowData,
+          });
+        } catch (err: any) {
+          errors.push({
+            rowNumber: item.rowIndex + 2,
+            stage: "validation",
+            message: err?.message ?? String(err),
+            rowData: item.rowData,
+          });
+        }
+      }
+
+      // 4) Bulk insert
+      let inserted = 0;
+      for (let i = 0; i < resolved.length; i += 200) {
+        const chunk = resolved.slice(i, i + 200);
+        const { error: insErr } = await supabase.from("orders").insert(chunk.map((c) => c.payload));
+        if (!insErr) { inserted += chunk.length; continue; }
+        console.error("Chunk insert error, retrying row-by-row:", insErr);
+        for (const item of chunk) {
+          const { error: rowErr } = await supabase.from("orders").insert(item.payload);
+          if (rowErr) {
+            errors.push({
+              rowNumber: item.rowIndex + 2,
+              stage: "insert",
+              message: "تعذّر إدراج الصف في قاعدة البيانات. راجع بيانات الصف وحاول مجددًا.",
+              rowData: item.rowData,
+            });
+          } else inserted++;
+        }
+      }
+
+      await supabase.from("import_batches").update({
+        success_count: inserted,
+        error_count: errors.length,
+        errors: errors.length ? (errors as any) : null,
+      }).eq("id", batch.id);
+
+      const skipped = preview.inFileDuplicates + preview.dbDuplicates;
+      setReport({ success: inserted, skipped, deletedOldDup, errors });
+      setPreview(null);
+      qc.invalidateQueries({ queryKey: ["orders"] });
+      const extra: string[] = [];
+      if (skipped) extra.push(`تجاهل ${skipped} مكرر`);
+      if (deletedOldDup) extra.push(`حذف ${deletedOldDup} مكرر قديم`);
+      const dupMsg = extra.length ? ` (${extra.join("، ")})` : "";
+      if (errors.length === 0) toast.success(`تم استيراد ${inserted} طلب بنجاح${dupMsg}`);
+      else if (inserted > 0) toast.warning(`نجح ${inserted}، فشل ${errors.length}${dupMsg}`);
+      else toast.error(`فشل الاستيراد بالكامل${dupMsg}`);
+    } catch (e: any) {
+      console.error("Confirm import failed:", e);
+      toast.error("فشل تنفيذ الاستيراد");
+    } finally {
+      setBusy(false);
     }
-
-    await supabase.from("import_batches").update({
-      success_count: inserted,
-      error_count: errors.length,
-      errors: errors.length ? (errors as any) : null,
-    }).eq("id", batch.id);
-
-    setReport({ success: inserted, skipped, errors });
-    qc.invalidateQueries({ queryKey: ["orders"] });
-    const dupMsg = skipped > 0 ? ` (تم تجاهل ${skipped} مكرر)` : "";
-    if (errors.length === 0) toast.success(`تم استيراد ${inserted} طلب بنجاح${dupMsg}`);
-    else if (inserted > 0) toast.warning(`نجح ${inserted}، فشل ${errors.length}${dupMsg}`);
-    else toast.error(`فشل الاستيراد بالكامل. تحقق من الأخطاء أدناه.${dupMsg}`);
   }
 
   return (
