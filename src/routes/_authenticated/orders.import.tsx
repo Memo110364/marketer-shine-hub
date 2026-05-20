@@ -46,7 +46,7 @@ function ImportPage() {
   const [mapping, setMapping] = useState<Partial<Record<SystemField, string>>>({});
   const [mappingName, setMappingName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [report, setReport] = useState<{ success: number; errors: ImportError[] } | null>(null);
+  const [report, setReport] = useState<{ success: number; skipped: number; errors: ImportError[] } | null>(null);
   const [selectedError, setSelectedError] = useState<ImportError | null>(null);
 
   const { data: savedMappings = [] } = useQuery({
@@ -207,10 +207,47 @@ function ImportPage() {
       }
     }
 
+    // ===== Auto-deduplication =====
+    // 1) Inside-file dedup by external_order_id, else by phone+product+date signature.
+    // 2) Against DB: drop external_order_ids that already exist.
+    const seenInFile = new Set<string>();
+    const dedupedToInsert: typeof toInsert = [];
+    let skipped = 0;
+    for (const item of toInsert) {
+      const ext = (item.payload.external_order_id as string | null)?.trim();
+      const sig = ext
+        ? `ext:${ext}`
+        : `sig:${item.payload.customer_phone ?? ""}|${item.payload.product_id ?? ""}|${item.payload.order_date ?? ""}|${item.payload.marketer_id ?? ""}`;
+      if (seenInFile.has(sig)) { skipped++; continue; }
+      seenInFile.add(sig);
+      dedupedToInsert.push(item);
+    }
+
+    // Check DB for existing external_order_ids (chunked to keep URL small)
+    const externalIds = dedupedToInsert
+      .map((c) => (c.payload.external_order_id as string | null)?.trim())
+      .filter((x): x is string => !!x);
+    const existingExt = new Set<string>();
+    for (let i = 0; i < externalIds.length; i += 500) {
+      const slice = externalIds.slice(i, i + 500);
+      const { data: existing } = await supabase
+        .from("orders")
+        .select("external_order_id")
+        .in("external_order_id", slice);
+      (existing ?? []).forEach((r: { external_order_id: string | null }) => {
+        if (r.external_order_id) existingExt.add(r.external_order_id);
+      });
+    }
+    const finalToInsert = dedupedToInsert.filter((c) => {
+      const ext = (c.payload.external_order_id as string | null)?.trim();
+      if (ext && existingExt.has(ext)) { skipped++; return false; }
+      return true;
+    });
+
     // Bulk insert in chunks; on failure, retry row-by-row to pinpoint
     let inserted = 0;
-    for (let i = 0; i < toInsert.length; i += 200) {
-      const chunk = toInsert.slice(i, i + 200);
+    for (let i = 0; i < finalToInsert.length; i += 200) {
+      const chunk = finalToInsert.slice(i, i + 200);
       const { error: insErr } = await supabase.from("orders").insert(chunk.map((c) => c.payload));
       if (!insErr) {
         inserted += chunk.length;
@@ -239,11 +276,12 @@ function ImportPage() {
       errors: errors.length ? (errors as any) : null,
     }).eq("id", batch.id);
 
-    setReport({ success: inserted, errors });
+    setReport({ success: inserted, skipped, errors });
     qc.invalidateQueries({ queryKey: ["orders"] });
-    if (errors.length === 0) toast.success(`تم استيراد ${inserted} طلب بنجاح`);
-    else if (inserted > 0) toast.warning(`نجح ${inserted}، فشل ${errors.length}`);
-    else toast.error(`فشل الاستيراد بالكامل. تحقق من الأخطاء أدناه.`);
+    const dupMsg = skipped > 0 ? ` (تم تجاهل ${skipped} مكرر)` : "";
+    if (errors.length === 0) toast.success(`تم استيراد ${inserted} طلب بنجاح${dupMsg}`);
+    else if (inserted > 0) toast.warning(`نجح ${inserted}، فشل ${errors.length}${dupMsg}`);
+    else toast.error(`فشل الاستيراد بالكامل. تحقق من الأخطاء أدناه.${dupMsg}`);
   }
 
   return (
@@ -344,7 +382,7 @@ function ImportPage() {
                 ? <><CheckCircle2 className="h-5 w-5 text-success" /> تم بنجاح</>
                 : <><AlertTriangle className="h-5 w-5 text-warning-foreground" /> اكتمل بأخطاء</>}
             </div>
-            <div className="text-sm">نجح: <b className="text-success">{report.success}</b> — فشل: <b className="text-destructive">{report.errors.length}</b></div>
+            <div className="text-sm">نجح: <b className="text-success">{report.success}</b> — تم تجاهل المكرر: <b className="text-warning-foreground">{report.skipped}</b> — فشل: <b className="text-destructive">{report.errors.length}</b></div>
 
             {report.errors.length > 0 && (
               <div className="border rounded-md overflow-hidden">
