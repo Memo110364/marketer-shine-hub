@@ -113,9 +113,9 @@ function DashboardPage() {
   const topMarketers = Array.from(byMarketer.entries())
     .map(([id, v]) => ({
       name: marketers.find((m) => m.id === id)?.name ?? "—",
-      net: v.gross - v.spend,
+      orders: v.orders,
     }))
-    .sort((a, b) => b.net - a.net)
+    .sort((a, b) => b.orders - a.orders)
     .slice(0, 5);
 
   return (
