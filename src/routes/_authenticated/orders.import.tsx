@@ -480,11 +480,70 @@ function ImportPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button size="lg" onClick={runImport} disabled={busy}>
-              {busy ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Upload className="ml-2 h-5 w-5" />}
-              تنفيذ الاستيراد
+            <Button size="lg" onClick={runPreview} disabled={busy || !!preview}>
+              {busy ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Eye className="ml-2 h-5 w-5" />}
+              معاينة قبل الاستيراد
             </Button>
           </div>
+
+          {preview && (
+            <Card className="border-primary/40">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-primary" /> معاينة الاستيراد
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  راجع الأرقام قبل التنفيذ. سيتم تجاهل المكررات تلقائيًا، وحذف أي طلبات قديمة مكررة بنفس الكود في قاعدة البيانات (مع الإبقاء على الأقدم).
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <div className="p-3 rounded-xl bg-muted/40 border">
+                    <div className="text-xs text-muted-foreground">إجمالي صفوف الملف</div>
+                    <div className="text-xl font-display font-bold mt-1">{preview.totalRows}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-success/10 border border-success/30">
+                    <div className="text-xs text-muted-foreground">سيتم إدراجه</div>
+                    <div className="text-xl font-display font-bold mt-1 text-success">{preview.toInsert.length}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-warning/10 border border-warning/30">
+                    <div className="text-xs text-muted-foreground">مكرر داخل الملف</div>
+                    <div className="text-xl font-display font-bold mt-1">{preview.inFileDuplicates}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-warning/10 border border-warning/30">
+                    <div className="text-xs text-muted-foreground">موجود مسبقًا في DB</div>
+                    <div className="text-xl font-display font-bold mt-1">{preview.dbDuplicates}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30">
+                    <div className="text-xs text-muted-foreground">أخطاء تحقق</div>
+                    <div className="text-xl font-display font-bold mt-1 text-destructive">{preview.validationErrors.length}</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-accent/40 border border-accent">
+                    <div className="text-xs text-muted-foreground">مكررات قديمة في DB سيتم حذفها</div>
+                    <div className="text-xl font-display font-bold mt-1">{preview.oldDbDuplicateExtraCount}</div>
+                  </div>
+                </div>
+
+                {preview.oldDbDuplicateExtraCount > 0 && (
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-accent/30 border border-accent text-xs">
+                    <Trash2 className="h-4 w-4 mt-0.5 text-accent-foreground shrink-0" />
+                    <div>
+                      وجدنا <b>{preview.oldDbDuplicateExtIds.length}</b> كود طلب مكرر سابقًا في قاعدة البيانات
+                      (إجمالي <b>{preview.oldDbDuplicateExtraCount}</b> نسخة زائدة). سيتم الإبقاء على الأقدم لكل كود وحذف الباقي عند التأكيد.
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setPreview(null)} disabled={busy}>إلغاء</Button>
+                  <Button size="lg" onClick={confirmImport} disabled={busy || preview.toInsert.length === 0}>
+                    {busy ? <Loader2 className="ml-2 h-5 w-5 animate-spin" /> : <Upload className="ml-2 h-5 w-5" />}
+                    تأكيد وتنفيذ الاستيراد
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
