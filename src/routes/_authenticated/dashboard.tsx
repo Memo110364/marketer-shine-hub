@@ -113,9 +113,9 @@ function DashboardPage() {
   const topMarketers = Array.from(byMarketer.entries())
     .map(([id, v]) => ({
       name: marketers.find((m) => m.id === id)?.name ?? "—",
-      net: v.gross - v.spend,
+      orders: v.orders,
     }))
-    .sort((a, b) => b.net - a.net)
+    .sort((a, b) => b.orders - a.orders)
     .slice(0, 5);
 
   return (
@@ -184,7 +184,7 @@ function DashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">أعلى ٥ مسوّقين بصافي الربح</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">أعلى ٥ مسوّقين بعدد الطلبات</CardTitle></CardHeader>
           <CardContent>
             {topMarketers.length === 0 ? (
               <div className="text-center text-muted-foreground py-12 text-sm">لا توجد بيانات</div>
@@ -193,9 +193,9 @@ function DashboardPage() {
                 <BarChart data={topMarketers}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip formatter={(v) => fmtCurrency(Number(v))} />
-                  <Bar dataKey="net" fill="var(--primary)" radius={[6, 6, 0, 0]} />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip formatter={(v) => fmtNumber(Number(v))} />
+                  <Bar dataKey="orders" fill="var(--primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
