@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { SYSTEM_FIELDS, normalizeStatus, type SystemField } from "@/lib/constants";
 import { parseExcelDate } from "@/lib/format";
-import { Upload, Loader2, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
+import { Upload, Loader2, Save, CheckCircle2, AlertTriangle, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type ImportError = {
