@@ -323,9 +323,9 @@ function DashboardPage() {
   const topMarketers = marketerRows.slice(0, 5).map((m) => ({ name: m.name, orders: m.orders }));
 
   // Tooltip formatter for daily chart
-  const dailyTooltip = (value: number | string, name: string) => {
-    if (name === "صافي الربح") return fmtCurrency(Number(value));
-    return fmtNumber(Number(value));
+  const dailyTooltip = (value: unknown, name: unknown): string => {
+    if (name === "صافي الربح") return fmtCurrency(Number(value ?? 0));
+    return fmtNumber(Number(value ?? 0));
   };
 
   function GrowthBadge({ value }: { value: number }) {
