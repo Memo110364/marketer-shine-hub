@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { fetchAll } from "@/lib/fetch-all";
@@ -9,19 +9,58 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
   ShoppingBag, Clock, Truck, CheckCircle2, XCircle, AlertTriangle,
-  TrendingUp, Wallet, DollarSign, Percent,
+  TrendingUp, TrendingDown, Wallet, DollarSign, Percent, CalendarDays, Trophy, AlertOctagon,
 } from "lucide-react";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
-import { ORDER_STATUS, ORDER_STATUS_KEYS } from "@/lib/constants";
+import { ORDER_STATUS, ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  LineChart, Line,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
+
+type OrderRow = {
+  id: string;
+  status: string;
+  commission: number | null;
+  marketer_id: string | null;
+  order_date: string | null;
+  product_id: string | null;
+  shipping_company_id: string | null;
+};
+
+type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
+
+const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request"]);
+
+function daysBetween(from: string, to: string): number {
+  const a = new Date(from).getTime();
+  const b = new Date(to).getTime();
+  return Math.max(1, Math.round((b - a) / 86400000) + 1);
+}
+
+function shiftRange(from: string, to: string): { from: string; to: string } {
+  const days = daysBetween(from, to);
+  const prevTo = new Date(new Date(from).getTime() - 86400000);
+  const prevFrom = new Date(prevTo.getTime() - (days - 1) * 86400000);
+  return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
+}
+
+function growth(curr: number, prev: number): number {
+  if (prev === 0) return curr === 0 ? 0 : 1;
+  return (curr - prev) / Math.abs(prev);
+}
 
 function DashboardPage() {
   const { role } = useAuth();
@@ -29,14 +68,45 @@ function DashboardPage() {
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
   const [from, setFrom] = useState(monthStart.toISOString().slice(0, 10));
   const [to, setTo] = useState(today.toISOString().slice(0, 10));
+  const [marketerF, setMarketerF] = useState<string>("all");
+  const [productF, setProductF] = useState<string>("all");
+  const [shippingF, setShippingF] = useState<string>("all");
+  const [statusF, setStatusF] = useState<string>("all");
 
-  const { data: orders = [] } = useQuery({
+  const prev = useMemo(() => shiftRange(from, to), [from, to]);
+  const numDays = useMemo(() => daysBetween(from, to), [from, to]);
+
+  // Lookups
+  const { data: marketers = [] } = useQuery({
+    queryKey: ["marketers-min"],
+    queryFn: async () => {
+      const { data } = await supabase.from("marketers").select("id, name, marketer_code");
+      return data ?? [];
+    },
+  });
+  const { data: products = [] } = useQuery({
+    queryKey: ["products-min"],
+    queryFn: async () => {
+      const { data } = await supabase.from("products").select("id, name");
+      return data ?? [];
+    },
+  });
+  const { data: shippingCos = [] } = useQuery({
+    queryKey: ["shipping-min"],
+    queryFn: async () => {
+      const { data } = await supabase.from("shipping_companies").select("id, name");
+      return data ?? [];
+    },
+  });
+
+  // Current period
+  const { data: ordersAll = [] } = useQuery({
     queryKey: ["orders-dash", from, to],
     queryFn: () =>
-      fetchAll<{ id: string; status: string; commission: number | null; marketer_id: string | null; order_date: string | null; product_id: string | null }>((a, b) =>
+      fetchAll<OrderRow>((a, b) =>
         supabase
           .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id")
+          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id")
           .gte("order_date", from)
           .lte("order_date", to)
           .range(a, b),
@@ -46,7 +116,7 @@ function DashboardPage() {
   const { data: spend = [] } = useQuery({
     queryKey: ["spend-dash", from, to],
     queryFn: () =>
-      fetchAll<{ amount: number; marketer_id: string | null; transaction_date: string }>((a, b) =>
+      fetchAll<SpendRow>((a, b) =>
         supabase
           .from("ad_spend_transactions")
           .select("amount, marketer_id, transaction_date")
@@ -56,28 +126,67 @@ function DashboardPage() {
       ),
   });
 
-  const { data: marketers = [] } = useQuery({
-    queryKey: ["marketers-min"],
-    queryFn: async () => {
-      const { data } = await supabase.from("marketers").select("id, name, marketer_code");
-      return data ?? [];
-    },
+  // Previous period (for comparison)
+  const { data: ordersPrev = [] } = useQuery({
+    queryKey: ["orders-prev", prev.from, prev.to],
+    queryFn: () =>
+      fetchAll<OrderRow>((a, b) =>
+        supabase
+          .from("orders")
+          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id")
+          .gte("order_date", prev.from)
+          .lte("order_date", prev.to)
+          .range(a, b),
+      ),
+  });
+  const { data: spendPrev = [] } = useQuery({
+    queryKey: ["spend-prev", prev.from, prev.to],
+    queryFn: () =>
+      fetchAll<SpendRow>((a, b) =>
+        supabase
+          .from("ad_spend_transactions")
+          .select("amount, marketer_id, transaction_date")
+          .gte("transaction_date", prev.from)
+          .lte("transaction_date", prev.to)
+          .range(a, b),
+      ),
   });
 
+  // Apply filters
+  const orders = useMemo(() => ordersAll.filter((o) => {
+    if (marketerF !== "all" && o.marketer_id !== marketerF) return false;
+    if (productF !== "all" && o.product_id !== productF) return false;
+    if (shippingF !== "all" && o.shipping_company_id !== shippingF) return false;
+    if (statusF !== "all" && o.status !== statusF) return false;
+    return true;
+  }), [ordersAll, marketerF, productF, shippingF, statusF]);
+
+  const ordersPrevFiltered = useMemo(() => ordersPrev.filter((o) => {
+    if (marketerF !== "all" && o.marketer_id !== marketerF) return false;
+    if (productF !== "all" && o.product_id !== productF) return false;
+    if (shippingF !== "all" && o.shipping_company_id !== shippingF) return false;
+    if (statusF !== "all" && o.status !== statusF) return false;
+    return true;
+  }), [ordersPrev, marketerF, productF, shippingF, statusF]);
+
+  const spendFiltered = useMemo(() => spend.filter((s) =>
+    marketerF === "all" || s.marketer_id === marketerF), [spend, marketerF]);
+  const spendPrevFiltered = useMemo(() => spendPrev.filter((s) =>
+    marketerF === "all" || s.marketer_id === marketerF), [spendPrev, marketerF]);
+
+  // Basic aggregates
   const counts = ORDER_STATUS_KEYS.reduce((acc, k) => {
     acc[k] = orders.filter((o) => o.status === k).length;
     return acc;
   }, {} as Record<string, number>);
-
   const total = orders.length;
-  const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request"]);
   const grossProfit = orders
-    .filter((o) => !EXCLUDED_FROM_GROSS.has(o.status as string))
+    .filter((o) => !EXCLUDED_FROM_GROSS.has(o.status))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const deliveredCommissions = orders
     .filter((o) => o.status === "delivered" || o.status === "done")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
-  const adSpend = spend.reduce((s, t) => s + Number(t.amount || 0), 0);
+  const adSpend = spendFiltered.reduce((s, t) => s + Number(t.amount || 0), 0);
   const netProfit = deliveredCommissions - adSpend;
   const delivered = counts.delivered + counts.done;
   const refunded = counts.refunded + counts.refund_request;
@@ -88,35 +197,147 @@ function DashboardPage() {
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const expectedProfit = netProfit + inDeliveryCommissions * deliveryRate;
 
+  // Previous period aggregates for comparison
+  const prevDelivered = ordersPrevFiltered.filter((o) => o.status === "delivered" || o.status === "done");
+  const prevDeliveredCount = prevDelivered.length;
+  const prevDeliveredCommissions = prevDelivered.reduce((s, o) => s + Number(o.commission || 0), 0);
+  const prevAdSpend = spendPrevFiltered.reduce((s, t) => s + Number(t.amount || 0), 0);
+  const prevNet = prevDeliveredCommissions - prevAdSpend;
+  const prevTotal = ordersPrevFiltered.length;
+  const prevDeliveryRate = prevTotal > 0 ? prevDeliveredCount / prevTotal : 0;
+
+  // Daily series
+  const dailySeries = useMemo(() => {
+    const map = new Map<string, { date: string; total: number; delivered: number; refunded: number; commissions: number; spend: number }>();
+    // seed days
+    const start = new Date(from);
+    for (let i = 0; i < numDays; i++) {
+      const d = new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10);
+      map.set(d, { date: d, total: 0, delivered: 0, refunded: 0, commissions: 0, spend: 0 });
+    }
+    orders.forEach((o) => {
+      if (!o.order_date) return;
+      const r = map.get(o.order_date);
+      if (!r) return;
+      r.total += 1;
+      if (o.status === "delivered" || o.status === "done") {
+        r.delivered += 1;
+        r.commissions += Number(o.commission || 0);
+      }
+      if (o.status === "refunded" || o.status === "refund_request") r.refunded += 1;
+    });
+    spendFiltered.forEach((s) => {
+      const r = map.get(s.transaction_date);
+      if (!r) return;
+      r.spend += Number(s.amount || 0);
+    });
+    return Array.from(map.values()).map((r) => ({ ...r, net: r.commissions - r.spend }));
+  }, [orders, spendFiltered, from, numDays]);
+
+  // Daily averages
+  const avgDailyOrders = total / numDays;
+  const avgDailyDelivered = delivered / numDays;
+  const avgDailyNet = netProfit / numDays;
+  const avgDailyAdSpend = adSpend / numDays;
+
+  // Performance overview
+  const overview = useMemo(() => {
+    if (dailySeries.length === 0) return null;
+    const best = dailySeries.reduce((a, b) => (b.total > a.total ? b : a));
+    const worst = dailySeries.reduce((a, b) => (b.total < a.total ? b : a));
+    const bestRate = dailySeries
+      .filter((d) => d.total > 0)
+      .reduce<{ date: string; rate: number } | null>((acc, d) => {
+        const r = d.delivered / d.total;
+        return !acc || r > acc.rate ? { date: d.date, rate: r } : acc;
+      }, null);
+    const bestProfit = dailySeries.reduce((a, b) => (b.net > a.net ? b : a));
+    return { best, worst, bestRate, bestProfit };
+  }, [dailySeries]);
+
+  // Marketer table with current vs previous
+  const marketerRows = useMemo(() => {
+    type Agg = { orders: number; delivered: number; refunded: number; gross: number; spend: number; commissions: number };
+    const empty = (): Agg => ({ orders: 0, delivered: 0, refunded: 0, gross: 0, spend: 0, commissions: 0 });
+    const cur = new Map<string, Agg>();
+    const pr = new Map<string, Agg>();
+
+    const fill = (rows: OrderRow[], spendRows: SpendRow[], target: Map<string, Agg>) => {
+      rows.forEach((o) => {
+        if (!o.marketer_id) return;
+        const a = target.get(o.marketer_id) ?? empty();
+        a.orders += 1;
+        if (!EXCLUDED_FROM_GROSS.has(o.status)) a.gross += Number(o.commission || 0);
+        if (o.status === "delivered" || o.status === "done") {
+          a.delivered += 1;
+          a.commissions += Number(o.commission || 0);
+        }
+        if (o.status === "refunded" || o.status === "refund_request") a.refunded += 1;
+        target.set(o.marketer_id, a);
+      });
+      spendRows.forEach((s) => {
+        if (!s.marketer_id) return;
+        const a = target.get(s.marketer_id) ?? empty();
+        a.spend += Number(s.amount || 0);
+        target.set(s.marketer_id, a);
+      });
+    };
+    fill(orders, spendFiltered, cur);
+    fill(ordersPrevFiltered, spendPrevFiltered, pr);
+
+    return Array.from(cur.entries()).map(([id, a]) => {
+      const p = pr.get(id) ?? empty();
+      const net = a.commissions - a.spend;
+      const prevNetM = p.commissions - p.spend;
+      return {
+        id,
+        name: marketers.find((m) => m.id === id)?.name ?? "—",
+        orders: a.orders,
+        delivered: a.delivered,
+        refundRate: a.orders > 0 ? a.refunded / a.orders : 0,
+        gross: a.gross,
+        spend: a.spend,
+        net,
+        avgOrders: a.orders / numDays,
+        avgDelivered: a.delivered / numDays,
+        avgNet: net / numDays,
+        growth: growth(a.orders, p.orders),
+        netGrowth: growth(net, prevNetM),
+      };
+    }).sort((a, b) => b.orders - a.orders);
+  }, [orders, ordersPrevFiltered, spendFiltered, spendPrevFiltered, marketers, numDays]);
+
+  const topGrowing = useMemo(() =>
+    [...marketerRows].filter((m) => m.orders > 0).sort((a, b) => b.growth - a.growth).slice(0, 5),
+  [marketerRows]);
+  const topDeclining = useMemo(() =>
+    [...marketerRows].filter((m) => m.orders > 0).sort((a, b) => a.growth - b.growth).slice(0, 5),
+  [marketerRows]);
+
   const pieData = ORDER_STATUS_KEYS.map((k) => ({
     name: ORDER_STATUS[k].label,
     value: counts[k],
   })).filter((d) => d.value > 0);
-
   const pieColors = ["var(--info)", "var(--warning)", "var(--success)", "var(--chart-2)", "var(--destructive)", "var(--chart-5)"];
 
-  // Top marketers by net profit
-  const byMarketer = new Map<string, { gross: number; spend: number; orders: number }>();
-  orders.forEach((o) => {
-    if (!o.marketer_id) return;
-    const cur = byMarketer.get(o.marketer_id) ?? { gross: 0, spend: 0, orders: 0 };
-    cur.gross += Number(o.commission || 0);
-    cur.orders += 1;
-    byMarketer.set(o.marketer_id, cur);
-  });
-  spend.forEach((s) => {
-    if (!s.marketer_id) return;
-    const cur = byMarketer.get(s.marketer_id) ?? { gross: 0, spend: 0, orders: 0 };
-    cur.spend += Number(s.amount || 0);
-    byMarketer.set(s.marketer_id, cur);
-  });
-  const topMarketers = Array.from(byMarketer.entries())
-    .map(([id, v]) => ({
-      name: marketers.find((m) => m.id === id)?.name ?? "—",
-      orders: v.orders,
-    }))
-    .sort((a, b) => b.orders - a.orders)
-    .slice(0, 5);
+  const topMarketers = marketerRows.slice(0, 5).map((m) => ({ name: m.name, orders: m.orders }));
+
+  // Tooltip formatter for daily chart
+  const dailyTooltip = (value: unknown, name: unknown): string => {
+    if (name === "صافي الربح") return fmtCurrency(Number(value ?? 0));
+    return fmtNumber(Number(value ?? 0));
+  };
+
+  function GrowthBadge({ value }: { value: number }) {
+    const up = value >= 0;
+    const Icon = up ? TrendingUp : TrendingDown;
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs font-medium ${up ? "text-[var(--success)]" : "text-[var(--destructive)]"}`}>
+        <Icon className="h-3.5 w-3.5" />
+        {fmtPercent(Math.abs(value))}
+      </span>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -124,22 +345,64 @@ function DashboardPage() {
         <div>
           <h2 className="text-2xl font-display font-bold">لوحة التحكم</h2>
           <p className="text-sm text-muted-foreground">
-            {role === "marketer" ? "نظرة على أدائك الشخصي" : "نظرة عامة على الأداء"}
+            {role === "marketer" ? "نظرة على أدائك الشخصي" : "تحليلات الأداء اليومي والمقارنة بالفترة السابقة"}
           </p>
         </div>
-        <Card className="p-3">
-          <div className="flex flex-wrap items-end gap-2">
-            <div>
-              <Label className="text-xs">من</Label>
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-40" />
-            </div>
-            <div>
-              <Label className="text-xs">إلى</Label>
-              <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-40" />
-            </div>
-          </div>
-        </Card>
       </div>
+
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div>
+            <Label className="text-xs">من</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <Label className="text-xs">إلى</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9" />
+          </div>
+          <div>
+            <Label className="text-xs">المسوّق</Label>
+            <Select value={marketerF} onValueChange={setMarketerF}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {marketers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">المنتج</Label>
+            <Select value={productF} onValueChange={setProductF}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">شركة الشحن</Label>
+            <Select value={shippingF} onValueChange={setShippingF}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {shippingCos.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">حالة الطلب</Label>
+            <Select value={statusF} onValueChange={setStatusF}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">الكل</SelectItem>
+                {ORDER_STATUS_KEYS.map((k) => <SelectItem key={k} value={k}>{ORDER_STATUS[k as OrderStatus].label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </Card>
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -161,6 +424,131 @@ function DashboardPage() {
         <KpiCard label="الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
           tone={expectedProfit >= 0 ? "success" : "destructive"} />
       </div>
+
+      {/* Daily averages */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-display font-bold">المتوسطات اليومية</h3>
+          <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+            <CalendarDays className="h-4 w-4" /> {numDays} يوم
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <KpiCard label="متوسط الطلبات يوميًا" value={fmtNumber(Math.round(avgDailyOrders * 10) / 10)} icon={ShoppingBag} />
+          <KpiCard label="متوسط التسليم يوميًا" value={fmtNumber(Math.round(avgDailyDelivered * 10) / 10)} icon={CheckCircle2} tone="success" />
+          <KpiCard label="متوسط صافي الربح يوميًا" value={fmtCurrency(avgDailyNet)} icon={TrendingUp}
+            tone={avgDailyNet >= 0 ? "success" : "destructive"} />
+          <KpiCard label="متوسط الإنفاق الإعلاني يوميًا" value={fmtCurrency(avgDailyAdSpend)} icon={Wallet} tone="warning" />
+          <KpiCard label="متوسط نسبة التسليم" value={fmtPercent(deliveryRate)} icon={Percent} tone="success" />
+        </div>
+      </div>
+
+      {/* Comparison vs previous period */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">المقارنة بالفترة السابقة ({prev.from} → {prev.to})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl border p-3">
+              <div className="text-xs text-muted-foreground">إجمالي الطلبات</div>
+              <div className="mt-1 flex items-baseline justify-between gap-2">
+                <span className="text-lg font-display font-bold">{fmtNumber(total)}</span>
+                <GrowthBadge value={growth(total, prevTotal)} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">السابق: {fmtNumber(prevTotal)}</div>
+            </div>
+            <div className="rounded-xl border p-3">
+              <div className="text-xs text-muted-foreground">تم التسليم</div>
+              <div className="mt-1 flex items-baseline justify-between gap-2">
+                <span className="text-lg font-display font-bold">{fmtNumber(delivered)}</span>
+                <GrowthBadge value={growth(delivered, prevDeliveredCount)} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">السابق: {fmtNumber(prevDeliveredCount)}</div>
+            </div>
+            <div className="rounded-xl border p-3">
+              <div className="text-xs text-muted-foreground">صافي الربح</div>
+              <div className="mt-1 flex items-baseline justify-between gap-2">
+                <span className="text-lg font-display font-bold">{fmtCurrency(netProfit)}</span>
+                <GrowthBadge value={growth(netProfit, prevNet)} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">السابق: {fmtCurrency(prevNet)}</div>
+            </div>
+            <div className="rounded-xl border p-3">
+              <div className="text-xs text-muted-foreground">نسبة التسليم</div>
+              <div className="mt-1 flex items-baseline justify-between gap-2">
+                <span className="text-lg font-display font-bold">{fmtPercent(deliveryRate)}</span>
+                <GrowthBadge value={growth(deliveryRate, prevDeliveryRate)} />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">السابق: {fmtPercent(prevDeliveryRate)}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Daily Orders Trend */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">أداء الطلبات اليومي</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dailySeries.length === 0 ? (
+            <div className="text-center text-muted-foreground py-12 text-sm">لا توجد بيانات</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={320}>
+              <LineChart data={dailySeries} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={dailyTooltip}
+                  labelStyle={{ fontWeight: 600 }}
+                  contentStyle={{ borderRadius: 12, border: "1px solid var(--border)" }}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="total" name="إجمالي الطلبات" stroke="var(--primary)" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="delivered" name="تم التسليم" stroke="var(--success)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="refunded" name="مرتجع" stroke="var(--destructive)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="net" name="صافي الربح" stroke="var(--chart-2)" strokeWidth={2} dot={false} strokeDasharray="4 4" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Performance overview */}
+      {overview && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Trophy className="h-4 w-4 text-[var(--success)]" /> أفضل يوم بالطلبات</div>
+              <div className="mt-2 text-lg font-display font-bold">{overview.best.date}</div>
+              <div className="text-sm text-muted-foreground">{fmtNumber(overview.best.total)} طلب</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><AlertOctagon className="h-4 w-4 text-[var(--destructive)]" /> أضعف يوم بالطلبات</div>
+              <div className="mt-2 text-lg font-display font-bold">{overview.worst.date}</div>
+              <div className="text-sm text-muted-foreground">{fmtNumber(overview.worst.total)} طلب</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Percent className="h-4 w-4 text-[var(--success)]" /> أعلى نسبة تسليم</div>
+              <div className="mt-2 text-lg font-display font-bold">{overview.bestRate?.date ?? "—"}</div>
+              <div className="text-sm text-muted-foreground">{overview.bestRate ? fmtPercent(overview.bestRate.rate) : "—"}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><TrendingUp className="h-4 w-4 text-[var(--success)]" /> أعلى يوم ربح</div>
+              <div className="mt-2 text-lg font-display font-bold">{overview.bestProfit.date}</div>
+              <div className="text-sm text-muted-foreground">{fmtCurrency(overview.bestProfit.net)}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
@@ -192,8 +580,8 @@ function DashboardPage() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={topMarketers}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v) => fmtNumber(Number(v))} />
                   <Bar dataKey="orders" fill="var(--primary)" radius={[6, 6, 0, 0]} />
                 </BarChart>
@@ -202,6 +590,89 @@ function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Top growing / declining */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><CardTitle className="text-base inline-flex items-center gap-2"><TrendingUp className="h-4 w-4 text-[var(--success)]" /> أعلى مسوّقين نموًا</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {topGrowing.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-6">لا توجد بيانات</div>
+            ) : topGrowing.map((m) => (
+              <div key={m.id} className="flex items-center justify-between rounded-lg border p-2.5">
+                <div className="text-sm font-medium">{m.name}</div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{fmtNumber(m.orders)} طلب</span>
+                  <GrowthBadge value={m.growth} />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base inline-flex items-center gap-2"><TrendingDown className="h-4 w-4 text-[var(--destructive)]" /> مسوّقون بأداء متراجع</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {topDeclining.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-6">لا توجد بيانات</div>
+            ) : topDeclining.map((m) => (
+              <div key={m.id} className="flex items-center justify-between rounded-lg border p-2.5">
+                <div className="text-sm font-medium">{m.name}</div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{fmtNumber(m.orders)} طلب</span>
+                  <GrowthBadge value={m.growth} />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Marketer daily performance table */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">الأداء اليومي للمسوّقين</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
+          {marketerRows.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-6">لا توجد بيانات</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المسوّق</TableHead>
+                  <TableHead>الطلبات</TableHead>
+                  <TableHead>تم التسليم</TableHead>
+                  <TableHead>نسبة الإرجاع</TableHead>
+                  <TableHead>إجمالي العمولات</TableHead>
+                  <TableHead>الإنفاق الإعلاني</TableHead>
+                  <TableHead>صافي الربح</TableHead>
+                  <TableHead>متوسط طلبات/يوم</TableHead>
+                  <TableHead>متوسط تسليم/يوم</TableHead>
+                  <TableHead>متوسط صافي/يوم</TableHead>
+                  <TableHead>النمو</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {marketerRows.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell>{fmtNumber(m.orders)}</TableCell>
+                    <TableCell>{fmtNumber(m.delivered)}</TableCell>
+                    <TableCell>{fmtPercent(m.refundRate)}</TableCell>
+                    <TableCell>{fmtCurrency(m.gross)}</TableCell>
+                    <TableCell>{fmtCurrency(m.spend)}</TableCell>
+                    <TableCell className={m.net >= 0 ? "text-[var(--success)] font-medium" : "text-[var(--destructive)] font-medium"}>
+                      {fmtCurrency(m.net)}
+                    </TableCell>
+                    <TableCell>{fmtNumber(Math.round(m.avgOrders * 10) / 10)}</TableCell>
+                    <TableCell>{fmtNumber(Math.round(m.avgDelivered * 10) / 10)}</TableCell>
+                    <TableCell>{fmtCurrency(m.avgNet)}</TableCell>
+                    <TableCell><GrowthBadge value={m.growth} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-4 flex items-center justify-between">
