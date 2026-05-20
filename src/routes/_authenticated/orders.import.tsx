@@ -555,7 +555,7 @@ function ImportPage() {
                 ? <><CheckCircle2 className="h-5 w-5 text-success" /> تم بنجاح</>
                 : <><AlertTriangle className="h-5 w-5 text-warning-foreground" /> اكتمل بأخطاء</>}
             </div>
-            <div className="text-sm">نجح: <b className="text-success">{report.success}</b> — تم تجاهل المكرر: <b className="text-warning-foreground">{report.skipped}</b> — فشل: <b className="text-destructive">{report.errors.length}</b></div>
+            <div className="text-sm">نجح: <b className="text-success">{report.success}</b> — تجاهل مكرر: <b className="text-warning-foreground">{report.skipped}</b> — حذف مكرر قديم: <b className="text-accent-foreground">{report.deletedOldDup}</b> — فشل: <b className="text-destructive">{report.errors.length}</b></div>
 
             {report.errors.length > 0 && (
               <div className="border rounded-md overflow-hidden">
