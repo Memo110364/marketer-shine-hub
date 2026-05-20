@@ -83,20 +83,20 @@ function MarketerDetails() {
 
   const { data: allOrders = [] } = useQuery({
     queryKey: ["marketer-orders-all", id],
-    queryFn: async () => {
-      const { data } = await supabase.from("orders").select("*").eq("marketer_id", id)
-        .order("order_date", { ascending: false });
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAll<any>((a, b) =>
+        supabase.from("orders").select("*").eq("marketer_id", id)
+          .order("order_date", { ascending: false }).range(a, b),
+      ),
   });
 
   const { data: allSpend = [] } = useQuery({
     queryKey: ["marketer-spend-all", id],
-    queryFn: async () => {
-      const { data } = await supabase.from("ad_spend_transactions").select("*")
-        .eq("marketer_id", id).order("transaction_date", { ascending: false });
-      return data ?? [];
-    },
+    queryFn: () =>
+      fetchAll<any>((a, b) =>
+        supabase.from("ad_spend_transactions").select("*")
+          .eq("marketer_id", id).order("transaction_date", { ascending: false }).range(a, b),
+      ),
   });
 
   const lifetimePieces = useMemo(() => {

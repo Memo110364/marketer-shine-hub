@@ -32,14 +32,15 @@ function ShippingPerf() {
   });
   const { data: orders = [] } = useQuery({
     queryKey: ["shipping-orders", from, to],
-    queryFn: async () => {
-      let q = supabase
-        .from("orders")
-        .select("shipping_company_id, status, governorate, return_reason");
-      if (from) q = q.gte("order_date", from);
-      if (to) q = q.lte("order_date", to);
-      return (await q).data ?? [];
-    },
+    queryFn: () =>
+      fetchAll<{ shipping_company_id: string | null; status: string; governorate: string | null; return_reason: string | null }>((a, b) => {
+        let q = supabase
+          .from("orders")
+          .select("shipping_company_id, status, governorate, return_reason");
+        if (from) q = q.gte("order_date", from);
+        if (to) q = q.lte("order_date", to);
+        return q.range(a, b);
+      }),
   });
 
   const rows = useMemo(() => companies.map((c) => {
