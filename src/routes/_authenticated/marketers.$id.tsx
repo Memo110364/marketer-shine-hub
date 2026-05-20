@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from "@/lib/format";
+import { fetchAll } from "@/lib/fetch-all";
 import { ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
 import {
   ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp, Package,
