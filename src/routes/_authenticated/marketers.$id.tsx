@@ -259,8 +259,19 @@ function MarketerDetails() {
           <DialogContent>
             <DialogHeader><DialogTitle>إضافة معاملة إنفاق إعلاني</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
               <div><Label>كود فوري</Label><Input value={fawry} onChange={(e) => setFawry(e.target.value)} dir="ltr" /></div>
+              <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+              <div>
+                <Label>نوع الصرف</Label>
+                <Select value={spendType} onValueChange={(v) => setSpendType(v as SpendType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SPEND_TYPE_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div><Label>التاريخ</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
               <div><Label>ملاحظات</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
             </div>
