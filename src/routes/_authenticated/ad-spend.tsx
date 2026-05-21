@@ -156,6 +156,7 @@ function AddExpenseDialog({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [fawryCode, setFawryCode] = useState("");
   const [amount, setAmount] = useState("");
+  const [spendType, setSpendType] = useState<SpendType>("meta_ads");
   const [notes, setNotes] = useState("");
 
   const mut = useMutation({
@@ -163,15 +164,26 @@ function AddExpenseDialog({
       if (!marketerId) throw new Error("اختر المسوّق");
       const amt = Number(amount);
       if (!amt || amt <= 0) throw new Error("أدخل مبلغًا صحيحًا");
+      const code = fawryCode.trim();
+      if (code) {
+        const { data: existing } = await supabase
+          .from("ad_spend_transactions")
+          .select("id").eq("fawry_code", code).maybeSingle();
+        if (existing) throw new Error("كود فوري مستخدم من قبل، لا يمكن تكراره");
+      }
       const { error } = await supabase.from("ad_spend_transactions").insert({
         marketer_id: marketerId,
         transaction_date: date,
-        fawry_code: fawryCode || null,
+        fawry_code: code || null,
         amount: amt,
+        spend_type: spendType,
         notes: notes || null,
         created_by: userId,
-      });
-      if (error) throw error;
+      } as any);
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("كود فوري مستخدم من قبل، لا يمكن تكراره");
+        throw error;
+      }
     },
     onSuccess: () => { toast.success("تم إضافة المصروف"); onDone(); },
     onError: (e: any) => toast.error(e.message ?? "فشل الحفظ"),
@@ -196,11 +208,22 @@ function AddExpenseDialog({
         </div>
         <div>
           <Label className="text-xs">الرقم المرجعي (كود فوري)</Label>
-          <Input dir="ltr" value={fawryCode} onChange={(e) => setFawryCode(e.target.value)} className="h-9" />
+          <Input dir="ltr" value={fawryCode} onChange={(e) => setFawryCode(e.target.value)} className="h-9" placeholder="فريد - لا يمكن تكراره" />
         </div>
         <div>
           <Label className="text-xs">المبلغ</Label>
           <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9" />
+        </div>
+        <div>
+          <Label className="text-xs">نوع الصرف</Label>
+          <Select value={spendType} onValueChange={(v) => setSpendType(v as SpendType)}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(SPEND_TYPE_LABELS) as SpendType[]).map((k) => (
+                <SelectItem key={k} value={k}>{SPEND_TYPE_LABELS[k]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label className="text-xs">ملاحظات</Label>
