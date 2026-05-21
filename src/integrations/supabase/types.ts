@@ -226,6 +226,51 @@ export type Database = {
         }
         Relationships: []
       }
+      order_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          import_batch_id: string | null
+          new_status: Database["public"]["Enums"]["order_status"]
+          old_status: Database["public"]["Enums"]["order_status"] | null
+          order_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          import_batch_id?: string | null
+          new_status: Database["public"]["Enums"]["order_status"]
+          old_status?: Database["public"]["Enums"]["order_status"] | null
+          order_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          import_batch_id?: string | null
+          new_status?: Database["public"]["Enums"]["order_status"]
+          old_status?: Database["public"]["Enums"]["order_status"] | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           commission: number | null
