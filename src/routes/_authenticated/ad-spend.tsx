@@ -20,6 +20,15 @@ export const Route = createFileRoute("/_authenticated/ad-spend")({
   component: AdSpendPage,
 });
 
+const SPEND_TYPE_LABELS = {
+  meta_ads: "Meta Ads",
+  tiktok_ads: "Tiktok Ads",
+  easy_order: "Easy Order",
+  salary: "Salary",
+  other: "Other",
+} as const;
+type SpendType = keyof typeof SPEND_TYPE_LABELS;
+
 function AdSpendPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
