@@ -457,7 +457,7 @@ function ImportPage() {
           patch.import_batch_id = batch.id;
 
           const { error: updErr } = await supabase
-            .from("orders").update(patch).eq("id", item.existingId!);
+            .from("orders").update(patch as any).eq("id", item.existingId!);
           if (updErr) {
             errors.push({
               rowNumber: item.rowIndex + 2, stage: "update",
