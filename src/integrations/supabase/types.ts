@@ -65,6 +65,7 @@ export type Database = {
           id: string
           marketer_id: string
           notes: string | null
+          spend_type: Database["public"]["Enums"]["ad_spend_type"]
           transaction_date: string
         }
         Insert: {
@@ -76,6 +77,7 @@ export type Database = {
           id?: string
           marketer_id: string
           notes?: string | null
+          spend_type?: Database["public"]["Enums"]["ad_spend_type"]
           transaction_date?: string
         }
         Update: {
@@ -87,6 +89,7 @@ export type Database = {
           id?: string
           marketer_id?: string
           notes?: string | null
+          spend_type?: Database["public"]["Enums"]["ad_spend_type"]
           transaction_date?: string
         }
         Relationships: [
@@ -491,6 +494,12 @@ export type Database = {
     }
     Enums: {
       ad_platform: "meta" | "tiktok" | "manual"
+      ad_spend_type:
+        | "meta_ads"
+        | "tiktok_ads"
+        | "easy_order"
+        | "salary"
+        | "other"
       app_role: "admin" | "account_manager" | "marketer"
       marketer_status: "active" | "paused" | "inactive"
       order_status:
@@ -629,6 +638,13 @@ export const Constants = {
   public: {
     Enums: {
       ad_platform: ["meta", "tiktok", "manual"],
+      ad_spend_type: [
+        "meta_ads",
+        "tiktok_ads",
+        "easy_order",
+        "salary",
+        "other",
+      ],
       app_role: ["admin", "account_manager", "marketer"],
       marketer_status: ["active", "paused", "inactive"],
       order_status: [
