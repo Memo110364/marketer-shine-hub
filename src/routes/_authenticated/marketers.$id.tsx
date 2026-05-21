@@ -191,15 +191,24 @@ function MarketerDetails() {
       marketer_id: id,
       amount: Number(amount),
       fawry_code: fawry || null,
+      spend_type: spendType,
       transaction_date: date,
       notes: notes || null,
       created_by: userData.user?.id,
     });
     setBusy(false);
-    if (error) { console.error("Add transaction error:", error); toast.error("فشل الحفظ"); return; }
+    if (error) {
+      console.error("Add transaction error:", error);
+      if ((error as any).code === "23505") {
+        toast.error("كود فوري مستخدم من قبل");
+      } else {
+        toast.error("فشل الحفظ");
+      }
+      return;
+    }
     toast.success("تم إضافة المعاملة");
     setAddOpen(false);
-    setAmount(""); setFawry(""); setNotes("");
+    setAmount(""); setFawry(""); setNotes(""); setSpendType("meta_ads");
     qc.invalidateQueries({ queryKey: ["marketer-spend-all", id] });
   }
 
