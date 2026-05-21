@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -56,6 +57,15 @@ export const Route = createFileRoute("/_authenticated/marketers/$id")({
 const COMMISSION_EXCLUDED: OrderStatus[] = ["refunded", "refund_request"];
 const NET_PROFIT_STATUSES: OrderStatus[] = ["delivered", "done"];
 
+const SPEND_TYPE_LABELS = {
+  meta_ads: "Meta Ads",
+  tiktok_ads: "Tiktok Ads",
+  easy_order: "Easy Order",
+  salary: "Salary",
+  other: "Other",
+} as const;
+type SpendType = keyof typeof SPEND_TYPE_LABELS;
+
 function MarketerDetails() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
@@ -69,6 +79,7 @@ function MarketerDetails() {
   const [addOpen, setAddOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [fawry, setFawry] = useState("");
+  const [spendType, setSpendType] = useState<SpendType>("meta_ads");
   const [date, setDate] = useState(today);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -180,15 +191,24 @@ function MarketerDetails() {
       marketer_id: id,
       amount: Number(amount),
       fawry_code: fawry || null,
+      spend_type: spendType,
       transaction_date: date,
       notes: notes || null,
       created_by: userData.user?.id,
     });
     setBusy(false);
-    if (error) { console.error("Add transaction error:", error); toast.error("فشل الحفظ"); return; }
+    if (error) {
+      console.error("Add transaction error:", error);
+      if ((error as any).code === "23505") {
+        toast.error("كود فوري مستخدم من قبل");
+      } else {
+        toast.error("فشل الحفظ");
+      }
+      return;
+    }
     toast.success("تم إضافة المعاملة");
     setAddOpen(false);
-    setAmount(""); setFawry(""); setNotes("");
+    setAmount(""); setFawry(""); setNotes(""); setSpendType("meta_ads");
     qc.invalidateQueries({ queryKey: ["marketer-spend-all", id] });
   }
 
@@ -239,8 +259,19 @@ function MarketerDetails() {
           <DialogContent>
             <DialogHeader><DialogTitle>إضافة معاملة إنفاق إعلاني</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
               <div><Label>كود فوري</Label><Input value={fawry} onChange={(e) => setFawry(e.target.value)} dir="ltr" /></div>
+              <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+              <div>
+                <Label>نوع الصرف</Label>
+                <Select value={spendType} onValueChange={(v) => setSpendType(v as SpendType)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(SPEND_TYPE_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div><Label>التاريخ</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
               <div><Label>ملاحظات</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
             </div>
