@@ -57,6 +57,15 @@ export const Route = createFileRoute("/_authenticated/marketers/$id")({
 const COMMISSION_EXCLUDED: OrderStatus[] = ["refunded", "refund_request"];
 const NET_PROFIT_STATUSES: OrderStatus[] = ["delivered", "done"];
 
+const SPEND_TYPE_LABELS = {
+  meta_ads: "Meta Ads",
+  tiktok_ads: "Tiktok Ads",
+  easy_order: "Easy Order",
+  salary: "Salary",
+  other: "Other",
+} as const;
+type SpendType = keyof typeof SPEND_TYPE_LABELS;
+
 function MarketerDetails() {
   const { id } = Route.useParams();
   const qc = useQueryClient();
