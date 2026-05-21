@@ -20,6 +20,15 @@ export const Route = createFileRoute("/_authenticated/ad-spend")({
   component: AdSpendPage,
 });
 
+const SPEND_TYPE_LABELS = {
+  meta_ads: "Meta Ads",
+  tiktok_ads: "Tiktok Ads",
+  easy_order: "Easy Order",
+  salary: "Salary",
+  other: "Other",
+} as const;
+type SpendType = keyof typeof SPEND_TYPE_LABELS;
+
 function AdSpendPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -108,20 +117,22 @@ function AdSpendPage() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>التاريخ</TableHead><TableHead>المسوّق</TableHead>
-            <TableHead>المبلغ</TableHead><TableHead>كود فوري</TableHead>
+            <TableHead>كود فوري</TableHead><TableHead>المبلغ</TableHead>
+            <TableHead>نوع الصرف</TableHead>
             <TableHead>ملاحظات</TableHead><TableHead>أضيف بواسطة</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {tx.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
             ) : tx.map((t: any) => {
               const p = t.created_by ? profilesMap[t.created_by] : null;
               return (
                 <TableRow key={t.id}>
                   <TableCell>{fmtDate(t.transaction_date)}</TableCell>
                   <TableCell>{t.marketers?.name ?? "—"}</TableCell>
-                  <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
                   <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
+                  <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
+                  <TableCell>{SPEND_TYPE_LABELS[t.spend_type as keyof typeof SPEND_TYPE_LABELS] ?? "—"}</TableCell>
                   <TableCell>{t.notes ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{p?.full_name || p?.email || "—"}</TableCell>
                 </TableRow>
@@ -145,6 +156,7 @@ function AddExpenseDialog({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [fawryCode, setFawryCode] = useState("");
   const [amount, setAmount] = useState("");
+  const [spendType, setSpendType] = useState<SpendType>("meta_ads");
   const [notes, setNotes] = useState("");
 
   const mut = useMutation({
@@ -152,15 +164,26 @@ function AddExpenseDialog({
       if (!marketerId) throw new Error("اختر المسوّق");
       const amt = Number(amount);
       if (!amt || amt <= 0) throw new Error("أدخل مبلغًا صحيحًا");
+      const code = fawryCode.trim();
+      if (code) {
+        const { data: existing } = await supabase
+          .from("ad_spend_transactions")
+          .select("id").eq("fawry_code", code).maybeSingle();
+        if (existing) throw new Error("كود فوري مستخدم من قبل، لا يمكن تكراره");
+      }
       const { error } = await supabase.from("ad_spend_transactions").insert({
         marketer_id: marketerId,
         transaction_date: date,
-        fawry_code: fawryCode || null,
+        fawry_code: code || null,
         amount: amt,
+        spend_type: spendType,
         notes: notes || null,
         created_by: userId,
-      });
-      if (error) throw error;
+      } as any);
+      if (error) {
+        if ((error as any).code === "23505") throw new Error("كود فوري مستخدم من قبل، لا يمكن تكراره");
+        throw error;
+      }
     },
     onSuccess: () => { toast.success("تم إضافة المصروف"); onDone(); },
     onError: (e: any) => toast.error(e.message ?? "فشل الحفظ"),
@@ -185,11 +208,22 @@ function AddExpenseDialog({
         </div>
         <div>
           <Label className="text-xs">الرقم المرجعي (كود فوري)</Label>
-          <Input dir="ltr" value={fawryCode} onChange={(e) => setFawryCode(e.target.value)} className="h-9" />
+          <Input dir="ltr" value={fawryCode} onChange={(e) => setFawryCode(e.target.value)} className="h-9" placeholder="فريد - لا يمكن تكراره" />
         </div>
         <div>
           <Label className="text-xs">المبلغ</Label>
           <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-9" />
+        </div>
+        <div>
+          <Label className="text-xs">نوع الصرف</Label>
+          <Select value={spendType} onValueChange={(v) => setSpendType(v as SpendType)}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {(Object.keys(SPEND_TYPE_LABELS) as SpendType[]).map((k) => (
+                <SelectItem key={k} value={k}>{SPEND_TYPE_LABELS[k]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <Label className="text-xs">ملاحظات</Label>
