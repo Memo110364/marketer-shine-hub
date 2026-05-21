@@ -70,6 +70,7 @@ function MarketerDetails() {
   const [addOpen, setAddOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [fawry, setFawry] = useState("");
+  const [spendType, setSpendType] = useState<SpendType>("meta_ads");
   const [date, setDate] = useState(today);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
