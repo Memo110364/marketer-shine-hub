@@ -108,20 +108,22 @@ function AdSpendPage() {
         <Table>
           <TableHeader><TableRow>
             <TableHead>التاريخ</TableHead><TableHead>المسوّق</TableHead>
-            <TableHead>المبلغ</TableHead><TableHead>كود فوري</TableHead>
+            <TableHead>كود فوري</TableHead><TableHead>المبلغ</TableHead>
+            <TableHead>نوع الصرف</TableHead>
             <TableHead>ملاحظات</TableHead><TableHead>أضيف بواسطة</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {tx.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
             ) : tx.map((t: any) => {
               const p = t.created_by ? profilesMap[t.created_by] : null;
               return (
                 <TableRow key={t.id}>
                   <TableCell>{fmtDate(t.transaction_date)}</TableCell>
                   <TableCell>{t.marketers?.name ?? "—"}</TableCell>
-                  <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
                   <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
+                  <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
+                  <TableCell>{SPEND_TYPE_LABELS[t.spend_type as keyof typeof SPEND_TYPE_LABELS] ?? "—"}</TableCell>
                   <TableCell>{t.notes ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">{p?.full_name || p?.email || "—"}</TableCell>
                 </TableRow>
