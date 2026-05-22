@@ -38,6 +38,7 @@ type OrderRow = {
   order_date: string | null;
   product_id: string | null;
   shipping_company_id: string | null;
+  quantity: number | null;
 };
 
 type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
