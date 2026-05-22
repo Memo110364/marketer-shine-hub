@@ -526,6 +526,19 @@ function ImportPage() {
               changed_by: userId,
             });
           }
+          // Sync parsed order_items (delete old + recreate)
+          try {
+            await syncOrderItems({
+              orderId: item.existingId!,
+              rawProductField: mapping.product_name ? item.rowData[mapping.product_name] : null,
+              externalOrderId: item.externalId,
+              status: fullPayload.status as OrderStatus,
+              marketerId: refs.marketerId,
+              marketerCode: item.resolve.marketerCode || null,
+              shippingCompany: item.resolve.sname || null,
+              totalCommission: Number(fullPayload.commission || 0),
+            });
+          } catch (e) { console.error("order_items sync (update) failed:", e); }
         } catch (err: any) {
           errors.push({
             rowNumber: item.rowIndex + 2, stage: "update",
