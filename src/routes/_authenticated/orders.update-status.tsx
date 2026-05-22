@@ -40,6 +40,51 @@ function UpdateStatusPage() {
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, string>>>({});
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<{ updated: number; notFound: string[]; errors: string[] } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadPending() {
+    setDownloading(true);
+    try {
+      const rows = await fetchAll<any>((from, to) =>
+        supabase
+          .from("orders")
+          .select("external_order_id, customer_name, customer_phone, governorate, quantity, price, commission, status, order_date, delivered_date, marketers(marketer_code, name), products(sku, name), shipping_companies(name)")
+          .not("status", "in", "(done,refunded)")
+          .order("order_date", { ascending: false })
+          .range(from, to),
+      );
+      if (rows.length === 0) { toast.info("لا توجد طلبات بدون حالة نهائية"); setDownloading(false); return; }
+      const statusLabel = (s: string) => (ORDER_STATUS as any)[s]?.label ?? s;
+      const sheet = rows.map((r: any) => ({
+        "رقم الطلب": r.external_order_id ?? "",
+        "كود المسوّق": r.marketers?.marketer_code ?? "",
+        "اسم المسوّق": r.marketers?.name ?? "",
+        "كود المنتج": r.products?.sku ?? "",
+        "اسم المنتج": r.products?.name ?? "",
+        "شركة الشحن": r.shipping_companies?.name ?? "",
+        "اسم العميل": r.customer_name ?? "",
+        "رقم العميل": r.customer_phone ?? "",
+        "المحافظة": r.governorate ?? "",
+        "الكمية": r.quantity ?? 0,
+        "السعر": r.price ?? 0,
+        "العمولة": r.commission ?? 0,
+        "الحالة": statusLabel(r.status),
+        "تاريخ الطلب": r.order_date ?? "",
+        "تاريخ التسليم": r.delivered_date ?? "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(sheet);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pending");
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `pending-orders-${today}.xlsx`);
+      toast.success(`تم تنزيل ${rows.length} طلب`);
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل تنزيل الملف");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
