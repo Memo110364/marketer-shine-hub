@@ -165,11 +165,17 @@ function UpdateStatusPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-display font-bold">تحديث حالات الطلبات</h2>
-        <p className="text-sm text-muted-foreground">
-          ارفع ملف Excel/CSV يحتوي على رقم الطلب والحالة الجديدة لتحديث الطلبات الموجودة دفعة واحدة
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-display font-bold">تحديث حالات الطلبات</h2>
+          <p className="text-sm text-muted-foreground">
+            ارفع ملف Excel/CSV يحتوي على رقم الطلب والحالة الجديدة لتحديث الطلبات الموجودة دفعة واحدة
+          </p>
+        </div>
+        <Button variant="outline" onClick={downloadPending} disabled={downloading}>
+          {downloading ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Download className="ml-2 h-4 w-4" />}
+          تنزيل الطلبات بدون حالة نهائية
+        </Button>
       </div>
 
       <Card>
