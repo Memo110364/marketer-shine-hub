@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/table";
 import { ORDER_STATUS, ORDER_STATUS_KEYS, normalizeStatus, type OrderStatus } from "@/lib/constants";
 import { parseExcelDate } from "@/lib/format";
-import { Upload, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { fetchAll } from "@/lib/fetch-all";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/orders/update-status")({
@@ -39,6 +40,51 @@ function UpdateStatusPage() {
   const [mapping, setMapping] = useState<Partial<Record<FieldKey, string>>>({});
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState<{ updated: number; notFound: string[]; errors: string[] } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function downloadPending() {
+    setDownloading(true);
+    try {
+      const rows = await fetchAll<any>((from, to) =>
+        supabase
+          .from("orders")
+          .select("external_order_id, customer_name, customer_phone, governorate, quantity, price, commission, status, order_date, delivered_date, marketers(marketer_code, name), products(sku, name), shipping_companies(name)")
+          .not("status", "in", "(done,refunded)")
+          .order("order_date", { ascending: false })
+          .range(from, to),
+      );
+      if (rows.length === 0) { toast.info("لا توجد طلبات بدون حالة نهائية"); setDownloading(false); return; }
+      const statusLabel = (s: string) => (ORDER_STATUS as any)[s]?.label ?? s;
+      const sheet = rows.map((r: any) => ({
+        "رقم الطلب": r.external_order_id ?? "",
+        "كود المسوّق": r.marketers?.marketer_code ?? "",
+        "اسم المسوّق": r.marketers?.name ?? "",
+        "كود المنتج": r.products?.sku ?? "",
+        "اسم المنتج": r.products?.name ?? "",
+        "شركة الشحن": r.shipping_companies?.name ?? "",
+        "اسم العميل": r.customer_name ?? "",
+        "رقم العميل": r.customer_phone ?? "",
+        "المحافظة": r.governorate ?? "",
+        "الكمية": r.quantity ?? 0,
+        "السعر": r.price ?? 0,
+        "العمولة": r.commission ?? 0,
+        "الحالة": statusLabel(r.status),
+        "تاريخ الطلب": r.order_date ?? "",
+        "تاريخ التسليم": r.delivered_date ?? "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(sheet);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pending");
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `pending-orders-${today}.xlsx`);
+      toast.success(`تم تنزيل ${rows.length} طلب`);
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل تنزيل الملف");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -119,11 +165,17 @@ function UpdateStatusPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-display font-bold">تحديث حالات الطلبات</h2>
-        <p className="text-sm text-muted-foreground">
-          ارفع ملف Excel/CSV يحتوي على رقم الطلب والحالة الجديدة لتحديث الطلبات الموجودة دفعة واحدة
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-display font-bold">تحديث حالات الطلبات</h2>
+          <p className="text-sm text-muted-foreground">
+            ارفع ملف Excel/CSV يحتوي على رقم الطلب والحالة الجديدة لتحديث الطلبات الموجودة دفعة واحدة
+          </p>
+        </div>
+        <Button variant="outline" onClick={downloadPending} disabled={downloading}>
+          {downloading ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Download className="ml-2 h-4 w-4" />}
+          تنزيل الطلبات بدون حالة نهائية
+        </Button>
       </div>
 
       <Card>
