@@ -191,8 +191,18 @@ function DashboardPage() {
   const netProfit = deliveredCommissions - adSpend;
   const delivered = counts.delivered + counts.done;
   const refunded = counts.refunded + counts.refund_request;
+  const shippedCount = counts.in_delivery + counts.delivered + counts.done + counts.refund_request + counts.refunded;
   const deliveryRate = total > 0 ? delivered / total : 0;
+  const deliveryRateOfTotal = deliveryRate;
+  const deliveryRateOfShipped = shippedCount > 0 ? delivered / shippedCount : 0;
   const refundRate = total > 0 ? refunded / total : 0;
+  // No "cancelled" status in current schema — treat as 0
+  const cancelledCount = 0;
+  const cancellationRate = total > 0 ? cancelledCount / total : 0;
+  const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
+  const deliveredPieces = orders
+    .filter((o) => o.status === "delivered" || o.status === "done")
+    .reduce((s, o) => s + Number(o.quantity || 0), 0);
   const inDeliveryCommissions = orders
     .filter((o) => o.status === "in_delivery")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
