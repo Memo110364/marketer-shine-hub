@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { parseProductField } from "@/lib/parse-product";
-import { Loader2, RefreshCw } from "lucide-react";
+import { KpiCard } from "@/components/KpiCard";
+import { Loader2, RefreshCw, Package, CheckCircle2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/products")({
