@@ -38,6 +38,7 @@ type OrderRow = {
   order_date: string | null;
   product_id: string | null;
   shipping_company_id: string | null;
+  quantity: number | null;
 };
 
 type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
@@ -106,7 +107,7 @@ function DashboardPage() {
       fetchAll<OrderRow>((a, b) =>
         supabase
           .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id")
+          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id, quantity")
           .gte("order_date", from)
           .lte("order_date", to)
           .range(a, b),
@@ -133,7 +134,7 @@ function DashboardPage() {
       fetchAll<OrderRow>((a, b) =>
         supabase
           .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id")
+          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id, quantity")
           .gte("order_date", prev.from)
           .lte("order_date", prev.to)
           .range(a, b),
@@ -190,8 +191,18 @@ function DashboardPage() {
   const netProfit = deliveredCommissions - adSpend;
   const delivered = counts.delivered + counts.done;
   const refunded = counts.refunded + counts.refund_request;
+  const shippedCount = counts.in_delivery + counts.delivered + counts.done + counts.refund_request + counts.refunded;
   const deliveryRate = total > 0 ? delivered / total : 0;
+  const deliveryRateOfTotal = deliveryRate;
+  const deliveryRateOfShipped = shippedCount > 0 ? delivered / shippedCount : 0;
   const refundRate = total > 0 ? refunded / total : 0;
+  // No "cancelled" status in current schema — treat as 0
+  const cancelledCount = 0;
+  const cancellationRate = total > 0 ? cancelledCount / total : 0;
+  const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
+  const deliveredPieces = orders
+    .filter((o) => o.status === "delivered" || o.status === "done")
+    .reduce((s, o) => s + Number(o.quantity || 0), 0);
   const inDeliveryCommissions = orders
     .filter((o) => o.status === "in_delivery")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
@@ -404,26 +415,36 @@ function DashboardPage() {
         </div>
       </Card>
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <KpiCard label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} />
-        <KpiCard label="طلبات جديدة" value={fmtNumber(counts.pending)} icon={Clock} tone="info" />
-        <KpiCard label="في الشحن" value={fmtNumber(counts.in_delivery)} icon={Truck} tone="warning" />
-        <KpiCard label="تم التسليم" value={fmtNumber(counts.delivered)} icon={CheckCircle2} tone="success" />
-        <KpiCard label="تم التحصيل" value={fmtNumber(counts.done)} icon={CheckCircle2} tone="success" />
-        <KpiCard label="رجع المخزن" value={fmtNumber(counts.refunded)} icon={XCircle} tone="destructive" />
-        <KpiCard label="مرتجع مع الشحن" value={fmtNumber(counts.refund_request)} icon={AlertTriangle} tone="destructive" />
-        <KpiCard label="معدل التسليم" value={fmtPercent(deliveryRate)} icon={Percent} tone="success" />
+      {/* Executive KPIs */}
+      <div>
+        <h3 className="text-lg font-display font-bold mb-3">المؤشرات التنفيذية</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 [&_.text-2xl]:text-3xl [&_.p-5]:p-6">
+          <KpiCard label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} />
+          <KpiCard label="خرج للشحن" value={fmtNumber(shippedCount)} icon={Truck} tone="info" />
+          <KpiCard label="تم التسليم" value={fmtNumber(delivered)} icon={CheckCircle2} tone="success" />
+          <KpiCard label="نسبة التسليم من الإجمالي" value={fmtPercent(deliveryRateOfTotal)} icon={Percent} tone="success" />
+          <KpiCard label="نسبة التسليم من المشحون" value={fmtPercent(deliveryRateOfShipped)} icon={Percent} tone="success" />
+          <KpiCard label="الربح المحقق" value={fmtCurrency(deliveredCommissions)} icon={DollarSign} tone="success" />
+          <KpiCard label="الإنفاق الإعلاني" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
+          <KpiCard label="صافي الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
+            tone={expectedProfit >= 0 ? "success" : "destructive"} />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="إجمالي العمولات" value={fmtCurrency(grossProfit)} icon={DollarSign} tone="success" />
-        <KpiCard label="الإنفاق الإعلاني" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
-        <KpiCard label="صافي الربح" value={fmtCurrency(netProfit)} icon={TrendingUp}
-          tone={netProfit >= 0 ? "success" : "destructive"} />
-        <KpiCard label="الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
-          tone={expectedProfit >= 0 ? "success" : "destructive"} />
+      {/* Operational KPIs */}
+      <div>
+        <h3 className="text-sm font-display font-semibold text-muted-foreground mb-2">مؤشرات تشغيلية</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 [&_.p-5]:p-3 [&_.text-2xl]:text-base [&_.text-2xl]:font-semibold [&_.h-5]:h-4 [&_.w-5]:w-4 [&_.p-3]:p-2 [&_.rounded-2xl]:rounded-xl">
+          <KpiCard label="طلبات جديدة" value={fmtNumber(counts.pending)} icon={Clock} tone="info" />
+          <KpiCard label="في الشحن" value={fmtNumber(counts.in_delivery)} icon={Truck} tone="warning" />
+          <KpiCard label="مرتجع مع الشحن" value={fmtNumber(counts.refund_request)} icon={AlertTriangle} tone="destructive" />
+          <KpiCard label="رجع المخزن" value={fmtNumber(counts.refunded)} icon={XCircle} tone="destructive" />
+          <KpiCard label="نسبة الإلغاء" value={fmtPercent(cancellationRate)} icon={Percent} tone="destructive" />
+          <KpiCard label="متوسط تكلفة الإعلان لكل طلب مشحون" value={fmtCurrency(avgAdCostPerShipped)} icon={Wallet} tone="warning" />
+          <KpiCard label="عدد القطع المُسلَّمة" value={fmtNumber(deliveredPieces)} icon={CheckCircle2} tone="success" />
+        </div>
       </div>
+
 
       {/* Daily averages */}
       <div>
