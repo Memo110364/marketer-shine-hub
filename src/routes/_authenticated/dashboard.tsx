@@ -107,7 +107,7 @@ function DashboardPage() {
       fetchAll<OrderRow>((a, b) =>
         supabase
           .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id")
+          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id, quantity")
           .gte("order_date", from)
           .lte("order_date", to)
           .range(a, b),
@@ -134,7 +134,7 @@ function DashboardPage() {
       fetchAll<OrderRow>((a, b) =>
         supabase
           .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id")
+          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id, quantity")
           .gte("order_date", prev.from)
           .lte("order_date", prev.to)
           .range(a, b),
