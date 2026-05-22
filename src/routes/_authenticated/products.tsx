@@ -156,6 +156,18 @@ function ProductsPerf() {
     }
   }
 
+  const totals = useMemo(() => {
+    const totalPieces = rows.reduce((s, r) => s + r.totalPieces, 0);
+    const deliveredPieces = rows.reduce((s, r) => s + r.deliveredPieces, 0);
+    const shippedPieces = rows.reduce((s, r) => s + r.shippedPieces, 0);
+    return {
+      totalPieces,
+      deliveredPieces,
+      deliveryRate: totalPieces > 0 ? deliveredPieces / totalPieces : 0,
+      deliveryRateOfShipped: shippedPieces > 0 ? deliveredPieces / shippedPieces : 0,
+    };
+  }, [rows]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -172,19 +184,27 @@ function ProductsPerf() {
         <div><Label className="text-xs">من</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-40" /></div>
         <div><Label className="text-xs">إلى</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-40" /></div>
       </Card>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard label="إجمالي القطع المباعة" value={fmtNumber(totals.totalPieces)} icon={Package} />
+        <KpiCard label="القطع المسلّمة" value={fmtNumber(totals.deliveredPieces)} icon={CheckCircle2} tone="success" />
+        <KpiCard label="نسبة التسليم / الإجمالي" value={fmtPercent(totals.deliveryRate)} icon={TrendingUp} tone="info" />
+        <KpiCard label="نسبة التسليم / المشحون" value={fmtPercent(totals.deliveryRateOfShipped)} icon={TrendingUp} tone="success" />
+      </div>
+
       <Card>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader><TableRow>
               <TableHead>المنتج</TableHead>
+              <TableHead className="bg-primary/5">القطع المباعة</TableHead>
+              <TableHead className="bg-success/5">القطع المسلّمة</TableHead>
+              <TableHead className="bg-success/5">نسبة التسليم</TableHead>
               <TableHead>الطلبات</TableHead>
-              <TableHead>القطع</TableHead>
               <TableHead>متوسط القطع/طلب</TableHead>
-              <TableHead>تم التسليم</TableHead>
               <TableHead>قطع شحنت</TableHead>
               <TableHead>قطع مرتجعة</TableHead>
               <TableHead>قطع معلقة</TableHead>
-              <TableHead>تسليم/الإجمالي</TableHead>
               <TableHead>تسليم/المشحون</TableHead>
               <TableHead>نسبة الإرجاع</TableHead>
               <TableHead>الربح الإجمالي</TableHead>
@@ -202,14 +222,14 @@ function ProductsPerf() {
                       {r.name}
                     </Link>
                   </TableCell>
+                  <TableCell className="bg-primary/5 font-semibold">{fmtNumber(r.totalPieces)}</TableCell>
+                  <TableCell className="bg-success/5 font-semibold">{fmtNumber(r.deliveredPieces)}</TableCell>
+                  <TableCell className="bg-success/5 font-semibold">{fmtPercent(r.deliveryRateFromTotal)}</TableCell>
                   <TableCell>{fmtNumber(r.totalOrders)}</TableCell>
-                  <TableCell>{fmtNumber(r.totalPieces)}</TableCell>
                   <TableCell>{r.avgPerOrder.toFixed(2)}</TableCell>
-                  <TableCell>{fmtNumber(r.deliveredPieces)}</TableCell>
                   <TableCell>{fmtNumber(r.shippedPieces)}</TableCell>
                   <TableCell>{fmtNumber(r.refundedPieces)}</TableCell>
                   <TableCell>{fmtNumber(r.pendingPieces)}</TableCell>
-                  <TableCell>{fmtPercent(r.deliveryRateFromTotal)}</TableCell>
                   <TableCell>{fmtPercent(r.deliveryRateFromShipped)}</TableCell>
                   <TableCell>{fmtPercent(r.refundRate)}</TableCell>
                   <TableCell>{fmtCurrency(r.grossProfit)}</TableCell>
