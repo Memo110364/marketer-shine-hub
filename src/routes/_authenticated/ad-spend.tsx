@@ -33,6 +33,7 @@ function AdSpendPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [marketerId, setMarketerId] = useState("all");
+  const [spendType, setSpendType] = useState<string>("all");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [open, setOpen] = useState(false);
@@ -43,11 +44,12 @@ function AdSpendPage() {
   });
 
   const { data: tx = [] } = useQuery({
-    queryKey: ["ad-spend", marketerId, from, to],
+    queryKey: ["ad-spend", marketerId, spendType, from, to],
     queryFn: async () => {
       let q = supabase.from("ad_spend_transactions").select("*, marketers(name)")
         .order("transaction_date", { ascending: false });
       if (marketerId !== "all") q = q.eq("marketer_id", marketerId);
+      if (spendType !== "all") q = q.eq("spend_type", spendType);
       if (from) q = q.gte("transaction_date", from);
       if (to) q = q.lte("transaction_date", to);
       return (await q).data ?? [];
