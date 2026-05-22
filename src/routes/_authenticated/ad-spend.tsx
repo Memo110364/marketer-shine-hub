@@ -99,13 +99,24 @@ function AdSpendPage() {
         <KpiCard label="متوسط المعاملة" value={fmtCurrency(tx.length ? total / tx.length : 0)} icon={TrendingDown} />
       </div>
 
-      <Card className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+      <Card className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div><Label className="text-xs">المسوّق</Label>
           <Select value={marketerId} onValueChange={setMarketerId}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">الكل</SelectItem>
               {marketers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div><Label className="text-xs">نوع الصرف</Label>
+          <Select value={spendType} onValueChange={setSpendType}>
+            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">الكل</SelectItem>
+              {(Object.keys(SPEND_TYPE_LABELS) as SpendType[]).map((k) => (
+                <SelectItem key={k} value={k}>{SPEND_TYPE_LABELS[k]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
