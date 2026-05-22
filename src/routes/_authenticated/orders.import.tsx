@@ -460,6 +460,19 @@ function ImportPage() {
             import_batch_id: batch.id,
             changed_by: userId,
           });
+          // Sync parsed order_items
+          try {
+            await syncOrderItems({
+              orderId: insertedRow!.id,
+              rawProductField: mapping.product_name ? item.rowData[mapping.product_name] : null,
+              externalOrderId: item.externalId,
+              status: payload.status as OrderStatus,
+              marketerId: refs.marketerId,
+              marketerCode: item.resolve.marketerCode || null,
+              shippingCompany: item.resolve.sname || null,
+              totalCommission: Number(payload.commission || 0),
+            });
+          } catch (e) { console.error("order_items sync (insert) failed:", e); }
         } catch (err: any) {
           errors.push({
             rowNumber: item.rowIndex + 2, stage: "insert",
