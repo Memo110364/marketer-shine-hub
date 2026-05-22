@@ -229,6 +229,71 @@ export type Database = {
         }
         Relationships: []
       }
+      order_items: {
+        Row: {
+          base_product_name: string
+          color: string | null
+          commission_share: number
+          created_at: string
+          id: string
+          marketer_code: string | null
+          marketer_id: string | null
+          order_id: string
+          order_number: string | null
+          order_status: Database["public"]["Enums"]["order_status"]
+          product_option: string | null
+          quantity: number
+          raw_product_text: string | null
+          shipping_company: string | null
+          size: string | null
+          updated_at: string
+        }
+        Insert: {
+          base_product_name: string
+          color?: string | null
+          commission_share?: number
+          created_at?: string
+          id?: string
+          marketer_code?: string | null
+          marketer_id?: string | null
+          order_id: string
+          order_number?: string | null
+          order_status?: Database["public"]["Enums"]["order_status"]
+          product_option?: string | null
+          quantity?: number
+          raw_product_text?: string | null
+          shipping_company?: string | null
+          size?: string | null
+          updated_at?: string
+        }
+        Update: {
+          base_product_name?: string
+          color?: string | null
+          commission_share?: number
+          created_at?: string
+          id?: string
+          marketer_code?: string | null
+          marketer_id?: string | null
+          order_id?: string
+          order_number?: string | null
+          order_status?: Database["public"]["Enums"]["order_status"]
+          product_option?: string | null
+          quantity?: number
+          raw_product_text?: string | null
+          shipping_company?: string | null
+          size?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_status_history: {
         Row: {
           changed_at: string

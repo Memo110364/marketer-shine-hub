@@ -18,8 +18,42 @@ import {
 } from "@/components/ui/dialog";
 import { SYSTEM_FIELDS, normalizeStatus, type SystemField, type OrderStatus } from "@/lib/constants";
 import { parseExcelDate } from "@/lib/format";
+import { parseProductField } from "@/lib/parse-product";
 import { Upload, Loader2, Save, CheckCircle2, AlertTriangle, Eye } from "lucide-react";
 import { toast } from "sonner";
+
+async function syncOrderItems(opts: {
+  orderId: string;
+  rawProductField: unknown;
+  externalOrderId: string | null;
+  status: OrderStatus;
+  marketerId: string | null;
+  marketerCode: string | null;
+  shippingCompany: string | null;
+  totalCommission: number;
+}) {
+  const items = parseProductField(opts.rawProductField);
+  // Always wipe & rewrite — keeps things consistent on re-import.
+  await supabase.from("order_items").delete().eq("order_id", opts.orderId);
+  if (items.length === 0) return;
+  const totalQty = items.reduce((s, it) => s + it.quantity, 0) || 1;
+  const rows = items.map((it) => ({
+    order_id: opts.orderId,
+    order_number: opts.externalOrderId,
+    base_product_name: it.base_product_name,
+    product_option: it.product_option,
+    color: it.color,
+    size: it.size,
+    quantity: it.quantity,
+    raw_product_text: it.raw_product_text,
+    order_status: opts.status,
+    marketer_id: opts.marketerId,
+    marketer_code: opts.marketerCode,
+    shipping_company: opts.shippingCompany,
+    commission_share: (Number(opts.totalCommission) || 0) * (it.quantity / totalQty),
+  }));
+  await supabase.from("order_items").insert(rows);
+}
 
 type ImportError = {
   rowNumber: number | null;
@@ -426,6 +460,19 @@ function ImportPage() {
             import_batch_id: batch.id,
             changed_by: userId,
           });
+          // Sync parsed order_items
+          try {
+            await syncOrderItems({
+              orderId: insertedRow!.id,
+              rawProductField: mapping.product_name ? item.rowData[mapping.product_name] : null,
+              externalOrderId: item.externalId,
+              status: payload.status as OrderStatus,
+              marketerId: refs.marketerId,
+              marketerCode: item.resolve.marketerCode || null,
+              shippingCompany: item.resolve.sname || null,
+              totalCommission: Number(payload.commission || 0),
+            });
+          } catch (e) { console.error("order_items sync (insert) failed:", e); }
         } catch (err: any) {
           errors.push({
             rowNumber: item.rowIndex + 2, stage: "insert",
@@ -479,6 +526,19 @@ function ImportPage() {
               changed_by: userId,
             });
           }
+          // Sync parsed order_items (delete old + recreate)
+          try {
+            await syncOrderItems({
+              orderId: item.existingId!,
+              rawProductField: mapping.product_name ? item.rowData[mapping.product_name] : null,
+              externalOrderId: item.externalId,
+              status: fullPayload.status as OrderStatus,
+              marketerId: refs.marketerId,
+              marketerCode: item.resolve.marketerCode || null,
+              shippingCompany: item.resolve.sname || null,
+              totalCommission: Number(fullPayload.commission || 0),
+            });
+          } catch (e) { console.error("order_items sync (update) failed:", e); }
         } catch (err: any) {
           errors.push({
             rowNumber: item.rowIndex + 2, stage: "update",

@@ -152,6 +152,10 @@ function UpdateStatusPage() {
       if (error) { console.error("Update error:", error); errors.push(`صف ${i + 2} (${oid}): فشل التحديث`); continue; }
       if (!data || data.length === 0) { notFound.push(oid); continue; }
       updated += data.length;
+      // Keep order_items.order_status in sync
+      for (const u of data) {
+        await supabase.from("order_items").update({ order_status: newStatus }).eq("order_id", u.id);
+      }
     }
 
     setBusy(false);

@@ -24,6 +24,7 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
 import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
+import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authenticated/products.$name'
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
 import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
@@ -105,6 +106,12 @@ const AuthenticatedSettingsMappingsRoute =
     path: '/settings/mappings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedProductsNameRoute =
+  AuthenticatedProductsNameRouteImport.update({
+    id: '/$name',
+    path: '/$name',
+    getParentRoute: () => AuthenticatedProductsRoute,
+  } as any)
 const AuthenticatedOrdersUpdateStatusRoute =
   AuthenticatedOrdersUpdateStatusRouteImport.update({
     id: '/update-status',
@@ -133,11 +140,12 @@ export interface FileRoutesByFullPath {
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
-  '/products': typeof AuthenticatedProductsRoute
+  '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
+  '/products/$name': typeof AuthenticatedProductsNameRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -151,11 +159,12 @@ export interface FileRoutesByTo {
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/products': typeof AuthenticatedProductsRoute
+  '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
+  '/products/$name': typeof AuthenticatedProductsNameRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
@@ -172,11 +181,12 @@ export interface FileRoutesById {
   '/_authenticated/ad-spend': typeof AuthenticatedAdSpendRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
-  '/_authenticated/products': typeof AuthenticatedProductsRoute
+  '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
   '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
+  '/_authenticated/products/$name': typeof AuthenticatedProductsNameRoute
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
+    | '/products/$name'
     | '/settings/mappings'
     | '/marketers/'
     | '/orders/'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
+    | '/products/$name'
     | '/settings/mappings'
     | '/marketers'
     | '/orders'
@@ -236,6 +248,7 @@ export interface FileRouteTypes {
     | '/_authenticated/marketers/$id'
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
+    | '/_authenticated/products/$name'
     | '/_authenticated/settings/mappings'
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
@@ -357,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/products/$name': {
+      id: '/_authenticated/products/$name'
+      path: '/$name'
+      fullPath: '/products/$name'
+      preLoaderRoute: typeof AuthenticatedProductsNameRouteImport
+      parentRoute: typeof AuthenticatedProductsRoute
+    }
     '/_authenticated/orders/update-status': {
       id: '/_authenticated/orders/update-status'
       path: '/update-status'
@@ -396,12 +416,25 @@ const AuthenticatedOrdersRouteChildren: AuthenticatedOrdersRouteChildren = {
 const AuthenticatedOrdersRouteWithChildren =
   AuthenticatedOrdersRoute._addFileChildren(AuthenticatedOrdersRouteChildren)
 
+interface AuthenticatedProductsRouteChildren {
+  AuthenticatedProductsNameRoute: typeof AuthenticatedProductsNameRoute
+}
+
+const AuthenticatedProductsRouteChildren: AuthenticatedProductsRouteChildren = {
+  AuthenticatedProductsNameRoute: AuthenticatedProductsNameRoute,
+}
+
+const AuthenticatedProductsRouteWithChildren =
+  AuthenticatedProductsRoute._addFileChildren(
+    AuthenticatedProductsRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
   AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
-  AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
+  AuthenticatedProductsRoute: typeof AuthenticatedProductsRouteWithChildren
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
   AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
@@ -414,7 +447,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdSpendRoute: AuthenticatedAdSpendRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
-  AuthenticatedProductsRoute: AuthenticatedProductsRoute,
+  AuthenticatedProductsRoute: AuthenticatedProductsRouteWithChildren,
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,
   AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
