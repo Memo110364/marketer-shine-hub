@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/table";
 import { ORDER_STATUS, ORDER_STATUS_KEYS, normalizeStatus, type OrderStatus } from "@/lib/constants";
 import { parseExcelDate } from "@/lib/format";
-import { Upload, Loader2, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, AlertTriangle, RefreshCw, Download } from "lucide-react";
+import { fetchAll } from "@/lib/fetch-all";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/orders/update-status")({
