@@ -49,7 +49,7 @@ function AdSpendPage() {
       let q = supabase.from("ad_spend_transactions").select("*, marketers(name)")
         .order("transaction_date", { ascending: false });
       if (marketerId !== "all") q = q.eq("marketer_id", marketerId);
-      if (spendType !== "all") q = q.eq("spend_type", spendType);
+      if (spendType !== "all") q = q.eq("spend_type", spendType as SpendType);
       if (from) q = q.gte("transaction_date", from);
       if (to) q = q.lte("transaction_date", to);
       return (await q).data ?? [];
