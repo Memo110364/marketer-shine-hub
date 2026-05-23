@@ -531,10 +531,9 @@ function MetaConnectDialog({
 
           {/* Buttons */}
           <div className="flex flex-col gap-2 pt-2">
-            <Button disabled className="w-full gap-2">
+            <Button onClick={onStartWizard} className="w-full gap-2">
               <Link2 className="h-4 w-4" />
               ابدأ الربط مع Meta
-              <Badge variant="secondary" className="mr-1 text-[10px] px-1.5 py-0">قريبًا</Badge>
             </Button>
             <Button variant="outline" className="w-full gap-2" onClick={onManual}>
               <Plus className="h-4 w-4" />
