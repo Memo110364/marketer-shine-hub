@@ -196,10 +196,13 @@ function DashboardPage() {
   const deliveryRateOfTotal = deliveryRate;
   const deliveryRateOfShipped = shippedCount > 0 ? delivered / shippedCount : 0;
   const refundRate = total > 0 ? refunded / total : 0;
-  // No "cancelled" status in current schema — treat as 0
-  const cancelledCount = 0;
+  const cancelledCount = orders.filter((o) => String(o.status).toLowerCase() === "cancelled").length;
   const cancellationRate = total > 0 ? cancelledCount / total : 0;
   const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
+  const realCpa = delivered > 0 ? adSpend / delivered : 0;
+  const profitPerDelivered = delivered > 0 ? deliveredCommissions / delivered : 0;
+  const totalPieces = orders.reduce((s, o) => s + Number(o.quantity || 0), 0);
+  const avgPiecesPerOrder = total > 0 ? totalPieces / total : 0;
   const deliveredPieces = orders
     .filter((o) => o.status === "delivered" || o.status === "done")
     .reduce((s, o) => s + Number(o.quantity || 0), 0);
@@ -207,6 +210,7 @@ function DashboardPage() {
     .filter((o) => o.status === "in_delivery")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const expectedProfit = netProfit + inDeliveryCommissions * deliveryRate;
+  const performanceTrend = growth(total, ordersPrevFiltered.length);
 
   // Previous period aggregates for comparison
   const prevDelivered = ordersPrevFiltered.filter((o) => o.status === "delivered" || o.status === "done");
