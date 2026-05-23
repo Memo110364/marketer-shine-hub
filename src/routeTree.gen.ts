@@ -28,6 +28,7 @@ import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authent
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
 import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
+import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts_.connect-meta'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -130,6 +131,12 @@ const AuthenticatedMarketersIdRoute =
     path: '/marketers/$id',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdAccountsConnectMetaRoute =
+  AuthenticatedAdAccountsConnectMetaRouteImport.update({
+    id: '/ad-accounts_/connect-meta',
+    path: '/ad-accounts/connect-meta',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
+  '/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
@@ -161,6 +169,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
+  '/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
@@ -183,6 +192,7 @@ export interface FileRoutesById {
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
+  '/_authenticated/ad-accounts_/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
   '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/shipping'
+    | '/ad-accounts/connect-meta'
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/shipping'
+    | '/ad-accounts/connect-meta'
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
@@ -245,6 +257,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders'
     | '/_authenticated/products'
     | '/_authenticated/shipping'
+    | '/_authenticated/ad-accounts_/connect-meta'
     | '/_authenticated/marketers/$id'
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
@@ -398,6 +411,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMarketersIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/ad-accounts_/connect-meta': {
+      id: '/_authenticated/ad-accounts_/connect-meta'
+      path: '/ad-accounts/connect-meta'
+      fullPath: '/ad-accounts/connect-meta'
+      preLoaderRoute: typeof AuthenticatedAdAccountsConnectMetaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -436,6 +456,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRouteWithChildren
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
+  AuthenticatedAdAccountsConnectMetaRoute: typeof AuthenticatedAdAccountsConnectMetaRoute
   AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
@@ -449,6 +470,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRouteWithChildren,
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,
+  AuthenticatedAdAccountsConnectMetaRoute:
+    AuthenticatedAdAccountsConnectMetaRoute,
   AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
@@ -469,3 +492,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +53,7 @@ type Account = {
 };
 
 function AdAccountsPage() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
@@ -205,6 +206,7 @@ function AdAccountsPage() {
         open={metaConnectOpen}
         onClose={() => setMetaConnectOpen(false)}
         onManual={() => { setMetaConnectOpen(false); setEditing(null); setOpen(true); }}
+        onStartWizard={() => { setMetaConnectOpen(false); navigate({ to: "/ad-accounts/connect-meta" }); }}
       />
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
@@ -441,11 +443,12 @@ function SyncLogsDialog({ account, onClose }: { account: Account; onClose: () =>
 }
 
 function MetaConnectDialog({
-  open, onClose, onManual,
+  open, onClose, onManual, onStartWizard,
 }: {
   open: boolean;
   onClose: () => void;
   onManual: () => void;
+  onStartWizard: () => void;
 }) {
   const steps = [
     "سجّل الدخول بحساب فيسبوك المرتبط بمدير الأعمال أو الحساب الإعلاني.",
@@ -528,10 +531,9 @@ function MetaConnectDialog({
 
           {/* Buttons */}
           <div className="flex flex-col gap-2 pt-2">
-            <Button disabled className="w-full gap-2">
+            <Button onClick={onStartWizard} className="w-full gap-2">
               <Link2 className="h-4 w-4" />
               ابدأ الربط مع Meta
-              <Badge variant="secondary" className="mr-1 text-[10px] px-1.5 py-0">قريبًا</Badge>
             </Button>
             <Button variant="outline" className="w-full gap-2" onClick={onManual}>
               <Plus className="h-4 w-4" />
