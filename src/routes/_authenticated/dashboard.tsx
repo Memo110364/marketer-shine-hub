@@ -765,3 +765,63 @@ function DashboardPage() {
     </div>
   );
 }
+
+const toneBg: Record<string, string> = {
+  default: "bg-primary/10 text-primary",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning-foreground",
+  destructive: "bg-destructive/15 text-destructive",
+  info: "bg-info/15 text-info",
+};
+
+function ExecKpi({
+  label, value, icon: Icon, tone = "default", sub,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone?: keyof typeof toneBg;
+  sub?: string;
+}) {
+  return (
+    <Card className="transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_8px_rgba(16,24,40,0.06),0_24px_48px_-20px_rgba(16,24,40,0.18)]">
+      <CardContent className="p-7 flex items-start gap-5">
+        <div className={`p-4 rounded-2xl ${toneBg[tone]}`}>
+          <Icon className="h-7 w-7" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-muted-foreground tracking-wide">{label}</div>
+          <div className="text-4xl font-display font-bold mt-1.5 truncate text-foreground">{value}</div>
+          {sub && <div className="text-xs text-muted-foreground mt-2">{sub}</div>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MidKpi({
+  label, value, icon: Icon, tone = "default", subs,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone?: keyof typeof toneBg;
+  subs?: string[];
+}) {
+  return (
+    <Card className="transition-all hover:-translate-y-0.5">
+      <CardContent className="p-5 flex items-start gap-4">
+        <div className={`p-2.5 rounded-xl ${toneBg[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-muted-foreground tracking-wide">{label}</div>
+          <div className="text-2xl font-display font-bold mt-1 truncate text-foreground">{value}</div>
+          {subs?.map((s, i) => (
+            <div key={i} className="text-[11px] text-muted-foreground mt-1 leading-tight">{s}</div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
