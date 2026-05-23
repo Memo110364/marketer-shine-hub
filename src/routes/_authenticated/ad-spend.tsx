@@ -56,6 +56,22 @@ function AdSpendPage() {
     },
   });
 
+  const { data: dailySpend = [] } = useQuery({
+    queryKey: ["ad-spend-daily", marketerId, from, to],
+    queryFn: async () => {
+      let q = (supabase.from("ad_spend_daily") as any).select("spend_amount, marketer_id, spend_date, source");
+      if (marketerId !== "all") q = q.eq("marketer_id", marketerId);
+      if (from) q = q.gte("spend_date", from);
+      if (to) q = q.lte("spend_date", to);
+      const { data } = await q;
+      return (data ?? []) as { spend_amount: number; source: string }[];
+    },
+  });
+  const dailyTotal = useMemo(
+    () => dailySpend.reduce((s, r) => s + Number(r.spend_amount || 0), 0),
+    [dailySpend],
+  );
+
   const createdByIds = useMemo(
     () => Array.from(new Set(tx.map((t: any) => t.created_by).filter(Boolean))),
     [tx],
