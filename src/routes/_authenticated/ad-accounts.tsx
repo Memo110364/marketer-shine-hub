@@ -200,7 +200,12 @@ function AdAccountsPage() {
         <SyncLogsDialog account={logsFor} onClose={() => setLogsFor(null)} />
       )}
 
-      {/* Delete confirm */}
+      {/* Meta connect modal */}
+      <MetaConnectDialog
+        open={metaConnectOpen}
+        onClose={() => setMetaConnectOpen(false)}
+        onManual={() => { setMetaConnectOpen(false); setEditing(null); setOpen(true); }}
+      />
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
