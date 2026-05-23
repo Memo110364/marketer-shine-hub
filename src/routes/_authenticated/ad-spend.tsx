@@ -56,6 +56,22 @@ function AdSpendPage() {
     },
   });
 
+  const { data: dailySpend = [] } = useQuery({
+    queryKey: ["ad-spend-daily", marketerId, from, to],
+    queryFn: async () => {
+      let q = (supabase.from("ad_spend_daily") as any).select("spend_amount, marketer_id, spend_date, source");
+      if (marketerId !== "all") q = q.eq("marketer_id", marketerId);
+      if (from) q = q.gte("spend_date", from);
+      if (to) q = q.lte("spend_date", to);
+      const { data } = await q;
+      return (data ?? []) as { spend_amount: number; source: string }[];
+    },
+  });
+  const dailyTotal = useMemo(
+    () => dailySpend.reduce((s, r) => s + Number(r.spend_amount || 0), 0),
+    [dailySpend],
+  );
+
   const createdByIds = useMemo(
     () => Array.from(new Set(tx.map((t: any) => t.created_by).filter(Boolean))),
     [tx],
@@ -93,8 +109,9 @@ function AdSpendPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KpiCard label="إجمالي الإنفاق" value={fmtCurrency(total)} icon={Wallet} tone="warning" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <KpiCard label="إجمالي الإنفاق (محفظة)" value={fmtCurrency(total)} icon={Wallet} tone="warning" />
+        <KpiCard label="الإنفاق اليومي للحسابات" value={fmtCurrency(dailyTotal)} icon={TrendingDown} tone="info" hint="مجموع ad_spend_daily (يدوي + Meta/TikTok مستقبلاً)" />
         <KpiCard label="عدد المعاملات" value={fmtNumber(tx.length)} icon={Receipt} />
         <KpiCard label="متوسط المعاملة" value={fmtCurrency(tx.length ? total / tx.length : 0)} icon={TrendingDown} />
       </div>
