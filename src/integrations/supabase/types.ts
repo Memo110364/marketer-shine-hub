@@ -19,31 +19,43 @@ export type Database = {
           access_status: string | null
           account_name: string | null
           ad_account_id: string | null
+          connection_status: string
           created_at: string
+          currency: string | null
+          external_account_id: string | null
           id: string
           last_sync_at: string | null
           marketer_id: string | null
           platform: Database["public"]["Enums"]["ad_platform"]
+          updated_at: string
         }
         Insert: {
           access_status?: string | null
           account_name?: string | null
           ad_account_id?: string | null
+          connection_status?: string
           created_at?: string
+          currency?: string | null
+          external_account_id?: string | null
           id?: string
           last_sync_at?: string | null
           marketer_id?: string | null
           platform?: Database["public"]["Enums"]["ad_platform"]
+          updated_at?: string
         }
         Update: {
           access_status?: string | null
           account_name?: string | null
           ad_account_id?: string | null
+          connection_status?: string
           created_at?: string
+          currency?: string | null
+          external_account_id?: string | null
           id?: string
           last_sync_at?: string | null
           marketer_id?: string | null
           platform?: Database["public"]["Enums"]["ad_platform"]
+          updated_at?: string
         }
         Relationships: [
           {
@@ -51,6 +63,56 @@ export type Database = {
             columns: ["marketer_id"]
             isOneToOne: false
             referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_spend_daily: {
+        Row: {
+          ad_account_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          marketer_id: string
+          platform: Database["public"]["Enums"]["ad_platform"]
+          source: string
+          spend_amount: number
+          spend_date: string
+          sync_status: string
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          marketer_id: string
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          source?: string
+          spend_amount?: number
+          spend_date: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          marketer_id?: string
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          source?: string
+          spend_amount?: number
+          spend_date?: string
+          sync_status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_spend_daily_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -177,6 +239,56 @@ export type Database = {
           success_count?: number
         }
         Relationships: []
+      }
+      integration_sync_logs: {
+        Row: {
+          ad_account_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          marketer_id: string | null
+          platform: Database["public"]["Enums"]["ad_platform"]
+          records_created: number
+          records_updated: number
+          status: string
+          sync_finished_at: string | null
+          sync_started_at: string
+        }
+        Insert: {
+          ad_account_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          marketer_id?: string | null
+          platform: Database["public"]["Enums"]["ad_platform"]
+          records_created?: number
+          records_updated?: number
+          status?: string
+          sync_finished_at?: string | null
+          sync_started_at?: string
+        }
+        Update: {
+          ad_account_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          marketer_id?: string | null
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          records_created?: number
+          records_updated?: number
+          status?: string
+          sync_finished_at?: string | null
+          sync_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_sync_logs_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketers: {
         Row: {
