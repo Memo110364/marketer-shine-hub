@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/ad-accounts/connect-meta")({
+export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta")({
   component: ConnectMetaWizard,
 });
 
