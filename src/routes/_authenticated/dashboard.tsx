@@ -196,10 +196,13 @@ function DashboardPage() {
   const deliveryRateOfTotal = deliveryRate;
   const deliveryRateOfShipped = shippedCount > 0 ? delivered / shippedCount : 0;
   const refundRate = total > 0 ? refunded / total : 0;
-  // No "cancelled" status in current schema — treat as 0
-  const cancelledCount = 0;
+  const cancelledCount = orders.filter((o) => String(o.status).toLowerCase() === "cancelled").length;
   const cancellationRate = total > 0 ? cancelledCount / total : 0;
   const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
+  const realCpa = delivered > 0 ? adSpend / delivered : 0;
+  const profitPerDelivered = delivered > 0 ? deliveredCommissions / delivered : 0;
+  const totalPieces = orders.reduce((s, o) => s + Number(o.quantity || 0), 0);
+  const avgPiecesPerOrder = total > 0 ? totalPieces / total : 0;
   const deliveredPieces = orders
     .filter((o) => o.status === "delivered" || o.status === "done")
     .reduce((s, o) => s + Number(o.quantity || 0), 0);
@@ -207,6 +210,7 @@ function DashboardPage() {
     .filter((o) => o.status === "in_delivery")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const expectedProfit = netProfit + inDeliveryCommissions * deliveryRate;
+  const performanceTrend = growth(total, ordersPrevFiltered.length);
 
   // Previous period aggregates for comparison
   const prevDelivered = ordersPrevFiltered.filter((o) => o.status === "delivered" || o.status === "done");
@@ -415,35 +419,89 @@ function DashboardPage() {
         </div>
       </Card>
 
-      {/* Executive KPIs */}
-      <div>
-        <h3 className="text-lg font-display font-bold mb-3">المؤشرات التنفيذية</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 [&_.text-2xl]:text-3xl [&_.p-5]:p-6">
-          <KpiCard label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} />
-          <KpiCard label="خرج للشحن" value={fmtNumber(shippedCount)} icon={Truck} tone="info" />
-          <KpiCard label="تم التسليم" value={fmtNumber(delivered)} icon={CheckCircle2} tone="success" />
-          <KpiCard label="نسبة التسليم من الإجمالي" value={fmtPercent(deliveryRateOfTotal)} icon={Percent} tone="success" />
-          <KpiCard label="نسبة التسليم من المشحون" value={fmtPercent(deliveryRateOfShipped)} icon={Percent} tone="success" />
-          <KpiCard label="الربح المحقق" value={fmtCurrency(deliveredCommissions)} icon={DollarSign} tone="success" />
-          <KpiCard label="الإنفاق الإعلاني" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
-          <KpiCard label="صافي الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
+      {/* SECTION 1 — Executive KPIs */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-display font-bold">المؤشرات التنفيذية</h3>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <ExecKpi label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} tone="default" />
+          <ExecKpi label="طلبات جديدة" value={fmtNumber(counts.pending)} icon={Clock} tone="info"
+            sub={total > 0 ? `${fmtPercent(counts.pending / total)} من الإجمالي` : undefined} />
+          <ExecKpi label="طلبات ملغاة قبل الشحن" value={fmtNumber(cancelledCount)} icon={XCircle} tone="destructive"
+            sub={`نسبة الإلغاء: ${fmtPercent(cancellationRate)}`} />
+          <ExecKpi label="خرج للشحن" value={fmtNumber(shippedCount)} icon={Truck} tone="info"
+            sub={total > 0 ? `${fmtPercent(shippedCount / total)} من الإجمالي` : undefined} />
+        </div>
+      </section>
+
+      {/* SECTION 2 — Operational KPIs */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-display font-bold text-muted-foreground">المؤشرات التشغيلية</h3>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <MidKpi label="تم التسليم" value={fmtNumber(delivered)} icon={CheckCircle2} tone="success"
+            subs={[
+              `نسبة التسليم من الإجمالي: ${fmtPercent(deliveryRateOfTotal)}`,
+              `نسبة التسليم من المشحون: ${fmtPercent(deliveryRateOfShipped)}`,
+            ]} />
+          <MidKpi label="عدد القطع المسلمة" value={fmtNumber(deliveredPieces)} icon={ShoppingBag} tone="success" />
+          <MidKpi label="المرتجع" value={fmtNumber(refunded)} icon={AlertTriangle} tone="destructive"
+            subs={[`نسبة المرتجع: ${fmtPercent(refundRate)}`]} />
+          <MidKpi label="في الشحن" value={fmtNumber(counts.in_delivery)} icon={Truck} tone="warning" />
+        </div>
+      </section>
+
+      {/* SECTION 3 — Performance KPIs */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-display font-bold text-muted-foreground">مؤشرات الأداء</h3>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <MidKpi label="CPA الحقيقي" value={fmtCurrency(realCpa)} icon={Wallet} tone="warning"
+            subs={["تكلفة الإعلان لكل طلب مسلم"]} />
+          <MidKpi label="متوسط الربح لكل طلب مسلم" value={fmtCurrency(profitPerDelivered)} icon={DollarSign} tone="success" />
+          <MidKpi label="متوسط القطع في الطلب" value={fmtNumber(Math.round(avgPiecesPerOrder * 100) / 100)} icon={ShoppingBag} tone="info"
+            subs={[`إجمالي القطع: ${fmtNumber(totalPieces)}`]} />
+          <Card className="transition-all hover:-translate-y-0.5">
+            <CardContent className="p-4">
+              <div className="text-xs font-medium text-muted-foreground tracking-wide">اتجاه الأداء</div>
+              <div className="mt-2 flex items-center gap-2">
+                {performanceTrend >= 0 ? (
+                  <TrendingUp className="h-6 w-6 text-[var(--success)]" />
+                ) : (
+                  <TrendingDown className="h-6 w-6 text-[var(--destructive)]" />
+                )}
+                <span className={`text-2xl font-display font-bold ${performanceTrend >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]"}`}>
+                  {performanceTrend >= 0 ? "↑" : "↓"} {fmtPercent(Math.abs(performanceTrend))}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">مقارنة بالفترة السابقة</div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* SECTION 4 — Profit & Advertising KPIs */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-display font-bold text-muted-foreground">مؤشرات الأرباح والإعلانات</h3>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <MidKpi label="إجمالي الأرباح" value={fmtCurrency(grossProfit)} icon={DollarSign} tone="success" />
+          <MidKpi label="الإنفاق الإعلاني" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
+          <MidKpi label="متوسط تكلفة الإعلان لكل طلب مشحون" value={fmtCurrency(avgAdCostPerShipped)} icon={Wallet} tone="warning" />
+          <MidKpi label="الربح المحقق" value={fmtCurrency(deliveredCommissions)} icon={DollarSign} tone="success" />
+          <MidKpi label="الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
             tone={expectedProfit >= 0 ? "success" : "destructive"} />
         </div>
-      </div>
+      </section>
 
-      {/* Operational KPIs */}
-      <div>
-        <h3 className="text-sm font-display font-semibold text-muted-foreground mb-2">مؤشرات تشغيلية</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 [&_.p-5]:p-3 [&_.text-2xl]:text-base [&_.text-2xl]:font-semibold [&_.h-5]:h-4 [&_.w-5]:w-4 [&_.p-3]:p-2 [&_.rounded-2xl]:rounded-xl">
-          <KpiCard label="طلبات جديدة" value={fmtNumber(counts.pending)} icon={Clock} tone="info" />
-          <KpiCard label="في الشحن" value={fmtNumber(counts.in_delivery)} icon={Truck} tone="warning" />
-          <KpiCard label="مرتجع مع الشحن" value={fmtNumber(counts.refund_request)} icon={AlertTriangle} tone="destructive" />
-          <KpiCard label="رجع المخزن" value={fmtNumber(counts.refunded)} icon={XCircle} tone="destructive" />
-          <KpiCard label="نسبة الإلغاء" value={fmtPercent(cancellationRate)} icon={Percent} tone="destructive" />
-          <KpiCard label="متوسط تكلفة الإعلان لكل طلب مشحون" value={fmtCurrency(avgAdCostPerShipped)} icon={Wallet} tone="warning" />
-          <KpiCard label="عدد القطع المُسلَّمة" value={fmtNumber(deliveredPieces)} icon={CheckCircle2} tone="success" />
-        </div>
-      </div>
 
 
       {/* Daily averages */}
@@ -705,5 +763,65 @@ function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+const toneBg: Record<string, string> = {
+  default: "bg-primary/10 text-primary",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning-foreground",
+  destructive: "bg-destructive/15 text-destructive",
+  info: "bg-info/15 text-info",
+};
+
+function ExecKpi({
+  label, value, icon: Icon, tone = "default", sub,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone?: keyof typeof toneBg;
+  sub?: string;
+}) {
+  return (
+    <Card className="transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_8px_rgba(16,24,40,0.06),0_24px_48px_-20px_rgba(16,24,40,0.18)]">
+      <CardContent className="p-7 flex items-start gap-5">
+        <div className={`p-4 rounded-2xl ${toneBg[tone]}`}>
+          <Icon className="h-7 w-7" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-muted-foreground tracking-wide">{label}</div>
+          <div className="text-4xl font-display font-bold mt-1.5 truncate text-foreground">{value}</div>
+          {sub && <div className="text-xs text-muted-foreground mt-2">{sub}</div>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MidKpi({
+  label, value, icon: Icon, tone = "default", subs,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tone?: keyof typeof toneBg;
+  subs?: string[];
+}) {
+  return (
+    <Card className="transition-all hover:-translate-y-0.5">
+      <CardContent className="p-5 flex items-start gap-4">
+        <div className={`p-2.5 rounded-xl ${toneBg[tone]}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-muted-foreground tracking-wide">{label}</div>
+          <div className="text-2xl font-display font-bold mt-1 truncate text-foreground">{value}</div>
+          {subs?.map((s, i) => (
+            <div key={i} className="text-[11px] text-muted-foreground mt-1 leading-tight">{s}</div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
