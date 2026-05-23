@@ -59,6 +59,7 @@ function AdAccountsPage() {
   const [deleting, setDeleting] = useState<Account | null>(null);
   const [spendFor, setSpendFor] = useState<Account | null>(null);
   const [logsFor, setLogsFor] = useState<Account | null>(null);
+  const [metaConnectOpen, setMetaConnectOpen] = useState(false);
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["ad-accounts"],
