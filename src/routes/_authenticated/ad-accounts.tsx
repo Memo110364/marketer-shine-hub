@@ -438,6 +438,7 @@ function SyncLogsDialog({ account, onClose }: { account: Account; onClose: () =>
       </DialogContent>
     </Dialog>
   );
+}
 
 function MetaConnectDialog({
   open, onClose, onManual,
