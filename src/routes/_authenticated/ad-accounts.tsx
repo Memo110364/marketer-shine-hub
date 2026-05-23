@@ -443,11 +443,12 @@ function SyncLogsDialog({ account, onClose }: { account: Account; onClose: () =>
 }
 
 function MetaConnectDialog({
-  open, onClose, onManual,
+  open, onClose, onManual, onStartWizard,
 }: {
   open: boolean;
   onClose: () => void;
   onManual: () => void;
+  onStartWizard: () => void;
 }) {
   const steps = [
     "سجّل الدخول بحساب فيسبوك المرتبط بمدير الأعمال أو الحساب الإعلاني.",
