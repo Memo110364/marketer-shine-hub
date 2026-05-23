@@ -136,7 +136,7 @@ function AdAccountsPage() {
             {accounts.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد حسابات</TableCell></TableRow>
             ) : accounts.map((a) => {
-              const conn = CONN_LABELS[a.connection_status] ?? CONN_LABELS.not_connected;
+              const conn = getConnLabel(a);
               return (
                 <TableRow key={a.id}>
                   <TableCell>{a.marketers?.name ?? "—"}</TableCell>
