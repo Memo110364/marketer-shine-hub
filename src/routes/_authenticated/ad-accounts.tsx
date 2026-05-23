@@ -98,16 +98,21 @@ function AdAccountsPage() {
           <h2 className="text-2xl font-display font-bold">حسابات الإعلانات</h2>
           <p className="text-sm text-muted-foreground">إدارة حسابات Meta و TikTok والمزامنة المستقبلية</p>
         </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditing(null)}><Plus className="ml-1" />إضافة حساب إعلاني</Button>
-          </DialogTrigger>
-          <AccountDialog
-            account={editing}
-            marketers={marketers as { id: string; name: string }[]}
-            onDone={() => { setOpen(false); setEditing(null); refresh(); }}
-          />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setMetaConnectOpen(true)}>
+            <Link2 className="ml-1 h-4 w-4" />ربط حساب Meta
+          </Button>
+          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditing(null)}><Plus className="ml-1" />إضافة حساب إعلاني</Button>
+            </DialogTrigger>
+            <AccountDialog
+              account={editing}
+              marketers={marketers as { id: string; name: string }[]}
+              onDone={() => { setOpen(false); setEditing(null); refresh(); }}
+            />
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
