@@ -28,6 +28,7 @@ import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authent
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
 import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
+import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts.connect-meta'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -130,18 +131,25 @@ const AuthenticatedMarketersIdRoute =
     path: '/marketers/$id',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedAdAccountsConnectMetaRoute =
+  AuthenticatedAdAccountsConnectMetaRouteImport.update({
+    id: '/connect-meta',
+    path: '/connect-meta',
+    getParentRoute: () => AuthenticatedAdAccountsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/ad-accounts': typeof AuthenticatedAdAccountsRoute
+  '/ad-accounts': typeof AuthenticatedAdAccountsRouteWithChildren
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
+  '/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
@@ -156,11 +164,12 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/ad-accounts': typeof AuthenticatedAdAccountsRoute
+  '/ad-accounts': typeof AuthenticatedAdAccountsRouteWithChildren
   '/ad-spend': typeof AuthenticatedAdSpendRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
+  '/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
   '/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
@@ -177,12 +186,13 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/_authenticated/ad-accounts': typeof AuthenticatedAdAccountsRoute
+  '/_authenticated/ad-accounts': typeof AuthenticatedAdAccountsRouteWithChildren
   '/_authenticated/ad-spend': typeof AuthenticatedAdSpendRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
+  '/_authenticated/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
   '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRoute
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/products'
     | '/shipping'
+    | '/ad-accounts/connect-meta'
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/products'
     | '/shipping'
+    | '/ad-accounts/connect-meta'
     | '/marketers/$id'
     | '/orders/import'
     | '/orders/update-status'
@@ -245,6 +257,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders'
     | '/_authenticated/products'
     | '/_authenticated/shipping'
+    | '/_authenticated/ad-accounts/connect-meta'
     | '/_authenticated/marketers/$id'
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
@@ -398,8 +411,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMarketersIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/ad-accounts/connect-meta': {
+      id: '/_authenticated/ad-accounts/connect-meta'
+      path: '/connect-meta'
+      fullPath: '/ad-accounts/connect-meta'
+      preLoaderRoute: typeof AuthenticatedAdAccountsConnectMetaRouteImport
+      parentRoute: typeof AuthenticatedAdAccountsRoute
+    }
   }
 }
+
+interface AuthenticatedAdAccountsRouteChildren {
+  AuthenticatedAdAccountsConnectMetaRoute: typeof AuthenticatedAdAccountsConnectMetaRoute
+}
+
+const AuthenticatedAdAccountsRouteChildren: AuthenticatedAdAccountsRouteChildren =
+  {
+    AuthenticatedAdAccountsConnectMetaRoute:
+      AuthenticatedAdAccountsConnectMetaRoute,
+  }
+
+const AuthenticatedAdAccountsRouteWithChildren =
+  AuthenticatedAdAccountsRoute._addFileChildren(
+    AuthenticatedAdAccountsRouteChildren,
+  )
 
 interface AuthenticatedOrdersRouteChildren {
   AuthenticatedOrdersImportRoute: typeof AuthenticatedOrdersImportRoute
@@ -430,7 +465,7 @@ const AuthenticatedProductsRouteWithChildren =
   )
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
+  AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRouteWithChildren
   AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
@@ -443,7 +478,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedAdAccountsRoute: AuthenticatedAdAccountsRoute,
+  AuthenticatedAdAccountsRoute: AuthenticatedAdAccountsRouteWithChildren,
   AuthenticatedAdSpendRoute: AuthenticatedAdSpendRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
@@ -469,3 +504,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
