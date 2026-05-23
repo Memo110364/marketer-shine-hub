@@ -438,4 +438,107 @@ function SyncLogsDialog({ account, onClose }: { account: Account; onClose: () =>
       </DialogContent>
     </Dialog>
   );
+
+function MetaConnectDialog({
+  open, onClose, onManual,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onManual: () => void;
+}) {
+  const steps = [
+    "سجّل الدخول بحساب فيسبوك المرتبط بمدير الأعمال أو الحساب الإعلاني.",
+    "امنح صلاحية قراءة بيانات الإعلانات فقط.",
+    "اختر الحساب الإعلاني الذي تريد ربطه.",
+    "تأكد أن الحساب الإعلاني تابع لكود المسوق الصحيح.",
+    "اضغط تأكيد الربط.",
+  ];
+
+  const syncItems = [
+    { label: "Ad Account ID", icon: Eye },
+    { label: "Ad Account Name", icon: Megaphone },
+    { label: "Currency", icon: Receipt },
+    { label: "Daily Spend", icon: Receipt },
+    { label: "Spend Date", icon: Receipt },
+    { label: "Sync Status", icon: CheckCircle2 },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-primary" />
+            ربط حساب Meta الإعلاني
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          {/* Steps */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">خطوات الربط:</p>
+            <ol className="space-y-2">
+              {steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Important note */}
+          <div className="rounded-lg bg-accent/30 border border-accent/40 p-3 space-y-1">
+            <div className="flex items-center gap-2 text-accent-foreground font-semibold text-sm">
+              <Shield className="h-4 w-4" />
+              ملاحظة هامة
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              النظام سيستخدم صلاحية قراءة بيانات الإعلانات فقط بهدف جلب الإنفاق اليومي، ولن يقوم بإنشاء أو تعديل أو حذف أي حملات إعلانية.
+            </p>
+          </div>
+
+          {/* Permissions box */}
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <p className="text-sm font-semibold text-foreground">الصلاحية المطلوبة:</p>
+            <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 font-mono text-sm text-foreground">
+              <Shield className="h-4 w-4 text-primary" />
+              ads_read
+            </div>
+          </div>
+
+          {/* Future data preview */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-foreground">البيانات التي سيتم مزامنتها:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {syncItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+                >
+                  <item.icon className="h-3.5 w-3.5 text-primary" />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col gap-2 pt-2">
+            <Button disabled className="w-full gap-2">
+              <Link2 className="h-4 w-4" />
+              ابدأ الربط مع Meta
+              <Badge variant="secondary" className="mr-1 text-[10px] px-1.5 py-0">قريبًا</Badge>
+            </Button>
+            <Button variant="outline" className="w-full gap-2" onClick={onManual}>
+              <Plus className="h-4 w-4" />
+              إضافة الحساب يدويًا الآن
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
