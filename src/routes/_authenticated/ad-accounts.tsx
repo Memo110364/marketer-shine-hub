@@ -53,6 +53,7 @@ type Account = {
 };
 
 function AdAccountsPage() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
