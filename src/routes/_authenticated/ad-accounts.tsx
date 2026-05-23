@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { KpiCard } from "@/components/KpiCard";
 import { fmtDate } from "@/lib/format";
-import { Megaphone, Plug, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, Receipt, History } from "lucide-react";
+import { Megaphone, Plug, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, Receipt, History, Link2, Shield, Eye, CheckCircle2, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/ad-accounts")({
@@ -24,12 +24,19 @@ export const Route = createFileRoute("/_authenticated/ad-accounts")({
 });
 
 const PLATFORM_LABELS: Record<string, string> = { meta: "Meta", tiktok: "TikTok", manual: "يدوي" };
-const CONN_LABELS: Record<string, { label: string; tone: "success" | "warning" | "destructive" | "secondary" }> = {
-  connected: { label: "متصل", tone: "success" },
-  not_connected: { label: "غير متصل", tone: "secondary" },
-  expired: { label: "منتهي — يحتاج إعادة ربط", tone: "warning" },
-  error: { label: "خطأ", tone: "destructive" },
-};
+
+function getConnLabel(account: Account) {
+  const s = account.connection_status;
+  const p = account.platform;
+  if (s === "not_connected") return { label: "غير متصل", tone: "secondary" as const };
+  if (s === "connected") {
+    if (p === "meta" && account.external_account_id) return { label: "متصل عبر Meta", tone: "success" as const };
+    return { label: "متصل يدويًا", tone: "success" as const };
+  }
+  if (s === "expired") return { label: "يحتاج إعادة ربط", tone: "warning" as const };
+  if (s === "error") return { label: "خطأ في الربط", tone: "destructive" as const };
+  return { label: s, tone: "secondary" as const };
+}
 
 type Account = {
   id: string;
@@ -52,6 +59,7 @@ function AdAccountsPage() {
   const [deleting, setDeleting] = useState<Account | null>(null);
   const [spendFor, setSpendFor] = useState<Account | null>(null);
   const [logsFor, setLogsFor] = useState<Account | null>(null);
+  const [metaConnectOpen, setMetaConnectOpen] = useState(false);
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["ad-accounts"],
@@ -90,16 +98,21 @@ function AdAccountsPage() {
           <h2 className="text-2xl font-display font-bold">حسابات الإعلانات</h2>
           <p className="text-sm text-muted-foreground">إدارة حسابات Meta و TikTok والمزامنة المستقبلية</p>
         </div>
-        <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditing(null)}><Plus className="ml-1" />إضافة حساب إعلاني</Button>
-          </DialogTrigger>
-          <AccountDialog
-            account={editing}
-            marketers={marketers as { id: string; name: string }[]}
-            onDone={() => { setOpen(false); setEditing(null); refresh(); }}
-          />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setMetaConnectOpen(true)}>
+            <Link2 className="ml-1 h-4 w-4" />ربط حساب Meta
+          </Button>
+          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditing(null)}><Plus className="ml-1" />إضافة حساب إعلاني</Button>
+            </DialogTrigger>
+            <AccountDialog
+              account={editing}
+              marketers={marketers as { id: string; name: string }[]}
+              onDone={() => { setOpen(false); setEditing(null); refresh(); }}
+            />
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -128,7 +141,7 @@ function AdAccountsPage() {
             {accounts.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد حسابات</TableCell></TableRow>
             ) : accounts.map((a) => {
-              const conn = CONN_LABELS[a.connection_status] ?? CONN_LABELS.not_connected;
+              const conn = getConnLabel(a);
               return (
                 <TableRow key={a.id}>
                   <TableCell>{a.marketers?.name ?? "—"}</TableCell>
@@ -187,7 +200,12 @@ function AdAccountsPage() {
         <SyncLogsDialog account={logsFor} onClose={() => setLogsFor(null)} />
       )}
 
-      {/* Delete confirm */}
+      {/* Meta connect modal */}
+      <MetaConnectDialog
+        open={metaConnectOpen}
+        onClose={() => setMetaConnectOpen(false)}
+        onManual={() => { setMetaConnectOpen(false); setEditing(null); setOpen(true); }}
+      />
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -416,6 +434,110 @@ function SyncLogsDialog({ account, onClose }: { account: Account; onClose: () =>
               ))}
             </TableBody>
           </Table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MetaConnectDialog({
+  open, onClose, onManual,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onManual: () => void;
+}) {
+  const steps = [
+    "سجّل الدخول بحساب فيسبوك المرتبط بمدير الأعمال أو الحساب الإعلاني.",
+    "امنح صلاحية قراءة بيانات الإعلانات فقط.",
+    "اختر الحساب الإعلاني الذي تريد ربطه.",
+    "تأكد أن الحساب الإعلاني تابع لكود المسوق الصحيح.",
+    "اضغط تأكيد الربط.",
+  ];
+
+  const syncItems = [
+    { label: "Ad Account ID", icon: Eye },
+    { label: "Ad Account Name", icon: Megaphone },
+    { label: "Currency", icon: Receipt },
+    { label: "Daily Spend", icon: Receipt },
+    { label: "Spend Date", icon: Receipt },
+    { label: "Sync Status", icon: CheckCircle2 },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-xl flex items-center gap-2">
+            <Link2 className="h-5 w-5 text-primary" />
+            ربط حساب Meta الإعلاني
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5">
+          {/* Steps */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-foreground">خطوات الربط:</p>
+            <ol className="space-y-2">
+              {steps.map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                    {i + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {/* Important note */}
+          <div className="rounded-lg bg-accent/30 border border-accent/40 p-3 space-y-1">
+            <div className="flex items-center gap-2 text-accent-foreground font-semibold text-sm">
+              <Shield className="h-4 w-4" />
+              ملاحظة هامة
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              النظام سيستخدم صلاحية قراءة بيانات الإعلانات فقط بهدف جلب الإنفاق اليومي، ولن يقوم بإنشاء أو تعديل أو حذف أي حملات إعلانية.
+            </p>
+          </div>
+
+          {/* Permissions box */}
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <p className="text-sm font-semibold text-foreground">الصلاحية المطلوبة:</p>
+            <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 font-mono text-sm text-foreground">
+              <Shield className="h-4 w-4 text-primary" />
+              ads_read
+            </div>
+          </div>
+
+          {/* Future data preview */}
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-foreground">البيانات التي سيتم مزامنتها:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {syncItems.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+                >
+                  <item.icon className="h-3.5 w-3.5 text-primary" />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="flex flex-col gap-2 pt-2">
+            <Button disabled className="w-full gap-2">
+              <Link2 className="h-4 w-4" />
+              ابدأ الربط مع Meta
+              <Badge variant="secondary" className="mr-1 text-[10px] px-1.5 py-0">قريبًا</Badge>
+            </Button>
+            <Button variant="outline" className="w-full gap-2" onClick={onManual}>
+              <Plus className="h-4 w-4" />
+              إضافة الحساب يدويًا الآن
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
