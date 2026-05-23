@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { KpiCard } from "@/components/KpiCard";
 import { fmtDate } from "@/lib/format";
-import { Megaphone, Plug, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, Receipt, History } from "lucide-react";
+import { Megaphone, Plug, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, Receipt, History, Link2, Shield, Eye, CheckCircle2, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/ad-accounts")({
