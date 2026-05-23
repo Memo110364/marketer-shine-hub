@@ -24,12 +24,19 @@ export const Route = createFileRoute("/_authenticated/ad-accounts")({
 });
 
 const PLATFORM_LABELS: Record<string, string> = { meta: "Meta", tiktok: "TikTok", manual: "يدوي" };
-const CONN_LABELS: Record<string, { label: string; tone: "success" | "warning" | "destructive" | "secondary" }> = {
-  connected: { label: "متصل", tone: "success" },
-  not_connected: { label: "غير متصل", tone: "secondary" },
-  expired: { label: "منتهي — يحتاج إعادة ربط", tone: "warning" },
-  error: { label: "خطأ", tone: "destructive" },
-};
+
+function getConnLabel(account: Account) {
+  const s = account.connection_status;
+  const p = account.platform;
+  if (s === "not_connected") return { label: "غير متصل", tone: "secondary" as const };
+  if (s === "connected") {
+    if (p === "meta" && account.external_account_id) return { label: "متصل عبر Meta", tone: "success" as const };
+    return { label: "متصل يدويًا", tone: "success" as const };
+  }
+  if (s === "expired") return { label: "يحتاج إعادة ربط", tone: "warning" as const };
+  if (s === "error") return { label: "خطأ في الربط", tone: "destructive" as const };
+  return { label: s, tone: "secondary" as const };
+}
 
 type Account = {
   id: string;
