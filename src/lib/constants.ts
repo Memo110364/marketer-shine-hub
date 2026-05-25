@@ -18,6 +18,8 @@ export const STATUS_ALIASES: Record<string, OrderStatus> = {
   "pending": "pending", "طلب جديد": "pending", "جديد": "pending", "new": "pending",
   // cancelled before shipping
   "cancelled": "cancelled", "canceled": "cancelled",
+  "canceled_automatically": "cancelled", "cancelled_automatically": "cancelled",
+  "canceled automatically": "cancelled", "cancelled automatically": "cancelled",
   "ملغي": "cancelled", "ملغى": "cancelled", "ملغاة": "cancelled", "ملغي قبل الشحن": "cancelled",
   "cancel": "cancelled", "cancelled before shipping": "cancelled",
   // in_delivery
