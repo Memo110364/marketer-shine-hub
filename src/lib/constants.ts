@@ -1,5 +1,6 @@
 export const ORDER_STATUS = {
   pending: { label: "طلب جديد", color: "info" },
+  cancelled: { label: "ملغي قبل الشحن", color: "destructive" },
   in_delivery: { label: "في الشحن", color: "warning" },
   delivered: { label: "تم التسليم", color: "success" },
   done: { label: "تم التحصيل", color: "success" },
@@ -13,8 +14,12 @@ export const ORDER_STATUS_KEYS = Object.keys(ORDER_STATUS) as OrderStatus[];
 
 // Map Arabic / common strings to enum values (for import)
 export const STATUS_ALIASES: Record<string, OrderStatus> = {
-  // pending
+  // pending — ONLY truly new orders (never cancelled)
   "pending": "pending", "طلب جديد": "pending", "جديد": "pending", "new": "pending",
+  // cancelled before shipping
+  "cancelled": "cancelled", "canceled": "cancelled",
+  "ملغي": "cancelled", "ملغى": "cancelled", "ملغاة": "cancelled", "ملغي قبل الشحن": "cancelled",
+  "cancel": "cancelled", "cancelled before shipping": "cancelled",
   // in_delivery
   "in delivery": "in_delivery", "in_delivery": "in_delivery", "في الشحن": "in_delivery", "شحن": "in_delivery", "shipping": "in_delivery",
   // delivered
@@ -28,10 +33,20 @@ export const STATUS_ALIASES: Record<string, OrderStatus> = {
 };
 
 export function normalizeStatus(raw: unknown): OrderStatus {
-  if (!raw) return "pending";
-  const key = String(raw).trim().toLowerCase();
-  return STATUS_ALIASES[key] ?? STATUS_ALIASES[String(raw).trim()] ?? "pending";
+  if (raw === null || raw === undefined || raw === "") return "pending";
+  const trimmed = String(raw).trim();
+  const lower = trimmed.toLowerCase();
+  return STATUS_ALIASES[lower] ?? STATUS_ALIASES[trimmed] ?? "pending";
 }
+
+// Canonical status groups — single source of truth for analytics
+export const SHIPPED_STATUSES: OrderStatus[] = ["in_delivery", "delivered", "done", "refund_request", "refunded"];
+export const DELIVERED_STATUSES: OrderStatus[] = ["delivered", "done"];
+export const RETURNED_STATUSES: OrderStatus[] = ["refunded", "refund_request"];
+export const PENDING_STATUSES: OrderStatus[] = ["pending"];
+export const CANCELLED_STATUSES: OrderStatus[] = ["cancelled"];
+// Commission excluded from gross profit
+export const COMMISSION_EXCLUDED_STATUSES: OrderStatus[] = ["refunded", "refund_request", "cancelled"];
 
 export const MARKETER_STATUS = {
   active: "نشط",

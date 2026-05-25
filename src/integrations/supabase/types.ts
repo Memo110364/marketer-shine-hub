@@ -686,6 +686,7 @@ export type Database = {
         | "done"
         | "refunded"
         | "refund_request"
+        | "cancelled"
       user_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -831,6 +832,7 @@ export const Constants = {
         "done",
         "refunded",
         "refund_request",
+        "cancelled",
       ],
       user_status: ["pending", "approved", "rejected"],
     },

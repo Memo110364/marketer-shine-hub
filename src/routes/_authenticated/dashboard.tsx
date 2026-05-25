@@ -43,7 +43,7 @@ type OrderRow = {
 
 type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
 
-const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request"]);
+const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request", "cancelled"]);
 
 function daysBetween(from: string, to: string): number {
   const a = new Date(from).getTime();
@@ -189,15 +189,20 @@ function DashboardPage() {
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const adSpend = spendFiltered.reduce((s, t) => s + Number(t.amount || 0), 0);
   const netProfit = deliveredCommissions - adSpend;
-  const delivered = counts.delivered + counts.done;
-  const refunded = counts.refunded + counts.refund_request;
-  const shippedCount = counts.in_delivery + counts.delivered + counts.done + counts.refund_request + counts.refunded;
-  const deliveryRate = total > 0 ? delivered / total : 0;
-  const deliveryRateOfTotal = deliveryRate;
+  const delivered = (counts.delivered ?? 0) + (counts.done ?? 0);
+  const refunded = (counts.refunded ?? 0) + (counts.refund_request ?? 0);
+  const shippedCount =
+    (counts.in_delivery ?? 0) + (counts.delivered ?? 0) + (counts.done ?? 0) +
+    (counts.refund_request ?? 0) + (counts.refunded ?? 0);
+  const cancelledCount = counts.cancelled ?? 0;
+  const pendingCount = counts.pending ?? 0;
+  const deliveryRateOfTotal = total > 0 ? delivered / total : 0;
   const deliveryRateOfShipped = shippedCount > 0 ? delivered / shippedCount : 0;
-  const refundRate = total > 0 ? refunded / total : 0;
-  const cancelledCount = orders.filter((o) => String(o.status).toLowerCase() === "cancelled").length;
+  const deliveryRate = deliveryRateOfTotal;
+  // Refund rate is calculated against shipped orders (refunds can only come from shipped flow)
+  const refundRate = shippedCount > 0 ? refunded / shippedCount : 0;
   const cancellationRate = total > 0 ? cancelledCount / total : 0;
+  const confirmationRate = total > 0 ? shippedCount / total : 0;
   const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
   const realCpa = delivered > 0 ? adSpend / delivered : 0;
   const profitPerDelivered = delivered > 0 ? deliveredCommissions / delivered : 0;
@@ -209,7 +214,8 @@ function DashboardPage() {
   const inDeliveryCommissions = orders
     .filter((o) => o.status === "in_delivery")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
-  const expectedProfit = netProfit + inDeliveryCommissions * deliveryRate;
+  // Expected profit = commissions from in_delivery + delivered + done (per spec)
+  const expectedProfit = deliveredCommissions + inDeliveryCommissions;
   const performanceTrend = growth(total, ordersPrevFiltered.length);
 
   // Previous period aggregates for comparison
@@ -427,12 +433,12 @@ function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <ExecKpi label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} tone="default" />
-          <ExecKpi label="طلبات جديدة" value={fmtNumber(counts.pending)} icon={Clock} tone="info"
-            sub={total > 0 ? `${fmtPercent(counts.pending / total)} من الإجمالي` : undefined} />
-          <ExecKpi label="طلبات ملغاة قبل الشحن" value={fmtNumber(cancelledCount)} icon={XCircle} tone="destructive"
+          <ExecKpi label="طلبات جديدة (لم تُلغَ)" value={fmtNumber(pendingCount)} icon={Clock} tone="info"
+            sub={total > 0 ? `${fmtPercent(pendingCount / total)} من الإجمالي` : undefined} />
+          <ExecKpi label="ملغاة قبل الشحن" value={fmtNumber(cancelledCount)} icon={XCircle} tone="destructive"
             sub={`نسبة الإلغاء: ${fmtPercent(cancellationRate)}`} />
           <ExecKpi label="خرج للشحن" value={fmtNumber(shippedCount)} icon={Truck} tone="info"
-            sub={total > 0 ? `${fmtPercent(shippedCount / total)} من الإجمالي` : undefined} />
+            sub={`نسبة التأكيد: ${fmtPercent(confirmationRate)}`} />
         </div>
       </section>
 
