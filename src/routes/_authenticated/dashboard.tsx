@@ -189,15 +189,20 @@ function DashboardPage() {
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const adSpend = spendFiltered.reduce((s, t) => s + Number(t.amount || 0), 0);
   const netProfit = deliveredCommissions - adSpend;
-  const delivered = counts.delivered + counts.done;
-  const refunded = counts.refunded + counts.refund_request;
-  const shippedCount = counts.in_delivery + counts.delivered + counts.done + counts.refund_request + counts.refunded;
-  const deliveryRate = total > 0 ? delivered / total : 0;
-  const deliveryRateOfTotal = deliveryRate;
+  const delivered = (counts.delivered ?? 0) + (counts.done ?? 0);
+  const refunded = (counts.refunded ?? 0) + (counts.refund_request ?? 0);
+  const shippedCount =
+    (counts.in_delivery ?? 0) + (counts.delivered ?? 0) + (counts.done ?? 0) +
+    (counts.refund_request ?? 0) + (counts.refunded ?? 0);
+  const cancelledCount = counts.cancelled ?? 0;
+  const pendingCount = counts.pending ?? 0;
+  const deliveryRateOfTotal = total > 0 ? delivered / total : 0;
   const deliveryRateOfShipped = shippedCount > 0 ? delivered / shippedCount : 0;
-  const refundRate = total > 0 ? refunded / total : 0;
-  const cancelledCount = orders.filter((o) => String(o.status).toLowerCase() === "cancelled").length;
+  const deliveryRate = deliveryRateOfTotal;
+  // Refund rate is calculated against shipped orders (refunds can only come from shipped flow)
+  const refundRate = shippedCount > 0 ? refunded / shippedCount : 0;
   const cancellationRate = total > 0 ? cancelledCount / total : 0;
+  const confirmationRate = total > 0 ? shippedCount / total : 0;
   const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
   const realCpa = delivered > 0 ? adSpend / delivered : 0;
   const profitPerDelivered = delivered > 0 ? deliveredCommissions / delivered : 0;
@@ -209,7 +214,8 @@ function DashboardPage() {
   const inDeliveryCommissions = orders
     .filter((o) => o.status === "in_delivery")
     .reduce((s, o) => s + Number(o.commission || 0), 0);
-  const expectedProfit = netProfit + inDeliveryCommissions * deliveryRate;
+  // Expected profit = commissions from in_delivery + delivered + done (per spec)
+  const expectedProfit = deliveredCommissions + inDeliveryCommissions;
   const performanceTrend = growth(total, ordersPrevFiltered.length);
 
   // Previous period aggregates for comparison
