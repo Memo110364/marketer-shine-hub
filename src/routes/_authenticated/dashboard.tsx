@@ -433,12 +433,12 @@ function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <ExecKpi label="إجمالي الطلبات" value={fmtNumber(total)} icon={ShoppingBag} tone="default" />
-          <ExecKpi label="طلبات جديدة" value={fmtNumber(counts.pending)} icon={Clock} tone="info"
-            sub={total > 0 ? `${fmtPercent(counts.pending / total)} من الإجمالي` : undefined} />
-          <ExecKpi label="طلبات ملغاة قبل الشحن" value={fmtNumber(cancelledCount)} icon={XCircle} tone="destructive"
+          <ExecKpi label="طلبات جديدة (لم تُلغَ)" value={fmtNumber(pendingCount)} icon={Clock} tone="info"
+            sub={total > 0 ? `${fmtPercent(pendingCount / total)} من الإجمالي` : undefined} />
+          <ExecKpi label="ملغاة قبل الشحن" value={fmtNumber(cancelledCount)} icon={XCircle} tone="destructive"
             sub={`نسبة الإلغاء: ${fmtPercent(cancellationRate)}`} />
           <ExecKpi label="خرج للشحن" value={fmtNumber(shippedCount)} icon={Truck} tone="info"
-            sub={total > 0 ? `${fmtPercent(shippedCount / total)} من الإجمالي` : undefined} />
+            sub={`نسبة التأكيد: ${fmtPercent(confirmationRate)}`} />
         </div>
       </section>
 
