@@ -43,7 +43,7 @@ type OrderRow = {
 
 type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
 
-const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request"]);
+const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request", "cancelled"]);
 
 function daysBetween(from: string, to: string): number {
   const a = new Date(from).getTime();
