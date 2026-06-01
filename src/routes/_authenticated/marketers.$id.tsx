@@ -155,7 +155,10 @@ function MarketerDetails() {
   const netCommissions = orders
     .filter((o) => NET_PROFIT_STATUSES.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
-  const totalSpend = spend.reduce((s, t) => s + Number(t.amount || 0), 0);
+  // الإنفاق الإعلاني فقط (يستثني المرتبات) — يشمل Meta/TikTok/Easy Order/أخرى
+  const totalSpend = spend
+    .filter((t) => t.spend_type !== "salary")
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
   const periodProfit = netCommissions - totalSpend;
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;
