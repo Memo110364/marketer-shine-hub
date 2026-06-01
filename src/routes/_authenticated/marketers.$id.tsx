@@ -139,12 +139,24 @@ function MarketerDetails() {
     return a;
   }, {} as Record<OrderStatus, number>);
 
+  // Merged display groups
+  const mergedStatusGroups: Array<{ key: string; label: string; color: string; count: number }> = [
+    { key: "pending", label: "طلب جديد", color: "info", count: counts.pending },
+    { key: "cancelled", label: "ملغي قبل الشحن", color: "destructive", count: counts.cancelled },
+    { key: "in_delivery", label: "في الشحن", color: "warning", count: counts.in_delivery },
+    { key: "delivered", label: "تم التسليم", color: "success", count: counts.delivered + counts.done },
+    { key: "returned", label: "مرتجع بعد الشحن", color: "destructive", count: counts.refunded + counts.refund_request },
+  ];
+
   const total = orders.length;
+  const periodGrossCommissions = orders
+    .filter((o) => !COMMISSION_EXCLUDED.includes(o.status as OrderStatus))
+    .reduce((s, o) => s + Number(o.commission || 0), 0);
   const netCommissions = orders
     .filter((o) => NET_PROFIT_STATUSES.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const totalSpend = spend.reduce((s, t) => s + Number(t.amount || 0), 0);
-  const net = netCommissions - totalSpend;
+  const periodProfit = netCommissions - totalSpend;
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;
 
