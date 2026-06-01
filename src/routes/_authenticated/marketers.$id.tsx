@@ -139,12 +139,24 @@ function MarketerDetails() {
     return a;
   }, {} as Record<OrderStatus, number>);
 
+  // Merged display groups
+  const mergedStatusGroups: Array<{ key: string; label: string; color: string; count: number }> = [
+    { key: "pending", label: "طلب جديد", color: "info", count: counts.pending },
+    { key: "cancelled", label: "ملغي قبل الشحن", color: "destructive", count: counts.cancelled },
+    { key: "in_delivery", label: "في الشحن", color: "warning", count: counts.in_delivery },
+    { key: "delivered", label: "تم التسليم", color: "success", count: counts.delivered + counts.done },
+    { key: "returned", label: "مرتجع بعد الشحن", color: "destructive", count: counts.refunded + counts.refund_request },
+  ];
+
   const total = orders.length;
+  const periodGrossCommissions = orders
+    .filter((o) => !COMMISSION_EXCLUDED.includes(o.status as OrderStatus))
+    .reduce((s, o) => s + Number(o.commission || 0), 0);
   const netCommissions = orders
     .filter((o) => NET_PROFIT_STATUSES.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
   const totalSpend = spend.reduce((s, t) => s + Number(t.amount || 0), 0);
-  const net = netCommissions - totalSpend;
+  const periodProfit = netCommissions - totalSpend;
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;
 
@@ -363,15 +375,87 @@ function MarketerDetails() {
         </CardContent>
       </Card>
 
-      {/* Status counts only */}
+      {/* Period summary — same 5 KPIs but for selected date range */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingUp className="h-5 w-5 text-primary" />
+          <h3 className="font-display font-bold">ملخص الفترة المحددة</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <Card className="border-primary/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary"><ShoppingBag className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي الطلبات</div>
+              </div>
+              <div className="text-3xl font-display font-bold">{fmtNumber(total)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-primary/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary"><Package className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي القطع المباعة</div>
+              </div>
+              <div className="text-3xl font-display font-bold">{fmtNumber(totalPiecesInRange)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-success/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-success/15 text-success"><DollarSign className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي العمولات</div>
+              </div>
+              <div className="text-3xl font-display font-bold text-success">{fmtCurrency(periodGrossCommissions)}</div>
+            </CardContent>
+          </Card>
+          <Card className="border-warning/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-warning/15 text-warning-foreground"><Wallet className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">إجمالي الإنفاق الإعلاني</div>
+              </div>
+              <div className="text-3xl font-display font-bold text-warning-foreground">{fmtCurrency(totalSpend)}</div>
+            </CardContent>
+          </Card>
+          <Card className={periodProfit >= 0 ? "border-success/30" : "border-destructive/30"}>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`p-3 rounded-xl ${periodProfit >= 0 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div className="text-sm text-muted-foreground">صافي الربح</div>
+              </div>
+              <div className={`text-3xl font-display font-bold ${periodProfit >= 0 ? "text-success" : "text-destructive"}`}>
+                {fmtCurrency(periodProfit)}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Status counts — merged groups */}
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">عدد الطلبات حسب الحالة في الفترة</CardTitle></CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-center">
-            {ORDER_STATUS_KEYS.map((k) => (
-              <div key={k} className="rounded-lg border p-3">
-                <StatusBadge status={k} />
-                <div className="text-lg font-bold mt-2">{fmtNumber(counts[k])}</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-center">
+            {mergedStatusGroups.map((g) => (
+              <div key={g.key} className="rounded-lg border p-3">
+                <span
+                  className={
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium " +
+                    (g.color === "success"
+                      ? "bg-success/15 text-success"
+                      : g.color === "destructive"
+                      ? "bg-destructive/15 text-destructive"
+                      : g.color === "warning"
+                      ? "bg-warning/15 text-warning-foreground"
+                      : "bg-info/15 text-info")
+                  }
+                >
+                  {g.label}
+                </span>
+                <div className="text-lg font-bold mt-2">{fmtNumber(g.count)}</div>
               </div>
             ))}
           </div>
