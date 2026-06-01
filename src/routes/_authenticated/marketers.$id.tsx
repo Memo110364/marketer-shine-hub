@@ -404,9 +404,9 @@ function MarketerDetails() {
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-3 rounded-xl bg-success/15 text-success"><DollarSign className="h-5 w-5" /></div>
-                <div className="text-sm text-muted-foreground">إجمالي العمولات</div>
+                <div className="text-sm text-muted-foreground">الربح المحقق الفعلي</div>
               </div>
-              <div className="text-3xl font-display font-bold text-success">{fmtCurrency(periodGrossCommissions)}</div>
+              <div className="text-3xl font-display font-bold text-success">{fmtCurrency(netCommissions)}</div>
             </CardContent>
           </Card>
           <Card className="border-warning/30">
