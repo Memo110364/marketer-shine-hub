@@ -500,7 +500,7 @@ function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <MidKpi label="إجمالي الأرباح" value={fmtCurrency(grossProfit)} icon={DollarSign} tone="success" />
-          <MidKpi label="الإنفاق الإعلاني" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
+          <MidKpi label="إجمالي الإنفاق" value={fmtCurrency(adSpend)} icon={Wallet} tone="warning" />
           <MidKpi label="متوسط تكلفة الإعلان لكل طلب مشحون" value={fmtCurrency(avgAdCostPerShipped)} icon={Wallet} tone="warning" />
           <MidKpi label="الربح المحقق" value={fmtCurrency(deliveredCommissions)} icon={DollarSign} tone="success" />
           <MidKpi label="الربح المتوقع" value={fmtCurrency(expectedProfit)} icon={TrendingUp}
@@ -523,7 +523,7 @@ function DashboardPage() {
           <KpiCard label="متوسط التسليم يوميًا" value={fmtNumber(Math.round(avgDailyDelivered * 10) / 10)} icon={CheckCircle2} tone="success" />
           <KpiCard label="متوسط صافي الربح يوميًا" value={fmtCurrency(avgDailyNet)} icon={TrendingUp}
             tone={avgDailyNet >= 0 ? "success" : "destructive"} />
-          <KpiCard label="متوسط الإنفاق الإعلاني يوميًا" value={fmtCurrency(avgDailyAdSpend)} icon={Wallet} tone="warning" />
+          <KpiCard label="متوسط الإنفاق يوميًا" value={fmtCurrency(avgDailyAdSpend)} icon={Wallet} tone="warning" />
           <KpiCard label="متوسط نسبة التسليم" value={fmtPercent(deliveryRate)} icon={Percent} tone="success" />
         </div>
       </div>
@@ -727,7 +727,7 @@ function DashboardPage() {
                   <TableHead>تم التسليم</TableHead>
                   <TableHead>نسبة الإرجاع</TableHead>
                   <TableHead>إجمالي العمولات</TableHead>
-                  <TableHead>الإنفاق الإعلاني</TableHead>
+                  <TableHead>إجمالي الإنفاق</TableHead>
                   <TableHead>صافي الربح</TableHead>
                   <TableHead>متوسط طلبات/يوم</TableHead>
                   <TableHead>متوسط تسليم/يوم</TableHead>
