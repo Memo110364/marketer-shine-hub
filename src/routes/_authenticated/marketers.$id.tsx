@@ -155,7 +155,7 @@ function MarketerDetails() {
   const netCommissions = orders
     .filter((o) => NET_PROFIT_STATUSES.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
-  // إجمالي الإنفاق فقط (يستثني المرتبات) — يشمل Meta/TikTok/Easy Order/أخرى
+  // الإنفاق الإعلاني فقط (يستثني المرتبات) — يشمل Meta/TikTok/Easy Order/أخرى
   const totalSpend = spend
     .filter((t) => t.spend_type !== "salary")
     .reduce((s, t) => s + Number(t.amount || 0), 0);
@@ -272,7 +272,7 @@ function MarketerDetails() {
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild><Button><Plus className="h-4 w-4 ml-1" /> إضافة معاملة محفظة</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>إضافة معاملة إنفاق</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>إضافة معاملة إنفاق إعلاني</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div><Label>كود فوري</Label><Input value={fawry} onChange={(e) => setFawry(e.target.value)} dir="ltr" /></div>
               <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
@@ -416,7 +416,7 @@ function MarketerDetails() {
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-3 rounded-xl bg-warning/15 text-warning-foreground"><Wallet className="h-5 w-5" /></div>
-                <div className="text-sm text-muted-foreground">إجمالي الإنفاق</div>
+                <div className="text-sm text-muted-foreground">إجمالي الإنفاق الإعلاني</div>
               </div>
               <div className="text-3xl font-display font-bold text-warning-foreground">{fmtCurrency(totalSpend)}</div>
             </CardContent>
@@ -525,7 +525,7 @@ function MarketerDetails() {
 
 
       <Card>
-        <CardHeader><CardTitle className="text-base">معاملات الإنفاق في الفترة</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">معاملات الإنفاق الإعلاني في الفترة</CardTitle></CardHeader>
         <Table>
           <TableHeader><TableRow>
             <TableHead>التاريخ</TableHead><TableHead>المبلغ</TableHead>
