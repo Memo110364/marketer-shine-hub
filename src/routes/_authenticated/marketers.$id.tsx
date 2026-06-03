@@ -63,7 +63,7 @@ function MarketerDetails() {
 
   const [infoOpen, setInfoOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [expensesOpen, setExpensesOpen] = useState(false);
+  
   const [amount, setAmount] = useState("");
   const [fawry, setFawry] = useState("");
   const [spendType, setSpendType] = useState<SpendType>("meta_ads");
@@ -257,41 +257,11 @@ function MarketerDetails() {
           <div className="text-sm text-muted-foreground mt-1">كود: {m.marketer_code}</div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Dialog open={expensesOpen} onOpenChange={setExpensesOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline"><Wallet className="h-4 w-4 ml-1" /> المصروفات</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader><DialogTitle>معاملات الإنفاق الإعلاني في الفترة</DialogTitle></DialogHeader>
-              <div className="text-xs text-muted-foreground -mt-2">
-                الفترة: {fromDate} → {toDate}
-              </div>
-              <div className="max-h-[60vh] overflow-auto">
-                <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>التاريخ</TableHead>
-                    <TableHead>النوع</TableHead>
-                    <TableHead>المبلغ</TableHead>
-                    <TableHead>كود فوري</TableHead>
-                    <TableHead>ملاحظات</TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {spend.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
-                    ) : spend.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell>{fmtDate(t.transaction_date)}</TableCell>
-                        <TableCell>{SPEND_TYPE_LABELS[t.spend_type as SpendType] ?? t.spend_type}</TableCell>
-                        <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
-                        <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
-                        <TableCell>{t.notes ?? "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button variant="outline" asChild>
+            <Link to="/marketers/$id/expenses" params={{ id }}>
+              <Wallet className="h-4 w-4 ml-1" /> المصروفات
+            </Link>
+          </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 ml-1" /> إضافة معاملة محفظة</Button></DialogTrigger>
             <DialogContent>

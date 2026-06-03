@@ -29,6 +29,7 @@ import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_a
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
 import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
 import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts_.connect-meta'
+import { Route as AuthenticatedMarketersIdExpensesRouteImport } from './routes/_authenticated/marketers.$id.expenses'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -137,6 +138,12 @@ const AuthenticatedAdAccountsConnectMetaRoute =
     path: '/ad-accounts/connect-meta',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedMarketersIdExpensesRoute =
+  AuthenticatedMarketersIdExpensesRouteImport.update({
+    id: '/expenses',
+    path: '/expenses',
+    getParentRoute: () => AuthenticatedMarketersIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -150,7 +157,7 @@ export interface FileRoutesByFullPath {
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
   '/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
-  '/marketers/$id': typeof AuthenticatedMarketersIdRoute
+  '/marketers/$id': typeof AuthenticatedMarketersIdRouteWithChildren
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/products/$name': typeof AuthenticatedProductsNameRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -170,7 +178,7 @@ export interface FileRoutesByTo {
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
   '/ad-accounts/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
-  '/marketers/$id': typeof AuthenticatedMarketersIdRoute
+  '/marketers/$id': typeof AuthenticatedMarketersIdRouteWithChildren
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/products/$name': typeof AuthenticatedProductsNameRoute
@@ -178,6 +186,7 @@ export interface FileRoutesByTo {
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -193,7 +202,7 @@ export interface FileRoutesById {
   '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
   '/_authenticated/ad-accounts_/connect-meta': typeof AuthenticatedAdAccountsConnectMetaRoute
-  '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRoute
+  '/_authenticated/marketers/$id': typeof AuthenticatedMarketersIdRouteWithChildren
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/_authenticated/products/$name': typeof AuthenticatedProductsNameRoute
@@ -201,6 +210,7 @@ export interface FileRoutesById {
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -224,6 +234,7 @@ export interface FileRouteTypes {
     | '/marketers/'
     | '/orders/'
     | '/users/'
+    | '/marketers/$id/expenses'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/marketers'
     | '/orders'
     | '/users'
+    | '/marketers/$id/expenses'
   id:
     | '__root__'
     | '/'
@@ -266,6 +278,7 @@ export interface FileRouteTypes {
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
     | '/_authenticated/users/'
+    | '/_authenticated/marketers/$id/expenses'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -418,6 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdAccountsConnectMetaRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/marketers/$id/expenses': {
+      id: '/_authenticated/marketers/$id/expenses'
+      path: '/expenses'
+      fullPath: '/marketers/$id/expenses'
+      preLoaderRoute: typeof AuthenticatedMarketersIdExpensesRouteImport
+      parentRoute: typeof AuthenticatedMarketersIdRoute
+    }
   }
 }
 
@@ -449,6 +469,21 @@ const AuthenticatedProductsRouteWithChildren =
     AuthenticatedProductsRouteChildren,
   )
 
+interface AuthenticatedMarketersIdRouteChildren {
+  AuthenticatedMarketersIdExpensesRoute: typeof AuthenticatedMarketersIdExpensesRoute
+}
+
+const AuthenticatedMarketersIdRouteChildren: AuthenticatedMarketersIdRouteChildren =
+  {
+    AuthenticatedMarketersIdExpensesRoute:
+      AuthenticatedMarketersIdExpensesRoute,
+  }
+
+const AuthenticatedMarketersIdRouteWithChildren =
+  AuthenticatedMarketersIdRoute._addFileChildren(
+    AuthenticatedMarketersIdRouteChildren,
+  )
+
 interface AuthenticatedRouteChildren {
   AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
   AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
@@ -457,7 +492,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRouteWithChildren
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
   AuthenticatedAdAccountsConnectMetaRoute: typeof AuthenticatedAdAccountsConnectMetaRoute
-  AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
+  AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRouteWithChildren
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -472,7 +507,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,
   AuthenticatedAdAccountsConnectMetaRoute:
     AuthenticatedAdAccountsConnectMetaRoute,
-  AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
+  AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRouteWithChildren,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
