@@ -63,6 +63,7 @@ function MarketerDetails() {
 
   const [infoOpen, setInfoOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [expensesOpen, setExpensesOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [fawry, setFawry] = useState("");
   const [spendType, setSpendType] = useState<SpendType>("meta_ads");
@@ -255,34 +256,71 @@ function MarketerDetails() {
           </div>
           <div className="text-sm text-muted-foreground mt-1">كود: {m.marketer_code}</div>
         </div>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 ml-1" /> إضافة معاملة محفظة</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>إضافة معاملة إنفاق إعلاني</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>كود فوري</Label><Input value={fawry} onChange={(e) => setFawry(e.target.value)} dir="ltr" /></div>
-              <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-              <div>
-                <Label>نوع الصرف</Label>
-                <Select value={spendType} onValueChange={(v) => setSpendType(v as SpendType)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(SPEND_TYPE_LABELS).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Dialog open={expensesOpen} onOpenChange={setExpensesOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline"><Wallet className="h-4 w-4 ml-1" /> المصروفات</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader><DialogTitle>معاملات الإنفاق الإعلاني في الفترة</DialogTitle></DialogHeader>
+              <div className="text-xs text-muted-foreground -mt-2">
+                الفترة: {fromDate} → {toDate}
               </div>
-              <div><Label>التاريخ</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-              <div><Label>ملاحظات</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-            </div>
-            <DialogFooter>
-              <Button onClick={addSpend} disabled={busy}>
-                {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}حفظ
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <div className="max-h-[60vh] overflow-auto">
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>التاريخ</TableHead>
+                    <TableHead>النوع</TableHead>
+                    <TableHead>المبلغ</TableHead>
+                    <TableHead>كود فوري</TableHead>
+                    <TableHead>ملاحظات</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {spend.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
+                    ) : spend.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>{fmtDate(t.transaction_date)}</TableCell>
+                        <TableCell>{SPEND_TYPE_LABELS[t.spend_type as SpendType] ?? t.spend_type}</TableCell>
+                        <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
+                        <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
+                        <TableCell>{t.notes ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 ml-1" /> إضافة معاملة محفظة</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>إضافة معاملة إنفاق إعلاني</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div><Label>كود فوري</Label><Input value={fawry} onChange={(e) => setFawry(e.target.value)} dir="ltr" /></div>
+                <div><Label>المبلغ</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+                <div>
+                  <Label>نوع الصرف</Label>
+                  <Select value={spendType} onValueChange={(v) => setSpendType(v as SpendType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SPEND_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>التاريخ</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+                <div><Label>ملاحظات</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+              </div>
+              <DialogFooter>
+                <Button onClick={addSpend} disabled={busy}>
+                  {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}حفظ
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Lifetime — 4 big cards */}
@@ -507,29 +545,6 @@ function MarketerDetails() {
             </>
           )}
         </CardContent>
-      </Card>
-
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">معاملات الإنفاق الإعلاني في الفترة</CardTitle></CardHeader>
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>التاريخ</TableHead><TableHead>المبلغ</TableHead>
-            <TableHead>كود فوري</TableHead><TableHead>ملاحظات</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {spend.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
-            ) : spend.map((t) => (
-              <TableRow key={t.id}>
-                <TableCell>{fmtDate(t.transaction_date)}</TableCell>
-                <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
-                <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
-                <TableCell>{t.notes ?? "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
       </Card>
     </div>
   );
