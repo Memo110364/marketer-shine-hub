@@ -546,29 +546,6 @@ function MarketerDetails() {
           )}
         </CardContent>
       </Card>
-
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">معاملات الإنفاق الإعلاني في الفترة</CardTitle></CardHeader>
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead>التاريخ</TableHead><TableHead>المبلغ</TableHead>
-            <TableHead>كود فوري</TableHead><TableHead>ملاحظات</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {spend.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
-            ) : spend.map((t) => (
-              <TableRow key={t.id}>
-                <TableCell>{fmtDate(t.transaction_date)}</TableCell>
-                <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
-                <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
-                <TableCell>{t.notes ?? "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
     </div>
   );
 }
