@@ -63,7 +63,7 @@ function MarketerDetails() {
 
   const [infoOpen, setInfoOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [expensesOpen, setExpensesOpen] = useState(false);
+  
   const [amount, setAmount] = useState("");
   const [fawry, setFawry] = useState("");
   const [spendType, setSpendType] = useState<SpendType>("meta_ads");
