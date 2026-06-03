@@ -22,29 +22,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Parse raw_data.Products like:
-//   "1 * ترنج مارسيليا جيب [بيج-XXL]"
-//   "2 * تيشيرت [اسود-L] , 1 * شورت [ازرق-M]"
-// Returns array of { name, qty } where size/color in [...] is stripped.
+import { parseProductField } from "@/lib/parse-product";
+
+// Use shared parser (same as products performance page) to ensure consistent
+// product name splitting. Returns { name, qty } aggregated by base product name.
 function parseProducts(raw: unknown): Array<{ name: string; qty: number }> {
-  if (!raw || typeof raw !== "string") return [];
-  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
-  const out: Array<{ name: string; qty: number }> = [];
-  for (const part of parts) {
-    const starIdx = part.indexOf("*");
-    let qty = 1;
-    let rest = part;
-    if (starIdx !== -1) {
-      const q = parseInt(part.slice(0, starIdx).trim(), 10);
-      if (!isNaN(q) && q > 0) qty = q;
-      rest = part.slice(starIdx + 1).trim();
-    }
-    // Remove [...] groups (size/color), keep anything else (incl. text after ])
-    const cleaned = rest.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
-    if (!cleaned) continue;
-    out.push({ name: cleaned, qty });
-  }
-  return out;
+  return parseProductField(raw).map((it) => ({
+    name: it.base_product_name,
+    qty: it.quantity,
+  }));
 }
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
