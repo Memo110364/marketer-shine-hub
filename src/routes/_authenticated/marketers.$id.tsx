@@ -149,6 +149,13 @@ function MarketerDetails() {
   const periodProfit = netCommissions - totalSpend;
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;
+  // الطلبات التي خرجت للشحن (تستثني الطلبات الجديدة والملغاة قبل الشحن)
+  const shippedOrders = total - counts.pending - counts.cancelled;
+  const shippedRate = total > 0 ? shippedOrders / total : 0;
+  const totalRateOfLifetime = allOrders.length > 0 ? total / allOrders.length : 0;
+  const netRateOfGross = periodGrossCommissions > 0 ? netCommissions / periodGrossCommissions : 0;
+  const spendRateOfNet = netCommissions > 0 ? totalSpend / netCommissions : 0;
+  const profitMargin = netCommissions > 0 ? periodProfit / netCommissions : 0;
 
   // lifetime
   const lifetimeGross = allOrders
@@ -378,7 +385,7 @@ function MarketerDetails() {
           <TrendingUp className="h-5 w-5 text-primary" />
           <h3 className="font-display font-bold">ملخص الفترة المحددة</h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="border-primary/30">
             <CardContent className="p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -386,6 +393,17 @@ function MarketerDetails() {
                 <div className="text-sm text-muted-foreground">إجمالي الطلبات</div>
               </div>
               <div className="text-3xl font-display font-bold">{fmtNumber(total)}</div>
+              <div className="text-xs text-muted-foreground mt-1">{fmtPercent(totalRateOfLifetime)} من الإجمالي</div>
+            </CardContent>
+          </Card>
+          <Card className="border-info/30">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-xl bg-info/15 text-info"><ShoppingBag className="h-5 w-5" /></div>
+                <div className="text-sm text-muted-foreground">طلبات خرجت للشحن</div>
+              </div>
+              <div className="text-3xl font-display font-bold">{fmtNumber(shippedOrders)}</div>
+              <div className="text-xs text-muted-foreground mt-1">{fmtPercent(shippedRate)} من الطلبات</div>
             </CardContent>
           </Card>
           <Card className="border-primary/30">
@@ -395,6 +413,9 @@ function MarketerDetails() {
                 <div className="text-sm text-muted-foreground">إجمالي القطع المباعة</div>
               </div>
               <div className="text-3xl font-display font-bold">{fmtNumber(totalPiecesInRange)}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                متوسط {total > 0 ? (totalPiecesInRange / total).toFixed(2) : "0"} قطعة/طلب
+              </div>
             </CardContent>
           </Card>
           <Card className="border-success/30">
@@ -404,6 +425,7 @@ function MarketerDetails() {
                 <div className="text-sm text-muted-foreground">الربح المحقق الفعلي</div>
               </div>
               <div className="text-3xl font-display font-bold text-success">{fmtCurrency(netCommissions)}</div>
+              <div className="text-xs text-muted-foreground mt-1">{fmtPercent(netRateOfGross)} من العمولات</div>
             </CardContent>
           </Card>
           <Card className="border-warning/30">
@@ -413,6 +435,7 @@ function MarketerDetails() {
                 <div className="text-sm text-muted-foreground">إجمالي الإنفاق الإعلاني</div>
               </div>
               <div className="text-3xl font-display font-bold text-warning-foreground">{fmtCurrency(totalSpend)}</div>
+              <div className="text-xs text-muted-foreground mt-1">{fmtPercent(spendRateOfNet)} من الربح</div>
             </CardContent>
           </Card>
           <Card className={periodProfit >= 0 ? "border-success/30" : "border-destructive/30"}>
@@ -426,6 +449,7 @@ function MarketerDetails() {
               <div className={`text-3xl font-display font-bold ${periodProfit >= 0 ? "text-success" : "text-destructive"}`}>
                 {fmtCurrency(periodProfit)}
               </div>
+              <div className="text-xs text-muted-foreground mt-1">هامش {fmtPercent(profitMargin)}</div>
             </CardContent>
           </Card>
         </div>
