@@ -149,6 +149,14 @@ function MarketerDetails() {
   const periodProfit = netCommissions - totalSpend;
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;
+  // الطلبات التي خرجت للشحن (تستثني الطلبات الجديدة والملغاة قبل الشحن)
+  const shippedOrders = total - counts.pending - counts.cancelled;
+  const shippedRate = total > 0 ? shippedOrders / total : 0;
+  const totalRateOfLifetime = allOrders.length > 0 ? total / allOrders.length : 0;
+  const avgPiecesPerOrder = total > 0 ? totalPiecesInRange / total : 0;
+  const netRateOfGross = periodGrossCommissions > 0 ? netCommissions / periodGrossCommissions : 0;
+  const spendRateOfNet = netCommissions > 0 ? totalSpend / netCommissions : 0;
+  const profitMargin = netCommissions > 0 ? periodProfit / netCommissions : 0;
 
   // lifetime
   const lifetimeGross = allOrders
