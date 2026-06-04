@@ -22,7 +22,7 @@ const SPEND_TYPE_LABELS = {
 } as const;
 type SpendType = keyof typeof SPEND_TYPE_LABELS;
 
-export const Route = createFileRoute("/_authenticated/marketers/$id/expenses")({
+export const Route = createFileRoute("/_authenticated/marketers/$id_/expenses")({
   component: ExpensesPage,
 });
 
