@@ -67,6 +67,69 @@ export type Database = {
           },
         ]
       }
+      ad_spend_change_requests: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          marketer_id: string
+          proposed_data: Json | null
+          reason: string | null
+          requested_by: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          transaction_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          marketer_id: string
+          proposed_data?: Json | null
+          reason?: string | null
+          requested_by: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          transaction_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          marketer_id?: string
+          proposed_data?: Json | null
+          reason?: string | null
+          requested_by?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_spend_change_requests_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_spend_change_requests_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "ad_spend_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_spend_daily: {
         Row: {
           ad_account_id: string | null
