@@ -104,7 +104,7 @@ function ConnectMetaWizard() {
     setLoading(true);
     setLoadingMessage("جاري فتح Meta...");
     try {
-      const { authorizeUrl } = await startFn({ data: {} });
+      const { authorizeUrl } = await startFn();
       window.location.href = authorizeUrl;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "تعذر بدء الربط");
