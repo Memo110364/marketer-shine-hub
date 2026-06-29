@@ -488,13 +488,15 @@ function StepStart({
 /* ---------------- Step 5 ---------------- */
 
 function StepSelectAccount({
-  accounts, selectedId, onSelect, onConfirm, onBack,
+  accounts, selectedId, onSelect, onConfirm, onBack, loading, confirming,
 }: {
   accounts: MockAccount[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onConfirm: () => void;
   onBack: () => void;
+  loading?: boolean;
+  confirming?: boolean;
 }) {
   return (
     <Card>
@@ -505,6 +507,18 @@ function StepSelectAccount({
             هذه الحسابات الإعلانية المتاحة للربط من حساب Meta الخاص بك
           </p>
         </div>
+
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            جاري التحميل...
+          </div>
+        )}
+        {!loading && accounts.length === 0 && (
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            لا توجد حسابات إعلانية متاحة على هذا الحساب
+          </div>
+        )}
 
         <div className="grid gap-3">
           {accounts.map((a) => {
