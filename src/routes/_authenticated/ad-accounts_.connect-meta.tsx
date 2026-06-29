@@ -54,30 +54,85 @@ const MOCK_ACCOUNTS: MockAccount[] = [
 
 function ConnectMetaWizard() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const search = Route.useSearch();
+  const [step, setStep] = useState(search.step ?? 1);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [accounts, setAccounts] = useState<MockAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const oauthState = search.state ?? null;
 
-  const selectedAccount = MOCK_ACCOUNTS.find((a) => a.id === selectedAccountId) ?? null;
+  const startFn = useServerFn(startMetaOAuth);
+  const listFn = useServerFn(listMetaAccounts);
+  const linkFn = useServerFn(linkMetaAccount);
+
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
 
   const goNext = () => setStep((s) => Math.min(6, s + 1));
   const goBack = () => setStep((s) => Math.max(1, s - 1));
 
+  // Returning from Meta callback → step=5 + state in the URL: fetch accounts.
+  useEffect(() => {
+    if (search.step === 5 && oauthState && accounts.length === 0 && !loading) {
+      void (async () => {
+        setLoading(true);
+        setLoadingMessage("جلب الحسابات الإعلانية من Meta...");
+        try {
+          const res = await listFn({ data: { state: oauthState } });
+          setAccounts(
+            res.accounts.map((a, i) => ({
+              id: String(i),
+              name: a.name,
+              externalId: a.externalId,
+              currency: a.currency,
+              business: a.business,
+            })),
+          );
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "تعذر جلب الحسابات");
+          setStep(4);
+        } finally {
+          setLoading(false);
+          setLoadingMessage("");
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.step, oauthState]);
+
   const startConnection = async () => {
     setLoading(true);
-    const phases = [
-      "جاري فتح Meta...",
-      "تسجيل الدخول...",
-      "جلب الحسابات الإعلانية...",
-    ];
-    for (const p of phases) {
-      setLoadingMessage(p);
-      await new Promise((r) => setTimeout(r, 900));
+    setLoadingMessage("جاري فتح Meta...");
+    try {
+      const { authorizeUrl } = await startFn({ data: {} });
+      window.location.href = authorizeUrl;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "تعذر بدء الربط");
+      setLoading(false);
+      setLoadingMessage("");
     }
-    setLoading(false);
-    setStep(5);
   };
+
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedAccount || !oauthState) throw new Error("لا يوجد حساب محدد");
+      return linkFn({
+        data: {
+          state: oauthState,
+          externalId: selectedAccount.externalId,
+          name: selectedAccount.name,
+          currency: selectedAccount.currency,
+          business: selectedAccount.business,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("تم ربط الحساب بنجاح");
+      setStep(6);
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب"),
+  });
 
   return (
     <TooltipProvider delayDuration={150}>
