@@ -88,19 +88,24 @@ export const Route = createFileRoute("/api/public/meta/callback")({
           ? new Date(Date.now() + longJson.expires_in * 1000).toISOString()
           : null;
 
-        // 3) Persist pending connection (state carries the marketer/user id)
-        try {
-          const { supabaseAdmin } = await import(
-            "@/integrations/supabase/client.server"
-          );
-          await supabaseAdmin.from("integration_sync_logs").insert({
-            platform: "meta",
-            status: "success",
-            error_message: `oauth_callback state=${state} expires_at=${expiresAt ?? "n/a"} token=${accessToken ? "yes" : "no"}`,
-          });
-        } catch {
-          // Logging is best-effort; do not block the redirect.
+        // 3) Save the long-lived token against the state row created when the
+        //    wizard kicked off OAuth. The next server fn reads it back.
+        const { supabaseAdmin } = await import(
+          "@/integrations/supabase/client.server"
+        );
+        const { error: updateErr } = await supabaseAdmin
+          .from("meta_oauth_sessions")
+          .update({ access_token: accessToken, expires_at: expiresAt })
+          .eq("state", state);
+        if (updateErr) {
+          throw fail(updateErr.message);
         }
+
+        await supabaseAdmin.from("integration_sync_logs").insert({
+          platform: "meta",
+          status: "success",
+          error_message: `oauth_callback ok expires_at=${expiresAt ?? "n/a"}`,
+        });
 
         // 4) Hand off to the connect wizard to pick which ad account to link.
         throw redirect({
