@@ -46,11 +46,6 @@ type MockAccount = {
   business: string;
 };
 
-const MOCK_ACCOUNTS: MockAccount[] = [
-  { id: "1", name: "Marsilia Brand - Main", externalId: "act_103928374562", currency: "EGP", business: "Marsilia Trading" },
-  { id: "2", name: "American Eagle EG", externalId: "act_948372615028", currency: "EGP", business: "AE Egypt BM" },
-  { id: "3", name: "Soft Wear - Performance", externalId: "act_558392017463", currency: "USD", business: "Soft Wear Ltd" },
-];
 
 function ConnectMetaWizard() {
   const navigate = useNavigate();
