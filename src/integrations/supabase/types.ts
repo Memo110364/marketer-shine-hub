@@ -17,8 +17,10 @@ export type Database = {
       ad_accounts: {
         Row: {
           access_status: string | null
+          access_token: string | null
           account_name: string | null
           ad_account_id: string | null
+          business_name: string | null
           connection_status: string
           created_at: string
           currency: string | null
@@ -27,12 +29,15 @@ export type Database = {
           last_sync_at: string | null
           marketer_id: string | null
           platform: Database["public"]["Enums"]["ad_platform"]
+          token_expires_at: string | null
           updated_at: string
         }
         Insert: {
           access_status?: string | null
+          access_token?: string | null
           account_name?: string | null
           ad_account_id?: string | null
+          business_name?: string | null
           connection_status?: string
           created_at?: string
           currency?: string | null
@@ -41,12 +46,15 @@ export type Database = {
           last_sync_at?: string | null
           marketer_id?: string | null
           platform?: Database["public"]["Enums"]["ad_platform"]
+          token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
           access_status?: string | null
+          access_token?: string | null
           account_name?: string | null
           ad_account_id?: string | null
+          business_name?: string | null
           connection_status?: string
           created_at?: string
           currency?: string | null
@@ -55,6 +63,7 @@ export type Database = {
           last_sync_at?: string | null
           marketer_id?: string | null
           platform?: Database["public"]["Enums"]["ad_platform"]
+          token_expires_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -401,6 +410,30 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      meta_oauth_sessions: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          state: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          state: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          state?: string
+          user_id?: string
         }
         Relationships: []
       }
