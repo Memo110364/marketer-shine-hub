@@ -94,14 +94,9 @@ export const Route = createFileRoute("/api/public/meta/callback")({
             "@/integrations/supabase/client.server"
           );
           await supabaseAdmin.from("integration_sync_logs").insert({
+            platform: "meta",
             status: "success",
-            metadata: {
-              provider: "meta",
-              event: "oauth_callback_received",
-              state,
-              expires_at: expiresAt,
-              has_token: Boolean(accessToken),
-            },
+            error_message: `oauth_callback state=${state} expires_at=${expiresAt ?? "n/a"} token=${accessToken ? "yes" : "no"}`,
           });
         } catch {
           // Logging is best-effort; do not block the redirect.
