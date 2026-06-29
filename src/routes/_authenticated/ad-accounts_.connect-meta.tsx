@@ -571,7 +571,8 @@ function StepSelectAccount({
             <ChevronRight className="ml-1 h-4 w-4" />
             العودة
           </Button>
-          <Button size="lg" onClick={onConfirm} disabled={!selectedId} className="min-w-40">
+          <Button size="lg" onClick={onConfirm} disabled={!selectedId || confirming} className="min-w-40">
+            {confirming ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
             تأكيد الربط
             <ChevronLeft className="mr-1 h-4 w-4" />
           </Button>
