@@ -1,5 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +15,17 @@ import {
   ArrowRight, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  startMetaOAuth,
+  listMetaAccounts,
+  linkMetaAccount,
+} from "@/lib/meta-oauth.functions";
 
 export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    step: typeof s.step === "string" ? Number(s.step) : undefined,
+    state: typeof s.state === "string" ? s.state : undefined,
+  }),
   component: ConnectMetaWizard,
 });
 
