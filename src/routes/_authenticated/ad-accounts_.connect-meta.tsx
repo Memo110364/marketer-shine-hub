@@ -172,11 +172,13 @@ function ConnectMetaWizard() {
         )}
         {step === 5 && (
           <StepSelectAccount
-            accounts={MOCK_ACCOUNTS}
+            accounts={accounts}
+            loading={loading}
+            confirming={confirmMutation.isPending}
             selectedId={selectedAccountId}
             onSelect={setSelectedAccountId}
-            onConfirm={goNext}
-            onBack={goBack}
+            onConfirm={() => confirmMutation.mutate()}
+            onBack={() => setStep(4)}
           />
         )}
         {step === 6 && selectedAccount && (
