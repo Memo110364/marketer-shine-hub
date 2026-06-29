@@ -460,28 +460,33 @@ function MarketerDetails() {
         <CardHeader className="pb-3"><CardTitle className="text-base">عدد الطلبات حسب الحالة في الفترة</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-center">
-            {mergedStatusGroups.map((g) => (
-              <div key={g.key} className="rounded-lg border p-3">
-                <span
-                  className={
-                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium " +
-                    (g.color === "success"
-                      ? "bg-success/15 text-success"
-                      : g.color === "destructive"
-                      ? "bg-destructive/15 text-destructive"
-                      : g.color === "warning"
-                      ? "bg-warning/15 text-warning-foreground"
-                      : "bg-info/15 text-info")
-                  }
-                >
-                  {g.label}
-                </span>
-                <div className="text-lg font-bold mt-2">{fmtNumber(g.count)}</div>
-              </div>
-            ))}
+            {mergedStatusGroups.map((g) => {
+              const pct = total > 0 ? g.count / total : 0;
+              return (
+                <div key={g.key} className="rounded-lg border p-3">
+                  <span
+                    className={
+                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium " +
+                      (g.color === "success"
+                        ? "bg-success/15 text-success"
+                        : g.color === "destructive"
+                        ? "bg-destructive/15 text-destructive"
+                        : g.color === "warning"
+                        ? "bg-warning/15 text-warning-foreground"
+                        : "bg-info/15 text-info")
+                    }
+                  >
+                    {g.label}
+                  </span>
+                  <div className="text-lg font-bold mt-2">{fmtNumber(g.count)}</div>
+                  <div className="text-xs text-muted-foreground">{fmtPercent(pct)}</div>
+                </div>
+              );
+            })}
           </div>
           <div className="text-sm text-muted-foreground mt-4">
-            معدل التسليم: <span className="font-medium text-foreground">{fmtPercent(deliveryRate)}</span>
+            معدل التسليم: <span className="font-medium text-foreground">{fmtPercent(shippedOrders > 0 ? delivered / shippedOrders : 0)}</span>
+            <span className="text-xs text-muted-foreground mr-1">من الطلبات التي خرجت للشحن</span>
           </div>
         </CardContent>
       </Card>
