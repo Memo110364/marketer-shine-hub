@@ -55,7 +55,7 @@ const MOCK_ACCOUNTS: MockAccount[] = [
 function ConnectMetaWizard() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const [step, setStep] = useState(search.step ?? 1);
+  const [step, setStep] = useState<number>(search.step ?? 1);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [accounts, setAccounts] = useState<MockAccount[]>([]);
