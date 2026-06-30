@@ -14,10 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_account_secrets: {
+        Row: {
+          access_token: string
+          ad_account_id: string
+          created_at: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          ad_account_id: string
+          created_at?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          ad_account_id?: string
+          created_at?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_account_secrets_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: true
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_accounts: {
         Row: {
           access_status: string | null
-          access_token: string | null
           account_name: string | null
           ad_account_id: string | null
           business_name: string | null
@@ -29,12 +60,10 @@ export type Database = {
           last_sync_at: string | null
           marketer_id: string | null
           platform: Database["public"]["Enums"]["ad_platform"]
-          token_expires_at: string | null
           updated_at: string
         }
         Insert: {
           access_status?: string | null
-          access_token?: string | null
           account_name?: string | null
           ad_account_id?: string | null
           business_name?: string | null
@@ -46,12 +75,10 @@ export type Database = {
           last_sync_at?: string | null
           marketer_id?: string | null
           platform?: Database["public"]["Enums"]["ad_platform"]
-          token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
           access_status?: string | null
-          access_token?: string | null
           account_name?: string | null
           ad_account_id?: string | null
           business_name?: string | null
@@ -63,7 +90,6 @@ export type Database = {
           last_sync_at?: string | null
           marketer_id?: string | null
           platform?: Database["public"]["Enums"]["ad_platform"]
-          token_expires_at?: string | null
           updated_at?: string
         }
         Relationships: [
