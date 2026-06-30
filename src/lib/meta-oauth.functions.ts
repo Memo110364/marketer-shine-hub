@@ -201,7 +201,7 @@ export const listMetaAccounts = createServerFn({ method: "POST" })
     if (!res.ok) throw new Error(json.error?.message ?? "Meta API error");
 
     return {
-      accounts: (json.data ?? []).map((a) => ({
+      accounts: accountsArr.map((a) => ({
         externalId: `act_${a.account_id}`,
         name: a.name,
         currency: a.currency,
