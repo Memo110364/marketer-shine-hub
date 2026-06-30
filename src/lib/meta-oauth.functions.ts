@@ -138,8 +138,6 @@ export const linkMetaAccount = createServerFn({ method: "POST" })
       account_name: data.name,
       business_name: data.business,
       currency: data.currency,
-      access_token: session.access_token,
-      token_expires_at: session.expires_at,
       access_status: "active",
       connection_status: "connected",
     };
@@ -161,6 +159,16 @@ export const linkMetaAccount = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       adAccountId = inserted.id;
     }
+
+    // Store sensitive OAuth token in the admin-only secrets table.
+    const { error: secretErr } = await supabaseAdmin
+      .from("ad_account_secrets")
+      .upsert({
+        ad_account_id: adAccountId,
+        access_token: session.access_token,
+        token_expires_at: session.expires_at,
+      });
+    if (secretErr) throw new Error(secretErr.message);
 
     // Consume the state row so it cannot be replayed.
     await supabaseAdmin
