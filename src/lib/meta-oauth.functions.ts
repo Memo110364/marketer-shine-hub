@@ -73,8 +73,90 @@ export const listMetaAccounts = createServerFn({ method: "POST" })
     url.searchParams.set("access_token", session.access_token);
     url.searchParams.set("limit", "200");
 
+    const debugUrl = url
+      .toString()
+      .replace(session.access_token, "***REDACTED***");
+    console.log("[listMetaAccounts] 1. endpoint:", debugUrl);
+    console.log(
+      "[listMetaAccounts] token length:",
+      session.access_token.length,
+    );
+
+    // 2. inspect token scopes via debug_token
+    try {
+      const appId = process.env.META_APP_ID;
+      const appSecret = process.env.META_APP_SECRET;
+      if (appId && appSecret) {
+        const dbgUrl = new URL(
+          "https://graph.facebook.com/v21.0/debug_token",
+        );
+        dbgUrl.searchParams.set("input_token", session.access_token);
+        dbgUrl.searchParams.set(
+          "access_token",
+          `${appId}|${appSecret}`,
+        );
+        const dbgRes = await fetch(dbgUrl.toString());
+        const dbgJson = await dbgRes.json();
+        console.log(
+          "[listMetaAccounts] 2. debug_token status:",
+          dbgRes.status,
+        );
+        console.log(
+          "[listMetaAccounts] 2. debug_token response:",
+          JSON.stringify(dbgJson),
+        );
+        console.log(
+          "[listMetaAccounts] 2. scopes:",
+          JSON.stringify(dbgJson?.data?.scopes),
+        );
+        console.log(
+          "[listMetaAccounts] 2. granular_scopes:",
+          JSON.stringify(dbgJson?.data?.granular_scopes),
+        );
+      } else {
+        console.log(
+          "[listMetaAccounts] 2. skipped — META_APP_ID/SECRET missing",
+        );
+      }
+    } catch (e) {
+      console.log("[listMetaAccounts] 2. debug_token threw:", String(e));
+    }
+
+    // 2b. /me/permissions
+    try {
+      const permUrl = new URL(
+        "https://graph.facebook.com/v21.0/me/permissions",
+      );
+      permUrl.searchParams.set("access_token", session.access_token);
+      const permRes = await fetch(permUrl.toString());
+      const permJson = await permRes.json();
+      console.log(
+        "[listMetaAccounts] 2b. /me/permissions status:",
+        permRes.status,
+      );
+      console.log(
+        "[listMetaAccounts] 2b. /me/permissions response:",
+        JSON.stringify(permJson),
+      );
+      const missing = (permJson?.data ?? []).filter(
+        (p: { status?: string }) => p.status !== "granted",
+      );
+      if (missing.length > 0) {
+        console.log(
+          "[listMetaAccounts] 2b. MISSING/DECLINED permissions:",
+          JSON.stringify(missing),
+        );
+      }
+    } catch (e) {
+      console.log("[listMetaAccounts] 2b. permissions threw:", String(e));
+    }
+
     const res = await fetch(url.toString());
-    const json = (await res.json()) as {
+    const rawText = await res.text();
+    console.log("[listMetaAccounts] 5. response status:", res.status);
+    console.log("[listMetaAccounts] 3. raw response:", rawText);
+
+    let json: {
       data?: Array<{
         account_id: string;
         name: string;
@@ -82,12 +164,44 @@ export const listMetaAccounts = createServerFn({ method: "POST" })
         account_status?: number;
         business?: { name?: string };
       }>;
-      error?: { message?: string };
-    };
+      error?: {
+        message?: string;
+        type?: string;
+        code?: number;
+        error_subcode?: number;
+        fbtrace_id?: string;
+      };
+    } = {};
+    try {
+      json = JSON.parse(rawText);
+    } catch (e) {
+      console.log("[listMetaAccounts] JSON parse error:", String(e));
+    }
+    console.log("[listMetaAccounts] 4. full JSON:", JSON.stringify(json));
+
+    if (json.error) {
+      console.log(
+        "[listMetaAccounts] 6. Graph API error:",
+        JSON.stringify(json.error),
+      );
+    }
+
+    const accountsArr = json.data ?? [];
+    console.log(
+      "[listMetaAccounts] 7. number of ad accounts:",
+      accountsArr.length,
+    );
+    if (accountsArr.length === 0) {
+      console.log(
+        "[listMetaAccounts] EMPTY data array. Full Meta response:",
+        JSON.stringify(json),
+      );
+    }
+
     if (!res.ok) throw new Error(json.error?.message ?? "Meta API error");
 
     return {
-      accounts: (json.data ?? []).map((a) => ({
+      accounts: accountsArr.map((a) => ({
         externalId: `act_${a.account_id}`,
         name: a.name,
         currency: a.currency,
