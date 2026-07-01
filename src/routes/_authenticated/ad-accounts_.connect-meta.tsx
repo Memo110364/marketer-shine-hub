@@ -50,12 +50,17 @@ type MockAccount = {
 function ConnectMetaWizard() {
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const [step, setStep] = useState<number>(search.step ?? 1);
+  const oauthState = search.state ?? null;
+  // If we came back from Meta with a state param, jump straight to step 5,
+  // regardless of whether the router preserved `step=5` in the URL.
+  const [step, setStep] = useState<number>(
+    oauthState ? 5 : (search.step ?? 1),
+  );
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [accounts, setAccounts] = useState<MockAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
-  const oauthState = search.state ?? null;
+  const [fetchedForState, setFetchedForState] = useState<string | null>(null);
 
   const startFn = useServerFn(startMetaOAuth);
   const listFn = useServerFn(listMetaAccounts);
@@ -66,34 +71,43 @@ function ConnectMetaWizard() {
   const goNext = () => setStep((s) => Math.min(6, s + 1));
   const goBack = () => setStep((s) => Math.max(1, s - 1));
 
-  // Returning from Meta callback → step=5 + state in the URL: fetch accounts.
+  // Returning from Meta callback → state present in the URL: fetch accounts.
   useEffect(() => {
-    if (search.step === 5 && oauthState && accounts.length === 0 && !loading) {
-      void (async () => {
-        setLoading(true);
-        setLoadingMessage("جلب الحسابات الإعلانية من Meta...");
-        try {
-          const res = await listFn({ data: { state: oauthState } });
-          setAccounts(
-            res.accounts.map((a, i) => ({
-              id: String(i),
-              name: a.name,
-              externalId: a.externalId,
-              currency: a.currency,
-              business: a.business,
-            })),
-          );
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "تعذر جلب الحسابات");
-          setStep(4);
-        } finally {
-          setLoading(false);
-          setLoadingMessage("");
-        }
-      })();
-    }
+    console.log("[ConnectMeta] Step 5 effect mounted", {
+      oauthState,
+      fetchedForState,
+    });
+    if (!oauthState) return;
+    if (fetchedForState === oauthState) return;
+    setStep(5);
+    setFetchedForState(oauthState);
+    void (async () => {
+      setLoading(true);
+      setLoadingMessage("جاري جلب الحسابات الإعلانية...");
+      console.log("[ConnectMeta] calling listMetaAccounts with state:", oauthState);
+      try {
+        const res = await listFn({ data: { state: oauthState } });
+        console.log("[ConnectMeta] accounts returned count:", res.accounts.length);
+        setAccounts(
+          res.accounts.map((a, i) => ({
+            id: String(i),
+            name: a.name,
+            externalId: a.externalId,
+            currency: a.currency,
+            business: a.business,
+          })),
+        );
+      } catch (e) {
+        console.error("[ConnectMeta] listMetaAccounts failed:", e);
+        toast.error(e instanceof Error ? e.message : "تعذر جلب الحسابات");
+        setStep(4);
+      } finally {
+        setLoading(false);
+        setLoadingMessage("");
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.step, oauthState]);
+  }, [oauthState]);
 
   const startConnection = async () => {
     setLoading(true);
@@ -111,6 +125,11 @@ function ConnectMetaWizard() {
   const confirmMutation = useMutation({
     mutationFn: async () => {
       if (!selectedAccount || !oauthState) throw new Error("لا يوجد حساب محدد");
+      console.log("[ConnectMeta] selected account:", selectedAccount);
+      console.log("[ConnectMeta] calling linkMetaAccount", {
+        state: oauthState,
+        externalId: selectedAccount.externalId,
+      });
       return linkFn({
         data: {
           state: oauthState,
@@ -122,11 +141,14 @@ function ConnectMetaWizard() {
       });
     },
     onSuccess: () => {
-      toast.success("تم ربط الحساب بنجاح");
-      setStep(6);
+      console.log("[ConnectMeta] link success — redirecting to /ad-accounts");
+      toast.success("تم ربط حساب Meta بنجاح");
+      navigate({ to: "/ad-accounts" });
     },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب"),
+    onError: (e) => {
+      console.error("[ConnectMeta] linkMetaAccount failed:", e);
+      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب");
+    },
   });
 
   return (
