@@ -125,6 +125,11 @@ function ConnectMetaWizard() {
   const confirmMutation = useMutation({
     mutationFn: async () => {
       if (!selectedAccount || !oauthState) throw new Error("لا يوجد حساب محدد");
+      console.log("[ConnectMeta] selected account:", selectedAccount);
+      console.log("[ConnectMeta] calling linkMetaAccount", {
+        state: oauthState,
+        externalId: selectedAccount.externalId,
+      });
       return linkFn({
         data: {
           state: oauthState,
@@ -136,11 +141,14 @@ function ConnectMetaWizard() {
       });
     },
     onSuccess: () => {
-      toast.success("تم ربط الحساب بنجاح");
-      setStep(6);
+      console.log("[ConnectMeta] link success — redirecting to /ad-accounts");
+      toast.success("تم ربط حساب Meta بنجاح");
+      navigate({ to: "/ad-accounts" });
     },
-    onError: (e) =>
-      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب"),
+    onError: (e) => {
+      console.error("[ConnectMeta] linkMetaAccount failed:", e);
+      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب");
+    },
   });
 
   return (
