@@ -27,7 +27,7 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
+    const url = new URL("https://www.facebook.com/v21.0/dialog/oauth/business/login");
     url.searchParams.set("client_id", appId);
     url.searchParams.set("redirect_uri", REDIRECT_URI);
     url.searchParams.set("state", state);
