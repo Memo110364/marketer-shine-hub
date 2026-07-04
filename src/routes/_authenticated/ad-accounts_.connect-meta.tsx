@@ -60,6 +60,181 @@ type MockAccount = {
   business: string;
 };
 
+type MetaErrorInfo = {
+  source: "callback" | "start" | "list" | "link";
+  friendly: string;
+  raw: string;
+  description?: string;
+  reason?: string;
+  code?: string | number;
+  subcode?: string | number;
+  type?: string;
+  fbtraceId?: string;
+  status?: number;
+};
+
+/** Map the ?error= value returned by Meta's OAuth dialog to Arabic copy. */
+function friendlyMessageFromCallback(err: string, reason?: string): string {
+  const key = (reason || err || "").toLowerCase();
+  if (key.includes("access_denied") || key.includes("user_denied"))
+    return "تم إلغاء منح الصلاحيات من داخل نافذة Meta. يرجى المحاولة مرة أخرى ومنح الأذونات المطلوبة.";
+  if (key.includes("missing_code"))
+    return "لم يُرجِع Meta رمز التفويض. يرجى إعادة المحاولة.";
+  if (key.includes("server_not_configured"))
+    return "إعدادات الربط غير مكتملة على الخادم. تواصل مع الدعم.";
+  if (key.includes("token_exchange_failed") || key.includes("invalid"))
+    return "فشل تبادل رمز التفويض مع Meta. يرجى إعادة المحاولة.";
+  return "حدث خطأ أثناء الرجوع من Meta. راجع التفاصيل بالأسفل وحاول مرة أخرى.";
+}
+
+/** Map a Graph API error (code/subcode) to Arabic copy. */
+function friendlyMessageFromGraph(
+  code?: number,
+  subcode?: number,
+  message?: string,
+): string {
+  if (code === 190) {
+    if (subcode === 463)
+      return "انتهت صلاحية جلسة Meta. يرجى إعادة الربط.";
+    if (subcode === 460)
+      return "تم تغيير كلمة السر في Meta. يرجى إعادة الربط.";
+    return "رمز الوصول لم يعد صالحًا. يرجى إعادة الربط.";
+  }
+  if (code === 200 || code === 10)
+    return "الأذونات المطلوبة (ads_read أو business_management) غير ممنوحة. يرجى إعادة الربط مع الموافقة على الصلاحيات.";
+  if (code === 100)
+    return "طلب غير صالح إلى Meta. تحقق من الحساب المستخدم وحاول مرة أخرى.";
+  if (code === 4 || code === 17 || code === 32 || code === 613)
+    return "تم تجاوز الحد المسموح به من الطلبات على Meta. حاول بعد قليل.";
+  if (code === 368)
+    return "الحساب مقيَّد مؤقتًا من قِبَل Meta.";
+  return message || "فشل استدعاء Meta.";
+}
+
+/** Turn a thrown server-fn error (Error/string) into a MetaErrorInfo. */
+function parseServerError(
+  e: unknown,
+  source: "start" | "list" | "link",
+): MetaErrorInfo {
+  const raw = e instanceof Error ? e.message : String(e);
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.kind === "graph_error") {
+      return {
+        source,
+        friendly: friendlyMessageFromGraph(
+          parsed.code,
+          parsed.subcode,
+          parsed.message,
+        ),
+        raw,
+        description: parsed.message,
+        code: parsed.code,
+        subcode: parsed.subcode,
+        type: parsed.type,
+        fbtraceId: parsed.fbtrace_id,
+        status: parsed.status,
+      };
+    }
+  } catch {
+    /* not JSON — fall through */
+  }
+  const fallback =
+    source === "start"
+      ? "تعذر بدء عملية الربط. يرجى المحاولة مرة أخرى."
+      : source === "list"
+        ? "تعذر جلب الحسابات الإعلانية من Meta."
+        : "تعذر حفظ الحساب الإعلاني.";
+  return { source, friendly: raw || fallback, raw };
+}
+
+function MetaErrorBanner({
+  info,
+  onDismiss,
+  onRetry,
+}: {
+  info: MetaErrorInfo;
+  onDismiss: () => void;
+  onRetry: () => void;
+}) {
+  const sourceLabel =
+    info.source === "callback"
+      ? "أثناء العودة من Meta"
+      : info.source === "start"
+        ? "أثناء بدء الربط"
+        : info.source === "list"
+          ? "أثناء جلب الحسابات"
+          : "أثناء حفظ الحساب";
+  return (
+    <Alert variant="destructive" className="border-destructive/40">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle className="flex items-center justify-between gap-2">
+        <span>تعذر إتمام ربط Meta — {sourceLabel}</span>
+      </AlertTitle>
+      <AlertDescription className="space-y-3 mt-1">
+        <p className="leading-relaxed">{info.friendly}</p>
+
+        <details className="rounded-md border border-destructive/30 bg-destructive/5 p-2">
+          <summary className="cursor-pointer text-xs font-semibold">
+            تفاصيل الخطأ من Meta
+          </summary>
+          <div className="mt-2 grid gap-1 text-xs" dir="ltr">
+            {info.description && (
+              <div>
+                <span className="opacity-70">message:</span> {info.description}
+              </div>
+            )}
+            {info.code !== undefined && (
+              <div>
+                <span className="opacity-70">code:</span> {String(info.code)}
+              </div>
+            )}
+            {info.subcode !== undefined && (
+              <div>
+                <span className="opacity-70">subcode:</span>{" "}
+                {String(info.subcode)}
+              </div>
+            )}
+            {info.type && (
+              <div>
+                <span className="opacity-70">type:</span> {info.type}
+              </div>
+            )}
+            {info.reason && (
+              <div>
+                <span className="opacity-70">reason:</span> {info.reason}
+              </div>
+            )}
+            {info.status !== undefined && (
+              <div>
+                <span className="opacity-70">http:</span> {info.status}
+              </div>
+            )}
+            {info.fbtraceId && (
+              <div>
+                <span className="opacity-70">fbtrace_id:</span> {info.fbtraceId}
+              </div>
+            )}
+            <pre className="mt-2 max-h-40 overflow-auto rounded bg-background/50 p-2 text-[11px]">
+              {info.raw}
+            </pre>
+          </div>
+        </details>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            <RefreshCw className="ml-1 h-3.5 w-3.5" />
+            إعادة المحاولة
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onDismiss}>
+            إغلاق
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 
 function ConnectMetaWizard() {
   const navigate = useNavigate();
