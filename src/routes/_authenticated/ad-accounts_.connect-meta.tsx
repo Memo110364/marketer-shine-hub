@@ -198,7 +198,9 @@ function ConnectMetaWizard() {
     },
     onError: (e) => {
       console.error("[ConnectMeta] linkMetaAccount failed:", e);
-      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب");
+      const info = parseServerError(e, "link");
+      setMetaError(info);
+      toast.error(info.friendly);
     },
   });
 
