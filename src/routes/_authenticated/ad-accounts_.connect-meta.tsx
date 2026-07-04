@@ -228,6 +228,17 @@ function ConnectMetaWizard() {
         {/* Progress */}
         <ProgressBar current={step} />
 
+        {metaError && (
+          <MetaErrorBanner
+            info={metaError}
+            onDismiss={() => setMetaError(null)}
+            onRetry={() => {
+              setMetaError(null);
+              setStep(4);
+            }}
+          />
+        )}
+
         {/* Steps */}
         {step === 1 && <StepReadiness onNext={goNext} />}
         {step === 2 && <StepExplain onNext={goNext} onBack={goBack} />}
