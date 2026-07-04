@@ -80,10 +80,25 @@ export const Route = createFileRoute("/api/public/meta/callback")({
         const tokenRes = await fetch(tokenUrl.toString());
         const tokenJson = (await tokenRes.json()) as {
           access_token?: string;
-          error?: { message?: string };
+          error?: {
+            message?: string;
+            type?: string;
+            code?: number;
+            error_subcode?: number;
+            fbtrace_id?: string;
+          };
         };
         if (!tokenRes.ok || !tokenJson.access_token) {
-          throw fail(tokenJson.error?.message || "token_exchange_failed");
+          throw fail(tokenJson.error?.message || "token_exchange_failed", {
+            meta_error_type: tokenJson.error?.type,
+            meta_error_code: tokenJson.error?.code
+              ? String(tokenJson.error.code)
+              : undefined,
+            meta_error_subcode: tokenJson.error?.error_subcode
+              ? String(tokenJson.error.error_subcode)
+              : undefined,
+            meta_fbtrace_id: tokenJson.error?.fbtrace_id,
+          });
         }
 
         // 2) Upgrade to long-lived token (~60 days)
