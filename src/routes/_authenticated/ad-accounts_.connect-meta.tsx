@@ -65,8 +65,6 @@ function ConnectMetaWizard() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const oauthState = search.state ?? null;
-  // If we came back from Meta with a state param, jump straight to step 5,
-  // regardless of whether the router preserved `step=5` in the URL.
   const [step, setStep] = useState<number>(
     oauthState ? 5 : (search.step ?? 1),
   );
@@ -75,6 +73,7 @@ function ConnectMetaWizard() {
   const [accounts, setAccounts] = useState<MockAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [fetchedForState, setFetchedForState] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<MetaErrorInfo | null>(null);
 
   const startFn = useServerFn(startMetaOAuth);
   const listFn = useServerFn(listMetaAccounts);
@@ -84,6 +83,38 @@ function ConnectMetaWizard() {
 
   const goNext = () => setStep((s) => Math.min(6, s + 1));
   const goBack = () => setStep((s) => Math.max(1, s - 1));
+
+  // Surface any error returned by the OAuth callback (?meta_error=...).
+  useEffect(() => {
+    if (!search.meta_error) return;
+    const info: MetaErrorInfo = {
+      source: "callback",
+      raw: search.meta_error,
+      description: search.meta_error_description,
+      reason: search.meta_error_reason,
+      code: search.meta_error_code,
+      type: search.meta_error_type,
+      subcode: search.meta_error_subcode,
+      fbtraceId: search.meta_fbtrace_id,
+      friendly: friendlyMessageFromCallback(
+        search.meta_error,
+        search.meta_error_reason,
+      ),
+    };
+    console.error("[ConnectMeta] callback returned error", info);
+    setMetaError(info);
+    setStep(4);
+    toast.error(info.friendly);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    search.meta_error,
+    search.meta_error_description,
+    search.meta_error_reason,
+    search.meta_error_code,
+    search.meta_error_type,
+    search.meta_error_subcode,
+    search.meta_fbtrace_id,
+  ]);
 
   // Returning from Meta callback → state present in the URL: fetch accounts.
   useEffect(() => {
@@ -98,6 +129,7 @@ function ConnectMetaWizard() {
     void (async () => {
       setLoading(true);
       setLoadingMessage("جاري جلب الحسابات الإعلانية...");
+      setMetaError(null);
       console.log("[ConnectMeta] calling listMetaAccounts with state:", oauthState);
       try {
         const res = await listFn({ data: { state: oauthState } });
@@ -113,7 +145,9 @@ function ConnectMetaWizard() {
         );
       } catch (e) {
         console.error("[ConnectMeta] listMetaAccounts failed:", e);
-        toast.error(e instanceof Error ? e.message : "تعذر جلب الحسابات");
+        const info = parseServerError(e, "list");
+        setMetaError(info);
+        toast.error(info.friendly);
         setStep(4);
       } finally {
         setLoading(false);
@@ -126,11 +160,14 @@ function ConnectMetaWizard() {
   const startConnection = async () => {
     setLoading(true);
     setLoadingMessage("جاري فتح Meta...");
+    setMetaError(null);
     try {
       const { authorizeUrl } = await startFn();
       window.location.href = authorizeUrl;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذر بدء الربط");
+      const info = parseServerError(e, "start");
+      setMetaError(info);
+      toast.error(info.friendly);
       setLoading(false);
       setLoadingMessage("");
     }
