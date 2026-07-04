@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
   CheckCircle2, ChevronRight, ChevronLeft, Shield, Image as ImageIcon,
   PlayCircle, Loader2, Link2, Building2, Wallet, IdCard, HelpCircle,
-  ArrowRight, Sparkles,
+  ArrowRight, Sparkles, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +26,19 @@ export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta"
   validateSearch: (s: Record<string, unknown>) => ({
     step: typeof s.step === "string" ? Number(s.step) : undefined,
     state: typeof s.state === "string" ? s.state : undefined,
+    meta_error: typeof s.meta_error === "string" ? s.meta_error : undefined,
+    meta_error_description:
+      typeof s.meta_error_description === "string" ? s.meta_error_description : undefined,
+    meta_error_reason:
+      typeof s.meta_error_reason === "string" ? s.meta_error_reason : undefined,
+    meta_error_code:
+      typeof s.meta_error_code === "string" ? s.meta_error_code : undefined,
+    meta_error_type:
+      typeof s.meta_error_type === "string" ? s.meta_error_type : undefined,
+    meta_error_subcode:
+      typeof s.meta_error_subcode === "string" ? s.meta_error_subcode : undefined,
+    meta_fbtrace_id:
+      typeof s.meta_fbtrace_id === "string" ? s.meta_fbtrace_id : undefined,
   }),
   component: ConnectMetaWizard,
 });
