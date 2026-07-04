@@ -32,15 +32,32 @@ export const Route = createFileRoute("/api/public/meta/callback")({
         const state = url.searchParams.get("state") ?? "";
         const error = url.searchParams.get("error");
         const errorDescription = url.searchParams.get("error_description");
+        const errorReason = url.searchParams.get("error_reason");
+        const errorCode = url.searchParams.get("error_code");
 
         const appOrigin = `${url.protocol}//${url.host}`;
-        const fail = (msg: string) =>
-          redirect({
-            href: `${appOrigin}/ad-accounts?meta_error=${encodeURIComponent(msg)}`,
+        // Send the user back into the wizard (step 4) so they can retry, and
+        // surface the exact Meta error in the URL for the UI to render.
+        const fail = (
+          msg: string,
+          extra: Record<string, string | null | undefined> = {},
+        ) => {
+          const params = new URLSearchParams();
+          params.set("step", "4");
+          params.set("meta_error", msg);
+          if (errorDescription) params.set("meta_error_description", errorDescription);
+          if (errorReason) params.set("meta_error_reason", errorReason);
+          if (errorCode) params.set("meta_error_code", errorCode);
+          for (const [k, v] of Object.entries(extra)) {
+            if (v) params.set(k, v);
+          }
+          return redirect({
+            href: `${appOrigin}/ad-accounts/connect-meta?${params.toString()}`,
             throw: true,
           });
+        };
 
-        if (error) throw fail(errorDescription || error);
+        if (error) throw fail(error, {});
         if (!code) throw fail("missing_code");
 
         const appId = process.env.META_APP_ID;
