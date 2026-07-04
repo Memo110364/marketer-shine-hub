@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
   CheckCircle2, ChevronRight, ChevronLeft, Shield, Image as ImageIcon,
   PlayCircle, Loader2, Link2, Building2, Wallet, IdCard, HelpCircle,
-  ArrowRight, Sparkles,
+  ArrowRight, Sparkles, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +26,19 @@ export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta"
   validateSearch: (s: Record<string, unknown>) => ({
     step: typeof s.step === "string" ? Number(s.step) : undefined,
     state: typeof s.state === "string" ? s.state : undefined,
+    meta_error: typeof s.meta_error === "string" ? s.meta_error : undefined,
+    meta_error_description:
+      typeof s.meta_error_description === "string" ? s.meta_error_description : undefined,
+    meta_error_reason:
+      typeof s.meta_error_reason === "string" ? s.meta_error_reason : undefined,
+    meta_error_code:
+      typeof s.meta_error_code === "string" ? s.meta_error_code : undefined,
+    meta_error_type:
+      typeof s.meta_error_type === "string" ? s.meta_error_type : undefined,
+    meta_error_subcode:
+      typeof s.meta_error_subcode === "string" ? s.meta_error_subcode : undefined,
+    meta_fbtrace_id:
+      typeof s.meta_fbtrace_id === "string" ? s.meta_fbtrace_id : undefined,
   }),
   component: ConnectMetaWizard,
 });
@@ -46,13 +60,186 @@ type MockAccount = {
   business: string;
 };
 
+type MetaErrorInfo = {
+  source: "callback" | "start" | "list" | "link";
+  friendly: string;
+  raw: string;
+  description?: string;
+  reason?: string;
+  code?: string | number;
+  subcode?: string | number;
+  type?: string;
+  fbtraceId?: string;
+  status?: number;
+};
+
+/** Map the ?error= value returned by Meta's OAuth dialog to Arabic copy. */
+function friendlyMessageFromCallback(err: string, reason?: string): string {
+  const key = (reason || err || "").toLowerCase();
+  if (key.includes("access_denied") || key.includes("user_denied"))
+    return "تم إلغاء منح الصلاحيات من داخل نافذة Meta. يرجى المحاولة مرة أخرى ومنح الأذونات المطلوبة.";
+  if (key.includes("missing_code"))
+    return "لم يُرجِع Meta رمز التفويض. يرجى إعادة المحاولة.";
+  if (key.includes("server_not_configured"))
+    return "إعدادات الربط غير مكتملة على الخادم. تواصل مع الدعم.";
+  if (key.includes("token_exchange_failed") || key.includes("invalid"))
+    return "فشل تبادل رمز التفويض مع Meta. يرجى إعادة المحاولة.";
+  return "حدث خطأ أثناء الرجوع من Meta. راجع التفاصيل بالأسفل وحاول مرة أخرى.";
+}
+
+/** Map a Graph API error (code/subcode) to Arabic copy. */
+function friendlyMessageFromGraph(
+  code?: number,
+  subcode?: number,
+  message?: string,
+): string {
+  if (code === 190) {
+    if (subcode === 463)
+      return "انتهت صلاحية جلسة Meta. يرجى إعادة الربط.";
+    if (subcode === 460)
+      return "تم تغيير كلمة السر في Meta. يرجى إعادة الربط.";
+    return "رمز الوصول لم يعد صالحًا. يرجى إعادة الربط.";
+  }
+  if (code === 200 || code === 10)
+    return "الأذونات المطلوبة (ads_read أو business_management) غير ممنوحة. يرجى إعادة الربط مع الموافقة على الصلاحيات.";
+  if (code === 100)
+    return "طلب غير صالح إلى Meta. تحقق من الحساب المستخدم وحاول مرة أخرى.";
+  if (code === 4 || code === 17 || code === 32 || code === 613)
+    return "تم تجاوز الحد المسموح به من الطلبات على Meta. حاول بعد قليل.";
+  if (code === 368)
+    return "الحساب مقيَّد مؤقتًا من قِبَل Meta.";
+  return message || "فشل استدعاء Meta.";
+}
+
+/** Turn a thrown server-fn error (Error/string) into a MetaErrorInfo. */
+function parseServerError(
+  e: unknown,
+  source: "start" | "list" | "link",
+): MetaErrorInfo {
+  const raw = e instanceof Error ? e.message : String(e);
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.kind === "graph_error") {
+      return {
+        source,
+        friendly: friendlyMessageFromGraph(
+          parsed.code,
+          parsed.subcode,
+          parsed.message,
+        ),
+        raw,
+        description: parsed.message,
+        code: parsed.code,
+        subcode: parsed.subcode,
+        type: parsed.type,
+        fbtraceId: parsed.fbtrace_id,
+        status: parsed.status,
+      };
+    }
+  } catch {
+    /* not JSON — fall through */
+  }
+  const fallback =
+    source === "start"
+      ? "تعذر بدء عملية الربط. يرجى المحاولة مرة أخرى."
+      : source === "list"
+        ? "تعذر جلب الحسابات الإعلانية من Meta."
+        : "تعذر حفظ الحساب الإعلاني.";
+  return { source, friendly: raw || fallback, raw };
+}
+
+function MetaErrorBanner({
+  info,
+  onDismiss,
+  onRetry,
+}: {
+  info: MetaErrorInfo;
+  onDismiss: () => void;
+  onRetry: () => void;
+}) {
+  const sourceLabel =
+    info.source === "callback"
+      ? "أثناء العودة من Meta"
+      : info.source === "start"
+        ? "أثناء بدء الربط"
+        : info.source === "list"
+          ? "أثناء جلب الحسابات"
+          : "أثناء حفظ الحساب";
+  return (
+    <Alert variant="destructive" className="border-destructive/40">
+      <AlertTriangle className="h-4 w-4" />
+      <AlertTitle className="flex items-center justify-between gap-2">
+        <span>تعذر إتمام ربط Meta — {sourceLabel}</span>
+      </AlertTitle>
+      <AlertDescription className="space-y-3 mt-1">
+        <p className="leading-relaxed">{info.friendly}</p>
+
+        <details className="rounded-md border border-destructive/30 bg-destructive/5 p-2">
+          <summary className="cursor-pointer text-xs font-semibold">
+            تفاصيل الخطأ من Meta
+          </summary>
+          <div className="mt-2 grid gap-1 text-xs" dir="ltr">
+            {info.description && (
+              <div>
+                <span className="opacity-70">message:</span> {info.description}
+              </div>
+            )}
+            {info.code !== undefined && (
+              <div>
+                <span className="opacity-70">code:</span> {String(info.code)}
+              </div>
+            )}
+            {info.subcode !== undefined && (
+              <div>
+                <span className="opacity-70">subcode:</span>{" "}
+                {String(info.subcode)}
+              </div>
+            )}
+            {info.type && (
+              <div>
+                <span className="opacity-70">type:</span> {info.type}
+              </div>
+            )}
+            {info.reason && (
+              <div>
+                <span className="opacity-70">reason:</span> {info.reason}
+              </div>
+            )}
+            {info.status !== undefined && (
+              <div>
+                <span className="opacity-70">http:</span> {info.status}
+              </div>
+            )}
+            {info.fbtraceId && (
+              <div>
+                <span className="opacity-70">fbtrace_id:</span> {info.fbtraceId}
+              </div>
+            )}
+            <pre className="mt-2 max-h-40 overflow-auto rounded bg-background/50 p-2 text-[11px]">
+              {info.raw}
+            </pre>
+          </div>
+        </details>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            <RefreshCw className="ml-1 h-3.5 w-3.5" />
+            إعادة المحاولة
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onDismiss}>
+            إغلاق
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 
 function ConnectMetaWizard() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const oauthState = search.state ?? null;
-  // If we came back from Meta with a state param, jump straight to step 5,
-  // regardless of whether the router preserved `step=5` in the URL.
   const [step, setStep] = useState<number>(
     oauthState ? 5 : (search.step ?? 1),
   );
@@ -61,6 +248,7 @@ function ConnectMetaWizard() {
   const [accounts, setAccounts] = useState<MockAccount[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [fetchedForState, setFetchedForState] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<MetaErrorInfo | null>(null);
 
   const startFn = useServerFn(startMetaOAuth);
   const listFn = useServerFn(listMetaAccounts);
@@ -70,6 +258,38 @@ function ConnectMetaWizard() {
 
   const goNext = () => setStep((s) => Math.min(6, s + 1));
   const goBack = () => setStep((s) => Math.max(1, s - 1));
+
+  // Surface any error returned by the OAuth callback (?meta_error=...).
+  useEffect(() => {
+    if (!search.meta_error) return;
+    const info: MetaErrorInfo = {
+      source: "callback",
+      raw: search.meta_error,
+      description: search.meta_error_description,
+      reason: search.meta_error_reason,
+      code: search.meta_error_code,
+      type: search.meta_error_type,
+      subcode: search.meta_error_subcode,
+      fbtraceId: search.meta_fbtrace_id,
+      friendly: friendlyMessageFromCallback(
+        search.meta_error,
+        search.meta_error_reason,
+      ),
+    };
+    console.error("[ConnectMeta] callback returned error", info);
+    setMetaError(info);
+    setStep(4);
+    toast.error(info.friendly);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    search.meta_error,
+    search.meta_error_description,
+    search.meta_error_reason,
+    search.meta_error_code,
+    search.meta_error_type,
+    search.meta_error_subcode,
+    search.meta_fbtrace_id,
+  ]);
 
   // Returning from Meta callback → state present in the URL: fetch accounts.
   useEffect(() => {
@@ -84,6 +304,7 @@ function ConnectMetaWizard() {
     void (async () => {
       setLoading(true);
       setLoadingMessage("جاري جلب الحسابات الإعلانية...");
+      setMetaError(null);
       console.log("[ConnectMeta] calling listMetaAccounts with state:", oauthState);
       try {
         const res = await listFn({ data: { state: oauthState } });
@@ -99,7 +320,9 @@ function ConnectMetaWizard() {
         );
       } catch (e) {
         console.error("[ConnectMeta] listMetaAccounts failed:", e);
-        toast.error(e instanceof Error ? e.message : "تعذر جلب الحسابات");
+        const info = parseServerError(e, "list");
+        setMetaError(info);
+        toast.error(info.friendly);
         setStep(4);
       } finally {
         setLoading(false);
@@ -112,11 +335,14 @@ function ConnectMetaWizard() {
   const startConnection = async () => {
     setLoading(true);
     setLoadingMessage("جاري فتح Meta...");
+    setMetaError(null);
     try {
       const { authorizeUrl } = await startFn();
       window.location.href = authorizeUrl;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذر بدء الربط");
+      const info = parseServerError(e, "start");
+      setMetaError(info);
+      toast.error(info.friendly);
       setLoading(false);
       setLoadingMessage("");
     }
@@ -147,7 +373,9 @@ function ConnectMetaWizard() {
     },
     onError: (e) => {
       console.error("[ConnectMeta] linkMetaAccount failed:", e);
-      toast.error(e instanceof Error ? e.message : "تعذر حفظ الحساب");
+      const info = parseServerError(e, "link");
+      setMetaError(info);
+      toast.error(info.friendly);
     },
   });
 
@@ -174,6 +402,17 @@ function ConnectMetaWizard() {
 
         {/* Progress */}
         <ProgressBar current={step} />
+
+        {metaError && (
+          <MetaErrorBanner
+            info={metaError}
+            onDismiss={() => setMetaError(null)}
+            onRetry={() => {
+              setMetaError(null);
+              setStep(4);
+            }}
+          />
+        )}
 
         {/* Steps */}
         {step === 1 && <StepReadiness onNext={goNext} />}

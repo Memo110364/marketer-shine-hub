@@ -198,7 +198,22 @@ export const listMetaAccounts = createServerFn({ method: "POST" })
       );
     }
 
-    if (!res.ok) throw new Error(json.error?.message ?? "Meta API error");
+    if (!res.ok || json.error) {
+      const err = json.error ?? {};
+      // Throw a JSON-encoded message so the client can parse structured
+      // Graph error details and show a friendly Arabic message + specifics.
+      throw new Error(
+        JSON.stringify({
+          kind: "graph_error",
+          status: res.status,
+          message: err.message ?? "Meta API error",
+          type: err.type,
+          code: err.code,
+          subcode: err.error_subcode,
+          fbtrace_id: err.fbtrace_id,
+        }),
+      );
+    }
 
     return {
       accounts: accountsArr.map((a) => ({
