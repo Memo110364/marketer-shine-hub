@@ -27,14 +27,23 @@ export const startMetaOAuth = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    const url = new URL("https://www.facebook.com/v21.0/dialog/oauth/business/login");
+    const url = new URL("https://www.facebook.com/v21.0/dialog/oauth");
     url.searchParams.set("client_id", appId);
     url.searchParams.set("redirect_uri", REDIRECT_URI);
     url.searchParams.set("state", state);
-    url.searchParams.set("scope", META_SCOPE);
     url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", META_SCOPE);
+    const configId = process.env.META_LOGIN_CONFIG_ID;
+    if (configId) url.searchParams.set("config_id", configId);
 
-    return { authorizeUrl: url.toString() };
+    const authorizeUrl = url.toString();
+    console.log("[startMetaOAuth] authorize URL:", authorizeUrl);
+    console.log(
+      "[startMetaOAuth] includes config_id:",
+      authorizeUrl.includes("config_id="),
+    );
+
+    return { authorizeUrl };
   });
 
 type MetaAccount = {
