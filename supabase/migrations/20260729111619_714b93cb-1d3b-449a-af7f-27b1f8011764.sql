@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.sync_bonus_payment_totals() FROM PUBLIC, anon, authenticated;
