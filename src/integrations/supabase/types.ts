@@ -269,6 +269,171 @@ export type Database = {
           },
         ]
       }
+      bonus_audit_logs: {
+        Row: {
+          action_type: string
+          field_name: string | null
+          id: string
+          marketer_id: string
+          monthly_bonus_id: string
+          new_value: Json | null
+          old_value: Json | null
+          performed_at: string
+          performed_by: string
+          reason: string | null
+        }
+        Insert: {
+          action_type: string
+          field_name?: string | null
+          id?: string
+          marketer_id: string
+          monthly_bonus_id: string
+          new_value?: Json | null
+          old_value?: Json | null
+          performed_at?: string
+          performed_by: string
+          reason?: string | null
+        }
+        Update: {
+          action_type?: string
+          field_name?: string | null
+          id?: string
+          marketer_id?: string
+          monthly_bonus_id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          performed_at?: string
+          performed_by?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_audit_logs_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_audit_logs_monthly_bonus_id_fkey"
+            columns: ["monthly_bonus_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_marketer_bonuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string
+          id: string
+          marketer_id: string
+          monthly_bonus_id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          proof_url: string | null
+          reference_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by: string
+          id?: string
+          marketer_id: string
+          monthly_bonus_id: string
+          notes?: string | null
+          payment_date: string
+          payment_method: string
+          proof_url?: string | null
+          reference_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          marketer_id?: string
+          monthly_bonus_id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          proof_url?: string | null
+          reference_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_payments_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_payments_monthly_bonus_id_fkey"
+            columns: ["monthly_bonus_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_marketer_bonuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_tiers: {
+        Row: {
+          base_salary: number
+          bonus_percentage: number
+          color_hex: string | null
+          created_at: string
+          extra_delivered_order_amount: number
+          id: string
+          is_active: boolean
+          min_shipped_orders: number
+          minimum_delivery_rate: number
+          tier_code: string
+          tier_name_ar: string
+          tier_name_en: string | null
+          tier_order: number
+          updated_at: string
+        }
+        Insert: {
+          base_salary?: number
+          bonus_percentage?: number
+          color_hex?: string | null
+          created_at?: string
+          extra_delivered_order_amount?: number
+          id?: string
+          is_active?: boolean
+          min_shipped_orders: number
+          minimum_delivery_rate?: number
+          tier_code: string
+          tier_name_ar: string
+          tier_name_en?: string | null
+          tier_order: number
+          updated_at?: string
+        }
+        Update: {
+          base_salary?: number
+          bonus_percentage?: number
+          color_hex?: string | null
+          created_at?: string
+          extra_delivered_order_amount?: number
+          id?: string
+          is_active?: boolean
+          min_shipped_orders?: number
+          minimum_delivery_rate?: number
+          tier_code?: string
+          tier_name_ar?: string
+          tier_name_en?: string | null
+          tier_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       column_mappings: {
         Row: {
           created_at: string
@@ -462,6 +627,175 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      monthly_marketer_bonuses: {
+        Row: {
+          ad_spend: number
+          adjustment_proposed_at: string | null
+          adjustment_proposed_by: string | null
+          approved_at: string | null
+          approved_by: string | null
+          bonus_month: number
+          bonus_year: number
+          calculated_at: string | null
+          calculated_extra_orders_bonus: number
+          calculated_profit_bonus: number
+          calculated_salary: number
+          created_at: string
+          delivered_orders_count: number
+          delivery_rate: number
+          earned_tier_id: string | null
+          earned_tier_name_snapshot: string | null
+          earned_tier_order_snapshot: number | null
+          extra_delivered_orders: number
+          final_approved_amount: number
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          manual_adjustment_amount: number
+          manual_adjustment_reason: string | null
+          marketer_id: string
+          minimum_delivered_orders: number
+          net_profit_before_bonus: number
+          other_expenses: number
+          period_end: string
+          period_start: string
+          realized_commission: number
+          recalculated_at: string | null
+          remaining_amount: number
+          required_delivery_rate: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shipped_orders_count: number
+          status: string
+          system_calculated_total: number
+          tier_change_reason: string | null
+          total_paid_amount: number
+          updated_at: string
+          volume_tier_id: string | null
+          volume_tier_name_snapshot: string | null
+          volume_tier_order_snapshot: number | null
+        }
+        Insert: {
+          ad_spend?: number
+          adjustment_proposed_at?: string | null
+          adjustment_proposed_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          bonus_month: number
+          bonus_year: number
+          calculated_at?: string | null
+          calculated_extra_orders_bonus?: number
+          calculated_profit_bonus?: number
+          calculated_salary?: number
+          created_at?: string
+          delivered_orders_count?: number
+          delivery_rate?: number
+          earned_tier_id?: string | null
+          earned_tier_name_snapshot?: string | null
+          earned_tier_order_snapshot?: number | null
+          extra_delivered_orders?: number
+          final_approved_amount?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          manual_adjustment_amount?: number
+          manual_adjustment_reason?: string | null
+          marketer_id: string
+          minimum_delivered_orders?: number
+          net_profit_before_bonus?: number
+          other_expenses?: number
+          period_end: string
+          period_start: string
+          realized_commission?: number
+          recalculated_at?: string | null
+          remaining_amount?: number
+          required_delivery_rate?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shipped_orders_count?: number
+          status?: string
+          system_calculated_total?: number
+          tier_change_reason?: string | null
+          total_paid_amount?: number
+          updated_at?: string
+          volume_tier_id?: string | null
+          volume_tier_name_snapshot?: string | null
+          volume_tier_order_snapshot?: number | null
+        }
+        Update: {
+          ad_spend?: number
+          adjustment_proposed_at?: string | null
+          adjustment_proposed_by?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          bonus_month?: number
+          bonus_year?: number
+          calculated_at?: string | null
+          calculated_extra_orders_bonus?: number
+          calculated_profit_bonus?: number
+          calculated_salary?: number
+          created_at?: string
+          delivered_orders_count?: number
+          delivery_rate?: number
+          earned_tier_id?: string | null
+          earned_tier_name_snapshot?: string | null
+          earned_tier_order_snapshot?: number | null
+          extra_delivered_orders?: number
+          final_approved_amount?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          manual_adjustment_amount?: number
+          manual_adjustment_reason?: string | null
+          marketer_id?: string
+          minimum_delivered_orders?: number
+          net_profit_before_bonus?: number
+          other_expenses?: number
+          period_end?: string
+          period_start?: string
+          realized_commission?: number
+          recalculated_at?: string | null
+          remaining_amount?: number
+          required_delivery_rate?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shipped_orders_count?: number
+          status?: string
+          system_calculated_total?: number
+          tier_change_reason?: string | null
+          total_paid_amount?: number
+          updated_at?: string
+          volume_tier_id?: string | null
+          volume_tier_name_snapshot?: string | null
+          volume_tier_order_snapshot?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_marketer_bonuses_earned_tier_id_fkey"
+            columns: ["earned_tier_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_marketer_bonuses_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_marketer_bonuses_volume_tier_id_fkey"
+            columns: ["volume_tier_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
