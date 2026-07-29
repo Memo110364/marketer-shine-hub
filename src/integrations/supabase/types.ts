@@ -659,6 +659,7 @@ export type Database = {
           minimum_delivered_orders: number
           net_profit_before_bonus: number
           other_expenses: number
+          payment_status: string
           period_end: string
           period_start: string
           realized_commission: number
@@ -676,6 +677,7 @@ export type Database = {
           volume_tier_id: string | null
           volume_tier_name_snapshot: string | null
           volume_tier_order_snapshot: number | null
+          workflow_status: string
         }
         Insert: {
           ad_spend?: number
@@ -707,6 +709,7 @@ export type Database = {
           minimum_delivered_orders?: number
           net_profit_before_bonus?: number
           other_expenses?: number
+          payment_status?: string
           period_end: string
           period_start: string
           realized_commission?: number
@@ -724,6 +727,7 @@ export type Database = {
           volume_tier_id?: string | null
           volume_tier_name_snapshot?: string | null
           volume_tier_order_snapshot?: number | null
+          workflow_status?: string
         }
         Update: {
           ad_spend?: number
@@ -755,6 +759,7 @@ export type Database = {
           minimum_delivered_orders?: number
           net_profit_before_bonus?: number
           other_expenses?: number
+          payment_status?: string
           period_end?: string
           period_start?: string
           realized_commission?: number
@@ -772,6 +777,7 @@ export type Database = {
           volume_tier_id?: string | null
           volume_tier_name_snapshot?: string | null
           volume_tier_order_snapshot?: number | null
+          workflow_status?: string
         }
         Relationships: [
           {
