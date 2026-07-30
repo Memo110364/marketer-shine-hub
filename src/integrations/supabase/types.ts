@@ -1121,6 +1121,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_monthly_bonus: {
+        Args: { _marketer_id: string; _month: number; _year: number }
+        Returns: Json
+      }
+      calculate_monthly_bonuses_for_month: {
+        Args: { _month: number; _year: number }
+        Returns: Json
+      }
+      compute_bonus_figures: {
+        Args: {
+          _ad_spend: number
+          _delivered_orders: number
+          _other_expenses?: number
+          _realized_commission: number
+          _shipped_orders: number
+        }
+        Returns: Json
+      }
       current_marketer_id: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -1130,6 +1148,14 @@ export type Database = {
         Returns: boolean
       }
       is_my_marketer: { Args: { _marketer_id: string }; Returns: boolean }
+      load_bonus_month_inputs: {
+        Args: { _marketer_id: string; _month: number; _year: number }
+        Returns: Json
+      }
+      preview_monthly_bonus: {
+        Args: { _marketer_id: string; _month: number; _year: number }
+        Returns: Json
+      }
     }
     Enums: {
       ad_platform: "meta" | "tiktok" | "manual"
