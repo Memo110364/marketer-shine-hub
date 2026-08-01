@@ -269,6 +269,11 @@ function MarketerDetails() {
               <Wallet className="h-4 w-4 ml-1" /> المصروفات
             </Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link to="/marketers/$id/bonus" params={{ id }}>
+              <Trophy className="h-4 w-4 ml-1" /> البونص والمستحقات
+            </Link>
+          </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 ml-1" /> إضافة معاملة محفظة</Button></DialogTrigger>
             <DialogContent>
