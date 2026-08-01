@@ -332,9 +332,6 @@ function DashboardPage() {
   const topGrowing = useMemo(() =>
     [...marketerRows].filter((m) => m.orders > 0).sort((a, b) => b.growth - a.growth).slice(0, 5),
   [marketerRows]);
-  const topDeclining = useMemo(() =>
-    [...marketerRows].filter((m) => m.orders > 0).sort((a, b) => a.growth - b.growth).slice(0, 5),
-  [marketerRows]);
 
   const pieData = ORDER_STATUS_KEYS.map((k) => ({
     name: ORDER_STATUS[k].label,
