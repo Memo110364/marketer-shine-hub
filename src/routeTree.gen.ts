@@ -18,6 +18,7 @@ import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedBonusCalculatorRouteImport } from './routes/_authenticated/bonus-calculator'
 import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users.index'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts_.connect-meta'
 import { Route as ApiPublicMetaCallbackRouteImport } from './routes/api/public/meta/callback'
 import { Route as AuthenticatedMarketersIdExpensesRouteImport } from './routes/_authenticated/marketers.$id_.expenses'
+import { Route as AuthenticatedMarketersIdBonusRouteImport } from './routes/_authenticated/marketers.$id_.bonus'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -76,6 +78,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedBonusCalculatorRoute =
+  AuthenticatedBonusCalculatorRouteImport.update({
+    id: '/bonus-calculator',
+    path: '/bonus-calculator',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdSpendRoute = AuthenticatedAdSpendRouteImport.update({
   id: '/ad-spend',
   path: '/ad-spend',
@@ -150,6 +158,12 @@ const AuthenticatedMarketersIdExpensesRoute =
     path: '/marketers/$id/expenses',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedMarketersIdBonusRoute =
+  AuthenticatedMarketersIdBonusRouteImport.update({
+    id: '/marketers/$id_/bonus',
+    path: '/marketers/$id/bonus',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -158,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRouteWithChildren
@@ -171,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
   '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
@@ -181,6 +197,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
@@ -193,6 +210,7 @@ export interface FileRoutesByTo {
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
   '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
@@ -205,6 +223,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/_authenticated/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/_authenticated/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
@@ -218,6 +237,7 @@ export interface FileRoutesById {
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/marketers/$id_/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/_authenticated/marketers/$id_/expenses': typeof AuthenticatedMarketersIdExpensesRoute
   '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
@@ -230,6 +250,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/ad-accounts'
     | '/ad-spend'
+    | '/bonus-calculator'
     | '/dashboard'
     | '/orders'
     | '/products'
@@ -243,6 +264,7 @@ export interface FileRouteTypes {
     | '/marketers/'
     | '/orders/'
     | '/users/'
+    | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
     | '/api/public/meta/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -253,6 +275,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/ad-accounts'
     | '/ad-spend'
+    | '/bonus-calculator'
     | '/dashboard'
     | '/products'
     | '/shipping'
@@ -265,6 +288,7 @@ export interface FileRouteTypes {
     | '/marketers'
     | '/orders'
     | '/users'
+    | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
     | '/api/public/meta/callback'
   id:
@@ -276,6 +300,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/ad-accounts'
     | '/_authenticated/ad-spend'
+    | '/_authenticated/bonus-calculator'
     | '/_authenticated/dashboard'
     | '/_authenticated/orders'
     | '/_authenticated/products'
@@ -289,6 +314,7 @@ export interface FileRouteTypes {
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
     | '/_authenticated/users/'
+    | '/_authenticated/marketers/$id_/bonus'
     | '/_authenticated/marketers/$id_/expenses'
     | '/api/public/meta/callback'
   fileRoutesById: FileRoutesById
@@ -365,6 +391,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/bonus-calculator': {
+      id: '/_authenticated/bonus-calculator'
+      path: '/bonus-calculator'
+      fullPath: '/bonus-calculator'
+      preLoaderRoute: typeof AuthenticatedBonusCalculatorRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/ad-spend': {
@@ -458,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMarketersIdExpensesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/marketers/$id_/bonus': {
+      id: '/_authenticated/marketers/$id_/bonus'
+      path: '/marketers/$id/bonus'
+      fullPath: '/marketers/$id/bonus'
+      preLoaderRoute: typeof AuthenticatedMarketersIdBonusRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -492,6 +532,7 @@ const AuthenticatedProductsRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
   AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
+  AuthenticatedBonusCalculatorRoute: typeof AuthenticatedBonusCalculatorRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRouteWithChildren
@@ -501,12 +542,14 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
+  AuthenticatedMarketersIdBonusRoute: typeof AuthenticatedMarketersIdBonusRoute
   AuthenticatedMarketersIdExpensesRoute: typeof AuthenticatedMarketersIdExpensesRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdAccountsRoute: AuthenticatedAdAccountsRoute,
   AuthenticatedAdSpendRoute: AuthenticatedAdSpendRoute,
+  AuthenticatedBonusCalculatorRoute: AuthenticatedBonusCalculatorRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRouteWithChildren,
@@ -517,6 +560,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
+  AuthenticatedMarketersIdBonusRoute: AuthenticatedMarketersIdBonusRoute,
   AuthenticatedMarketersIdExpensesRoute: AuthenticatedMarketersIdExpensesRoute,
 }
 
