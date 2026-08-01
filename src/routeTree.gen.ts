@@ -18,6 +18,7 @@ import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedBonusCalculatorRouteImport } from './routes/_authenticated/bonus-calculator'
 import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users.index'
@@ -77,6 +78,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedBonusCalculatorRoute =
+  AuthenticatedBonusCalculatorRouteImport.update({
+    id: '/bonus-calculator',
+    path: '/bonus-calculator',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdSpendRoute = AuthenticatedAdSpendRouteImport.update({
   id: '/ad-spend',
   path: '/ad-spend',
@@ -165,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRouteWithChildren
@@ -189,6 +197,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/ad-accounts': typeof AuthenticatedAdAccountsRoute
   '/_authenticated/ad-spend': typeof AuthenticatedAdSpendRoute
+  '/_authenticated/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/ad-accounts'
     | '/ad-spend'
+    | '/bonus-calculator'
     | '/dashboard'
     | '/orders'
     | '/products'
@@ -264,6 +275,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/ad-accounts'
     | '/ad-spend'
+    | '/bonus-calculator'
     | '/dashboard'
     | '/products'
     | '/shipping'
@@ -288,6 +300,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/ad-accounts'
     | '/_authenticated/ad-spend'
+    | '/_authenticated/bonus-calculator'
     | '/_authenticated/dashboard'
     | '/_authenticated/orders'
     | '/_authenticated/products'
@@ -378,6 +391,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/bonus-calculator': {
+      id: '/_authenticated/bonus-calculator'
+      path: '/bonus-calculator'
+      fullPath: '/bonus-calculator'
+      preLoaderRoute: typeof AuthenticatedBonusCalculatorRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/ad-spend': {
@@ -512,6 +532,7 @@ const AuthenticatedProductsRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdAccountsRoute: typeof AuthenticatedAdAccountsRoute
   AuthenticatedAdSpendRoute: typeof AuthenticatedAdSpendRoute
+  AuthenticatedBonusCalculatorRoute: typeof AuthenticatedBonusCalculatorRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRouteWithChildren
@@ -528,6 +549,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdAccountsRoute: AuthenticatedAdAccountsRoute,
   AuthenticatedAdSpendRoute: AuthenticatedAdSpendRoute,
+  AuthenticatedBonusCalculatorRoute: AuthenticatedBonusCalculatorRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRouteWithChildren,

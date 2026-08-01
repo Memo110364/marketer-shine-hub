@@ -694,22 +694,8 @@ function DashboardPage() {
             ))}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base inline-flex items-center gap-2"><TrendingDown className="h-4 w-4 text-[var(--destructive)]" /> مسوّقون بأداء متراجع</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {topDeclining.length === 0 ? (
-              <div className="text-sm text-muted-foreground text-center py-6">لا توجد بيانات</div>
-            ) : topDeclining.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border p-2.5">
-                <div className="text-sm font-medium">{m.name}</div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">{fmtNumber(m.orders)} طلب</span>
-                  <GrowthBadge value={m.growth} />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        <DashboardBonusSection />
+
       </div>
 
       {/* Marketer daily performance table */}
