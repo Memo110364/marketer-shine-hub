@@ -155,7 +155,7 @@ export function TierProgress({
                     {s.label}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {i === 0 ? `< ${fmtNumber(s.from + (stages[0].min_shipped_orders ? 0 : 0)) && fmtNumber(stages[0].min_shipped_orders)}` : fmtNumber(s.from)}
+                    {i === 0 ? `< ${fmtNumber(stages[0].min_shipped_orders)}` : fmtNumber(s.from)}
                   </div>
                 </div>
               ))}
