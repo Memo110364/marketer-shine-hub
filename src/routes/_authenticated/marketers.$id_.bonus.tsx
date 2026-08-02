@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,24 +10,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from "@/lib/format";
 import { WorkflowBadge, PaymentBadge, TierChip } from "@/components/bonus/BonusBadges";
+import { TierProgress, type Tier } from "@/components/bonus/TierProgress";
+import { DeliveryQuality } from "@/components/bonus/DeliveryQuality";
+import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
+import { BonusTimeline } from "@/components/bonus/BonusTimeline";
+import { BonusPayments } from "@/components/bonus/BonusPayments";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
-import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
 import { toast } from "sonner";
 
+type BonusSearch = { year?: number; month?: number };
+
 export const Route = createFileRoute("/_authenticated/marketers/$id_/bonus")({
+  validateSearch: (search: Record<string, unknown>): BonusSearch => {
+    const y = Number(search.year);
+    const m = Number(search.month);
+    return {
+      year: Number.isFinite(y) && y > 2000 ? y : undefined,
+      month: Number.isFinite(m) && m >= 1 && m <= 12 ? m : undefined,
+    };
+  },
+  head: () => ({
+    meta: [
+      { title: "بونص ومستحقات المسوّق الشهرية" },
+      { name: "description", content: "تفاصيل احتساب البونص الشهري وتقدّم الباقات وجودة التسليم والمدفوعات." },
+      { property: "og:title", content: "بونص ومستحقات المسوّق الشهرية" },
+      { property: "og:description", content: "تفاصيل احتساب البونص الشهري وتقدّم الباقات وجودة التسليم والمدفوعات." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: MarketerBonusPage,
 });
 
 function MarketerBonusPage() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/marketers/$id/bonus" });
   const { role } = useAuth();
   const qc = useQueryClient();
+  const isMarketer = role === "marketer";
   const canRecalculate = role === "admin" || role === "account_manager";
 
   const def = lastCompletedMonth();
-  const [year, setYear] = useState(def.year);
-  const [month, setMonth] = useState(def.month);
-  const [historyLimit, setHistoryLimit] = useState(12);
+  const year = search.year ?? def.year;
+  const month = search.month ?? def.month;
+  const setPeriod = (y: number, m: number) =>
+    navigate({ params: { id }, search: { year: y, month: m } });
+
+  const [historyLimit, setHistoryLimit] = useState(6);
 
   const years = useMemo(() => {
     const cur = new Date().getFullYear();
@@ -48,11 +79,11 @@ function MarketerBonusPage() {
     queryKey: ["bonus-tiers"],
     queryFn: async () => {
       const { data } = await supabase.from("bonus_tiers").select("*").order("tier_order");
-      return (data ?? []) as any[];
+      return (data ?? []) as Tier[];
     },
   });
 
-  const { data: bonus, isLoading: loadingBonus } = useQuery({
+  const { data: bonus, isLoading: loadingBonus, isError: bonusError } = useQuery({
     queryKey: ["marketer-bonus", id, year, month],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -61,6 +92,18 @@ function MarketerBonusPage() {
         .maybeSingle();
       if (error) throw error;
       return data as any;
+    },
+  });
+
+  const { data: payments = [] } = useQuery({
+    enabled: !!bonus?.id,
+    queryKey: ["bonus-payments", bonus?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("bonus_payments").select("*")
+        .eq("monthly_bonus_id", bonus.id)
+        .order("payment_date", { ascending: false });
+      return (data ?? []) as any[];
     },
   });
 
@@ -86,25 +129,27 @@ function MarketerBonusPage() {
       return data;
     },
     onSuccess: () => {
-      toast.success("تم إعادة احتساب الشهر");
+      toast.success("تم احتساب مستحقات الشهر");
       qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
       qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "تعذر إعادة الاحتساب"),
+    onError: () => toast.error("تعذر تنفيذ الاحتساب، برجاء المحاولة مرة أخرى"),
   });
 
   const tierByName = (name: string | null | undefined) =>
     tiers.find((t) => t.tier_name_ar === name || t.tier_name_en === name);
   const earnedTier = bonus ? tierByName(bonus.earned_tier_name_snapshot) : undefined;
+  const volumeTier = bonus ? tierByName(bonus.volume_tier_name_snapshot) : undefined;
   const perExtraOrder = Number(earnedTier?.extra_delivered_order_amount ?? 0);
   const downgraded =
     bonus &&
     bonus.volume_tier_order_snapshot != null &&
     bonus.earned_tier_order_snapshot != null &&
     Number(bonus.earned_tier_order_snapshot) < Number(bonus.volume_tier_order_snapshot);
+  const adjustment = Number(bonus?.manual_adjustment_amount ?? 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div>
         <Button asChild variant="ghost" size="sm" className="mb-2">
           <Link to="/marketers/$id" params={{ id }}><ArrowRight className="h-4 w-4 ml-1" /> رجوع للمسوق</Link>
@@ -113,7 +158,7 @@ function MarketerBonusPage() {
         <div className="text-sm text-muted-foreground mt-1">{m?.marketer_code}</div>
       </div>
 
-      {/* Tabs (same links used on the marketer details page) */}
+      {/* Tabs */}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" asChild>
           <Link to="/marketers/$id/expenses" params={{ id }}><Wallet className="h-4 w-4 ml-1" /> المصروفات</Link>
@@ -128,7 +173,7 @@ function MarketerBonusPage() {
         <CardContent className="p-4 flex flex-wrap items-end gap-4">
           <div className="space-y-1">
             <Label>الشهر</Label>
-            <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+            <Select value={String(month)} onValueChange={(v) => setPeriod(year, Number(v))}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {MONTHS_AR.map((label, i) => (
@@ -139,7 +184,7 @@ function MarketerBonusPage() {
           </div>
           <div className="space-y-1">
             <Label>السنة</Label>
-            <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+            <Select value={String(year)} onValueChange={(v) => setPeriod(Number(v), month)}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {years.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
@@ -163,10 +208,15 @@ function MarketerBonusPage() {
             </div>
           </div>
           {canRecalculate && (
-            <div className="mr-auto">
+            <div className="mr-auto flex items-center gap-2">
+              {bonus?.is_locked && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Lock className="h-3.5 w-3.5" /> الشهر مقفول
+                </span>
+              )}
               <Button onClick={() => recalc.mutate()} disabled={recalc.isPending || bonus?.is_locked}>
                 {recalc.isPending ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <RefreshCw className="h-4 w-4 ml-1" />}
-                إعادة احتساب الشهر
+                {bonus ? "إعادة احتساب الشهر" : "احتساب مستحقات الشهر"}
               </Button>
             </div>
           )}
@@ -175,108 +225,178 @@ function MarketerBonusPage() {
 
       {loadingBonus ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
-      ) : !bonus ? (
+      ) : bonusError ? (
         <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-          لا يوجد سجل بونص محفوظ لشهر {monthLabel(year, month)}
-          {canRecalculate ? " — اضغط إعادة احتساب الشهر لإنشائه." : "."}
+          تعذر تحميل بيانات المستحقات لهذا الشهر، برجاء المحاولة مرة أخرى.
+        </CardContent></Card>
+      ) : !bonus ? (
+        <Card><CardContent className="p-8 text-center space-y-3">
+          <div className="text-sm text-muted-foreground">
+            {isMarketer
+              ? "لم يتم اعتماد مستحقات هذا الشهر بعد"
+              : `لا توجد حسبة بونص لهذا الشهر — ${monthLabel(year, month)}`}
+          </div>
+          {canRecalculate && (
+            <Button onClick={() => recalc.mutate()} disabled={recalc.isPending}>
+              {recalc.isPending ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <RefreshCw className="h-4 w-4 ml-1" />}
+              احتساب مستحقات الشهر
+            </Button>
+          )}
         </CardContent></Card>
       ) : (
         <>
-          {/* Summary cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <Stat label="الطلبات التي خرجت للشحن" value={fmtNumber(bonus.shipped_orders_count)} />
-            <Stat label="الطلبات المسلمة" value={fmtNumber(bonus.delivered_orders_count)} />
-            <Stat label="نسبة التسليم" value={fmtPercent(Number(bonus.delivery_rate ?? 0))}
-              hint={`المطلوب: ${fmtPercent(Number(bonus.required_delivery_rate ?? 0))}`} />
-            <Stat label="الراتب" value={fmtCurrency(bonus.calculated_salary)} />
-            <Stat label="بونص الأرباح" value={fmtCurrency(bonus.calculated_profit_bonus)} />
-            <Stat label="مكافأة الطلبات الإضافية" value={fmtCurrency(bonus.calculated_extra_orders_bonus)} />
-            <Stat label="حسبة النظام" value={fmtCurrency(bonus.system_calculated_total)} />
-            <Stat label="التسوية" value={fmtCurrency(bonus.manual_adjustment_amount)}
-              hint={bonus.manual_adjustment_reason ?? undefined} />
-            <Stat label="المستحق النهائي" value={fmtCurrency(bonus.final_approved_amount)} tone="primary" />
-            <Stat label="المدفوع" value={fmtCurrency(bonus.total_paid_amount)} tone="success" />
-            <Stat label="المتبقي" value={fmtCurrency(bonus.remaining_amount)}
-              tone={Number(bonus.remaining_amount ?? 0) > 0 ? "destructive" : "success"} />
-          </div>
-
-          {/* Tiers */}
-          <Card>
-            <CardHeader><CardTitle className="text-base">الباقات</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap items-center gap-6">
+          {/* Primary summary */}
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex flex-wrap items-end justify-between gap-6">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-1">الباقة حسب عدد الطلبات</div>
-                  <TierChip
-                    name={bonus.volume_tier_name_snapshot}
-                    colorHex={tierByName(bonus.volume_tier_name_snapshot)?.color_hex}
-                  />
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">الباقة المستحقة</div>
-                  <TierChip name={bonus.earned_tier_name_snapshot} colorHex={earnedTier?.color_hex} />
-                </div>
-              </div>
-              {downgraded ? (
-                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground" />
-                  <div>
-                    <div className="font-medium">
-                      {bonus.volume_tier_name_snapshot} ← {bonus.earned_tier_name_snapshot}
-                    </div>
-                    <div className="text-muted-foreground">
-                      تم تخفيض الباقة بسبب عدم تحقيق نسبة التسليم المطلوبة
-                      {bonus.tier_change_reason ? ` — ${bonus.tier_change_reason}` : ""}
-                    </div>
+                  <div className="text-sm text-muted-foreground">المستحق النهائي — {monthLabel(year, month)}</div>
+                  <div className="text-4xl font-display font-bold text-primary mt-1">
+                    {fmtCurrency(bonus.final_approved_amount)}
                   </div>
                 </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  تم تحقيق الباقة المستحقة بالكامل بدون تخفيض.
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+                  <SummaryItem label="حسبة النظام" value={fmtCurrency(bonus.system_calculated_total)} />
+                  <SummaryItem
+                    label="التسوية"
+                    value={`${adjustment > 0 ? "+ " : adjustment < 0 ? "- " : ""}${fmtCurrency(Math.abs(adjustment))}`}
+                    className={adjustment > 0 ? "text-success" : adjustment < 0 ? "text-destructive" : ""}
+                  />
+                  <SummaryItem label="المدفوع" value={fmtCurrency(bonus.total_paid_amount)} className="text-success" />
+                  <SummaryItem
+                    label="المتبقي"
+                    value={fmtCurrency(bonus.remaining_amount)}
+                    className={Number(bonus.remaining_amount ?? 0) > 0 ? "text-destructive" : "text-success"}
+                  />
+                </div>
+              </div>
+              {adjustment !== 0 && !isMarketer && bonus.manual_adjustment_reason && (
+                <div className="rounded-xl border bg-background/60 p-3 text-sm">
+                  <span className="text-muted-foreground">سبب التسوية: </span>
+                  {bonus.manual_adjustment_reason}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Extra delivered bonus */}
+          {/* Volume tier progress */}
+          <TierProgress
+            shipped={Number(bonus.shipped_orders_count ?? 0)}
+            tiers={tiers}
+            volumeTierName={bonus.volume_tier_name_snapshot}
+          />
+
+          {/* Volume vs earned tier */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">الباقة حسب عدد الطلبات</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <TierChip name={bonus.volume_tier_name_snapshot} colorHex={volumeTier?.color_hex} />
+                <div className="text-xs text-muted-foreground">
+                  {fmtNumber(bonus.shipped_orders_count)} طلب خرج للشحن
+                  {volumeTier
+                    ? ` — نسبة التسليم المطلوبة لهذه الباقة: ${fmtPercent(Number(volumeTier.minimum_delivery_rate ?? 0))}`
+                    : ""}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-base">الباقة المستحقة</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                <TierChip name={bonus.earned_tier_name_snapshot} colorHex={earnedTier?.color_hex} />
+                <div className="text-xs text-muted-foreground">
+                  نسبة التسليم الفعلية: {fmtPercent(Number(bonus.delivery_rate ?? 0))} — المطلوبة:{" "}
+                  {fmtPercent(Number(bonus.required_delivery_rate ?? 0))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {downgraded ? (
+            <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground" />
+              <div>
+                <div className="font-medium">
+                  {bonus.volume_tier_name_snapshot} ← {bonus.earned_tier_name_snapshot}
+                </div>
+                <div className="text-muted-foreground">
+                  تم تخفيض الباقة بسبب عدم تحقيق نسبة التسليم المطلوبة
+                  {!isMarketer && bonus.tier_change_reason ? ` — ${bonus.tier_change_reason}` : ""}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success">
+              تم تحقيق الباقة المستحقة بالكامل بدون تخفيض.
+            </div>
+          )}
+
+          {/* Delivery quality */}
+          <DeliveryQuality
+            shipped={Number(bonus.shipped_orders_count ?? 0)}
+            delivered={Number(bonus.delivered_orders_count ?? 0)}
+            actualRate={Number(bonus.delivery_rate ?? 0)}
+            requiredRate={Number(bonus.required_delivery_rate ?? 0)}
+            minimumDelivered={Number(bonus.minimum_delivered_orders ?? 0)}
+          />
+
+          {/* Extra delivered reward */}
           <Card>
-            <CardHeader><CardTitle className="text-base">مكافأة الطلبات المسلمة الإضافية</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-              <div>
-                <div className="text-muted-foreground">الحد الأدنى المطلوب</div>
-                <div className="font-display font-bold text-lg">{fmtNumber(bonus.minimum_delivered_orders)} طلب</div>
+            <CardHeader className="pb-3"><CardTitle className="text-base">مكافأة الطلبات الإضافية</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <Field label="الحد الأدنى المطلوب" value={`${fmtNumber(bonus.minimum_delivered_orders)} طلب`} />
+                <Field label="تم التسليم فعليًا" value={`${fmtNumber(bonus.delivered_orders_count)} طلب`} />
+                <Field label="الطلبات الإضافية" value={`${fmtNumber(bonus.extra_delivered_orders)} طلب`} />
+                <Field
+                  label="قيمة المكافأة لكل طلب"
+                  value={earnedTier ? fmtCurrency(perExtraOrder) : "غير متوفرة"}
+                />
+                <Field
+                  label="إجمالي المكافأة"
+                  value={fmtCurrency(bonus.calculated_extra_orders_bonus)}
+                  className="text-success"
+                />
               </div>
-              <div>
-                <div className="text-muted-foreground">تم تحقيق</div>
-                <div className="font-display font-bold text-lg">{fmtNumber(bonus.delivered_orders_count)} طلب</div>
+              <div className="rounded-xl border bg-muted/40 p-3 text-sm">
+                <div className="text-muted-foreground text-xs mb-1">طريقة الحساب</div>
+                الطلبات الإضافية × قيمة المكافأة لكل طلب
+                {earnedTier && (
+                  <div className="mt-1 font-medium">
+                    {fmtNumber(bonus.extra_delivered_orders)} طلب إضافي × {fmtCurrency(perExtraOrder)} ={" "}
+                    {fmtCurrency(bonus.calculated_extra_orders_bonus)}
+                  </div>
+                )}
               </div>
-              <div>
-                <div className="text-muted-foreground">الطلبات الإضافية</div>
-                <div className="font-display font-bold text-lg">{fmtNumber(bonus.extra_delivered_orders)} طلب</div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">قيمة الحافز</div>
-                <div className="font-display font-bold text-lg">
-                  {fmtNumber(bonus.extra_delivered_orders)} × {fmtCurrency(perExtraOrder)}
+              {!earnedTier && (
+                <div className="text-xs text-muted-foreground">
+                  إعدادات الباقة غير متوفرة، يتم عرض القيم المحفوظة فقط.
                 </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">إجمالي المكافأة</div>
-                <div className="font-display font-bold text-lg text-success">
-                  {fmtCurrency(bonus.calculated_extra_orders_bonus)}
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Breakdown + timeline */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+            <div className="lg:col-span-2">
+              <BonusBreakdown bonus={bonus} earnedTier={earnedTier} />
+            </div>
+            <div className="space-y-4">
+              <BonusTimeline bonus={bonus} isMarketer={isMarketer} />
+            </div>
+          </div>
+
+          {/* Payments */}
+          <BonusPayments bonus={bonus} payments={payments} />
         </>
       )}
 
       {/* History */}
       <Card>
-        <CardHeader><CardTitle className="text-base">السجل الشهري</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">السجل الشهري</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">
           {history.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-6">لا يوجد سجل</div>
+            <div className="text-sm text-muted-foreground text-center py-6">لا يوجد سجل شهري بعد</div>
           ) : (
             <>
               <Table>
@@ -287,7 +407,6 @@ function MarketerBonusPage() {
                     <TableHead>تم التسليم</TableHead>
                     <TableHead>نسبة التسليم</TableHead>
                     <TableHead>الباقة المستحقة</TableHead>
-                    <TableHead>حسبة النظام</TableHead>
                     <TableHead>المستحق النهائي</TableHead>
                     <TableHead>المدفوع</TableHead>
                     <TableHead>المتبقي</TableHead>
@@ -299,8 +418,8 @@ function MarketerBonusPage() {
                   {history.map((h) => (
                     <TableRow
                       key={h.id}
-                      className="cursor-pointer"
-                      onClick={() => { setYear(h.bonus_year); setMonth(h.bonus_month); }}
+                      className={`cursor-pointer ${h.bonus_year === year && h.bonus_month === month ? "bg-primary/5" : ""}`}
+                      onClick={() => setPeriod(h.bonus_year, h.bonus_month)}
                     >
                       <TableCell className="font-medium">{monthLabel(h.bonus_year, h.bonus_month)}</TableCell>
                       <TableCell>{fmtNumber(h.shipped_orders_count)}</TableCell>
@@ -312,7 +431,6 @@ function MarketerBonusPage() {
                           colorHex={tierByName(h.earned_tier_name_snapshot)?.color_hex}
                         />
                       </TableCell>
-                      <TableCell>{fmtCurrency(h.system_calculated_total)}</TableCell>
                       <TableCell>{fmtCurrency(h.final_approved_amount)}</TableCell>
                       <TableCell>{fmtCurrency(h.total_paid_amount)}</TableCell>
                       <TableCell>{fmtCurrency(h.remaining_amount)}</TableCell>
@@ -324,7 +442,7 @@ function MarketerBonusPage() {
               </Table>
               {history.length >= historyLimit && (
                 <div className="pt-3 text-center">
-                  <Button variant="outline" size="sm" onClick={() => setHistoryLimit((l) => l + 12)}>
+                  <Button variant="outline" size="sm" onClick={() => setHistoryLimit((l) => l + 6)}>
                     عرض شهور أقدم
                   </Button>
                 </div>
@@ -337,21 +455,20 @@ function MarketerBonusPage() {
   );
 }
 
-function Stat({
-  label, value, hint, tone,
-}: { label: string; value: string; hint?: string; tone?: "primary" | "success" | "destructive" }) {
-  const toneClass =
-    tone === "primary" ? "text-primary"
-      : tone === "success" ? "text-success"
-        : tone === "destructive" ? "text-destructive"
-          : "";
+function SummaryItem({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className={`text-xl font-display font-bold mt-1 ${toneClass}`}>{value}</div>
-        {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
-      </CardContent>
-    </Card>
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`font-display font-bold text-lg mt-0.5 ${className ?? ""}`}>{value}</div>
+    </div>
+  );
+}
+
+function Field({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`font-display font-bold text-lg mt-0.5 ${className ?? ""}`}>{value}</div>
+    </div>
   );
 }
