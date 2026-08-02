@@ -192,7 +192,7 @@ export function DashboardBonusSection() {
                       <TableCell><PaymentBadge status={r.payment_status} /></TableCell>
                       <TableCell>
                         <Button size="sm" variant="outline" asChild>
-                          <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }}>عرض التفاصيل</Link>
+                          <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -218,7 +218,7 @@ export function DashboardBonusSection() {
                     <WorkflowBadge status={r.workflow_status} />
                     <PaymentBadge status={r.payment_status} />
                     <Button size="sm" variant="outline" className="mr-auto" asChild>
-                      <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }}>عرض التفاصيل</Link>
+                      <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
                     </Button>
                   </div>
                 </div>
