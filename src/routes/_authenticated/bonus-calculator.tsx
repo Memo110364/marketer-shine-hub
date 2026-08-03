@@ -87,6 +87,10 @@ function BonusCalculatorPage() {
         .sort((a, b) => attentionRank(a) - attentionRank(b)),
     [rows, workflowFilter, paymentFilter],
   );
+  const selectableIds = useMemo(
+    () => filtered.filter((r) => !r.is_locked && r.workflow_status !== "locked").map((r) => r.id as string),
+    [filtered],
+  );
   const years = useMemo(() => {
     const cur = new Date().getFullYear();
     return [cur, cur - 1, cur - 2];
