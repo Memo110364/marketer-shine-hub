@@ -1121,6 +1121,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_monthly_bonus: {
+        Args: { _monthly_bonus_id: string }
+        Returns: Json
+      }
       calculate_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
@@ -1152,8 +1156,25 @@ export type Database = {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
       }
+      lock_monthly_bonus: { Args: { _monthly_bonus_id: string }; Returns: Json }
       preview_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
+        Returns: Json
+      }
+      propose_bonus_adjustment: {
+        Args: {
+          _adjustment_amount: number
+          _adjustment_reason?: string
+          _monthly_bonus_id: string
+        }
+        Returns: Json
+      }
+      submit_bonus_for_review: {
+        Args: { _monthly_bonus_id: string }
+        Returns: Json
+      }
+      unlock_monthly_bonus: {
+        Args: { _monthly_bonus_id: string; _unlock_reason: string }
         Returns: Json
       }
     }

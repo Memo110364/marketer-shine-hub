@@ -13,8 +13,9 @@ import { WorkflowBadge, PaymentBadge, TierChip } from "@/components/bonus/BonusB
 import { TierProgress, type Tier } from "@/components/bonus/TierProgress";
 import { DeliveryQuality } from "@/components/bonus/DeliveryQuality";
 import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
-import { BonusTimeline } from "@/components/bonus/BonusTimeline";
+import { BonusTimeline, type AuditLog } from "@/components/bonus/BonusTimeline";
 import { BonusPayments } from "@/components/bonus/BonusPayments";
+import { BonusWorkflowActions } from "@/components/bonus/BonusWorkflowActions";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
 import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -107,6 +108,26 @@ function MarketerBonusPage() {
     },
   });
 
+  const { data: auditLogs = [] } = useQuery({
+    enabled: !!bonus?.id && !isMarketer,
+    queryKey: ["bonus-audit-logs", bonus?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("bonus_audit_logs").select("*")
+        .eq("monthly_bonus_id", bonus.id)
+        .order("performed_at", { ascending: true });
+      const rows = (data ?? []) as any[];
+      const actorIds = Array.from(new Set(rows.map((r) => r.performed_by).filter(Boolean)));
+      let names: Record<string, string> = {};
+      if (actorIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles").select("id, full_name").in("id", actorIds);
+        names = Object.fromEntries((profs ?? []).map((p: any) => [p.id, p.full_name]));
+      }
+      return rows.map((r) => ({ ...r, actor_name: names[r.performed_by] ?? null })) as AuditLog[];
+    },
+  });
+
   const { data: history = [] } = useQuery({
     queryKey: ["marketer-bonus-history", id, historyLimit],
     queryFn: async () => {
@@ -119,6 +140,7 @@ function MarketerBonusPage() {
       return (data ?? []) as any[];
     },
   });
+
 
   const recalc = useMutation({
     mutationFn: async () => {
@@ -279,6 +301,9 @@ function MarketerBonusPage() {
             </CardContent>
           </Card>
 
+          {/* Review / approval workflow */}
+          <BonusWorkflowActions bonus={bonus} />
+
           {/* Volume tier progress */}
           <TierProgress
             shipped={Number(bonus.shipped_orders_count ?? 0)}
@@ -382,7 +407,7 @@ function MarketerBonusPage() {
               <BonusBreakdown bonus={bonus} earnedTier={earnedTier} />
             </div>
             <div className="space-y-4">
-              <BonusTimeline bonus={bonus} isMarketer={isMarketer} />
+              <BonusTimeline bonus={bonus} isMarketer={isMarketer} logs={auditLogs} />
             </div>
           </div>
 

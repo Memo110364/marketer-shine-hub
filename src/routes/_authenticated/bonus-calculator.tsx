@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
@@ -15,7 +16,8 @@ import {
   attentionRank, lastCompletedMonth, monthLabel,
 } from "@/lib/bonus";
 import { useBonusMonth, summarize, useRecalculateMonth } from "@/components/bonus/DashboardBonusSection";
-import { Loader2, RefreshCw, Trophy } from "lucide-react";
+import { Loader2, RefreshCw, Trophy, CheckCircle2, Lock } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/bonus-calculator")({
   head: () => ({
@@ -50,8 +52,33 @@ function BonusCalculatorPage() {
     },
   });
   const recalc = useRecalculateMonth(year, month);
+  const qc = useQueryClient();
+  const [selected, setSelected] = useState<string[]>([]);
+
+  const bulk = useMutation({
+    mutationFn: async (p: { fn: "approve_monthly_bonus" | "lock_monthly_bonus"; ids: string[] }) => {
+      let ok = 0;
+      const failures: string[] = [];
+      for (const id of p.ids) {
+        const { error } = await (supabase.rpc as any)(p.fn, { _monthly_bonus_id: id });
+        if (error) failures.push(error.message);
+        else ok += 1;
+      }
+      return { ok, failures };
+    },
+    onSuccess: ({ ok, failures }) => {
+      if (ok) toast.success(`تم تنفيذ العملية على ${fmtNumber(ok)} سجل`);
+      if (failures.length) toast.error(`تعذر تنفيذ ${fmtNumber(failures.length)} سجل: ${failures[0]}`);
+      setSelected([]);
+      qc.invalidateQueries({ queryKey: ["bonus-month"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "تعذر تنفيذ العملية"),
+  });
+
+
 
   const s = useMemo(() => summarize(rows), [rows]);
+
   const filtered = useMemo(
     () =>
       rows
@@ -59,6 +86,10 @@ function BonusCalculatorPage() {
         .filter((r) => paymentFilter === "all" || r.payment_status === paymentFilter)
         .sort((a, b) => attentionRank(a) - attentionRank(b)),
     [rows, workflowFilter, paymentFilter],
+  );
+  const selectableIds = useMemo(
+    () => filtered.filter((r) => !r.is_locked && r.workflow_status !== "locked").map((r) => r.id as string),
+    [filtered],
   );
   const years = useMemo(() => {
     const cur = new Date().getFullYear();
@@ -172,7 +203,31 @@ function BonusCalculatorPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">مستحقات المسوقين</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+          <CardTitle className="text-base">مستحقات المسوقين</CardTitle>
+          {isAdmin && selected.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">تم اختيار {fmtNumber(selected.length)} سجل</span>
+              <Button
+                size="sm"
+                disabled={bulk.isPending}
+                onClick={() => bulk.mutate({ fn: "approve_monthly_bonus", ids: selected })}
+              >
+                {bulk.isPending ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 ml-1" />}
+                اعتماد المحدد
+              </Button>
+              <Button
+                size="sm"
+                variant="gold"
+                disabled={bulk.isPending}
+                onClick={() => bulk.mutate({ fn: "lock_monthly_bonus", ids: selected })}
+              >
+                <Lock className="h-4 w-4 ml-1" /> قفل المحدد
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelected([])}>إلغاء التحديد</Button>
+            </div>
+          )}
+        </CardHeader>
         <CardContent className="overflow-x-auto">
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
@@ -182,6 +237,15 @@ function BonusCalculatorPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isAdmin && (
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectableIds.length > 0 && selected.length === selectableIds.length}
+                        onCheckedChange={(v) => setSelected(v ? selectableIds : [])}
+                        aria-label="تحديد الكل"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>المسوّق</TableHead>
                   <TableHead>خرج للشحن</TableHead>
                   <TableHead>تم التسليم</TableHead>
@@ -199,7 +263,20 @@ function BonusCalculatorPage() {
               <TableBody>
                 {filtered.map((r) => (
                   <TableRow key={r.id}>
+                    {isAdmin && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.includes(r.id)}
+                          disabled={!selectableIds.includes(r.id)}
+                          onCheckedChange={(v) =>
+                            setSelected((prev) => (v ? [...prev, r.id] : prev.filter((x) => x !== r.id)))
+                          }
+                          aria-label="تحديد السجل"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{r.marketers?.name ?? "—"}</TableCell>
+
                     <TableCell>{fmtNumber(r.shipped_orders_count)}</TableCell>
                     <TableCell>{fmtNumber(r.delivered_orders_count)}</TableCell>
                     <TableCell>{fmtPercent(Number(r.delivery_rate ?? 0))}</TableCell>
