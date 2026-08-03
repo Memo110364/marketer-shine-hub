@@ -78,6 +78,7 @@ function BonusCalculatorPage() {
 
 
   const s = useMemo(() => summarize(rows), [rows]);
+
   const filtered = useMemo(
     () =>
       rows
