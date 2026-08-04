@@ -53,7 +53,9 @@ function MarketerBonusPage() {
   const { role } = useAuth();
   const qc = useQueryClient();
   const isMarketer = role === "marketer";
+  const isAdmin = role === "admin";
   const canRecalculate = role === "admin" || role === "account_manager";
+
 
   const def = lastCompletedMonth();
   const year = search.year ?? def.year;
