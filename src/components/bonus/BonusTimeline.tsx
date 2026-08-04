@@ -16,11 +16,18 @@ const ACTION_LABELS: Record<string, string> = {
   recalculated: "إعادة احتساب",
   submitted_for_review: "بدء المراجعة",
   adjustment_proposed: "اقتراح تسوية",
+  adjustment_changed: "تعديل التسوية",
   adjustment_cleared: "إلغاء التسوية",
   approved: "اعتماد المستحقات",
   locked: "قفل الشهر",
   unlocked: "إعادة فتح الشهر",
+  admin_unlocked: "إعادة فتح الشهر",
+  payment_added: "تسجيل دفعة",
+  payment_updated: "تعديل دفعة",
+  payment_deleted: "حذف دفعة",
+  payment_completed: "اكتمال دفع المستحقات",
 };
+
 
 export type AuditLog = {
   id: string;

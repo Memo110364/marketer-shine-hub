@@ -30,8 +30,16 @@ export function useBonusMonth(year: number, month: number) {
   });
 }
 
+export function isPayable(row: BonusRow) {
+  return (
+    (row.workflow_status === "approved" || row.workflow_status === "locked") &&
+    Number(row.remaining_amount ?? 0) > 0
+  );
+}
+
 export function summarize(rows: BonusRow[]) {
   const num = (v: unknown) => Number(v ?? 0);
+  const payable = rows.filter(isPayable);
   return {
     count: rows.length,
     finalTotal: rows.reduce((s, r) => s + num(r.final_approved_amount), 0),
@@ -40,8 +48,12 @@ export function summarize(rows: BonusRow[]) {
     needsReview: rows.filter((r) => REVIEW_STATES.includes(r.workflow_status)).length,
     awaitingApproval: rows.filter((r) => r.workflow_status !== "approved" && r.workflow_status !== "locked").length,
     notFullyPaid: rows.filter((r) => r.payment_status !== "paid").length,
+    awaitingPaymentCount: payable.length,
+    awaitingPaymentTotal: payable.reduce((s, r) => s + num(r.remaining_amount), 0),
+    fullyPaid: rows.filter((r) => r.payment_status === "paid").length,
   };
 }
+
 
 export function useRecalculateMonth(year: number, month: number) {
   const { role } = useAuth();
@@ -149,13 +161,20 @@ export function DashboardBonusSection() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <MiniKpi label="إجمالي المستحقات" value={fmtCurrency(s.finalTotal)} tone="text-primary" />
-          <MiniKpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" />
+          <MiniKpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" hint={`${fmtNumber(s.fullyPaid)} مدفوع بالكامل`} />
           <MiniKpi label="المتبقي" value={fmtCurrency(s.remainingTotal)} tone={s.remainingTotal > 0 ? "text-destructive" : ""} />
+          <MiniKpi
+            label="بانتظار التحويل"
+            value={fmtCurrency(s.awaitingPaymentTotal)}
+            tone={s.awaitingPaymentTotal > 0 ? "text-destructive" : ""}
+            hint={`${fmtNumber(s.awaitingPaymentCount)} مسوّق معتمد بدون دفع كامل`}
+          />
           <MiniKpi label="يحتاج مراجعة" value={fmtNumber(s.needsReview)} hint={`${fmtNumber(s.awaitingApproval)} بانتظار الاعتماد`} />
           <MiniKpi label="لم يتم دفعه بالكامل" value={fmtNumber(s.notFullyPaid)} hint={`${fmtNumber(s.count)} مسوّق بسجل`} />
         </div>
+
 
         {isLoading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
@@ -191,10 +210,20 @@ export function DashboardBonusSection() {
                       <TableCell><WorkflowBadge status={r.workflow_status} /></TableCell>
                       <TableCell><PaymentBadge status={r.payment_status} /></TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
-                        </Button>
+                        <div className="flex gap-1">
+                          {isAdmin && isPayable(r) && (
+                            <Button size="sm" asChild>
+                              <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month, pay: true }}>
+                                تسجيل دفعة
+                              </Link>
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
+                          </Button>
+                        </div>
                       </TableCell>
+
                     </TableRow>
                   ))}
                 </TableBody>
@@ -217,9 +246,17 @@ export function DashboardBonusSection() {
                   <div className="flex flex-wrap items-center gap-2">
                     <WorkflowBadge status={r.workflow_status} />
                     <PaymentBadge status={r.payment_status} />
+                    {isAdmin && isPayable(r) && (
+                      <Button size="sm" asChild>
+                        <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month, pay: true }}>
+                          تسجيل دفعة
+                        </Link>
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" className="mr-auto" asChild>
                       <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
                     </Button>
+
                   </div>
                 </div>
               ))}

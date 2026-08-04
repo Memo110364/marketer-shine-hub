@@ -15,7 +15,7 @@ import {
   MONTHS_AR, PAYMENT_LABELS, WORKFLOW_LABELS, WORKFLOW_STATUSES, PAYMENT_STATUSES,
   attentionRank, lastCompletedMonth, monthLabel,
 } from "@/lib/bonus";
-import { useBonusMonth, summarize, useRecalculateMonth } from "@/components/bonus/DashboardBonusSection";
+import { useBonusMonth, summarize, isPayable, useRecalculateMonth } from "@/components/bonus/DashboardBonusSection";
 import { Loader2, RefreshCw, Trophy, CheckCircle2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -171,13 +171,20 @@ function BonusCalculatorPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Kpi label="إجمالي المستحقات" value={fmtCurrency(s.finalTotal)} tone="text-primary" />
-        <Kpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" />
+        <Kpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" hint={`${fmtNumber(s.fullyPaid)} مدفوع بالكامل`} />
         <Kpi label="المتبقي" value={fmtCurrency(s.remainingTotal)} tone={s.remainingTotal > 0 ? "text-destructive" : ""} />
+        <Kpi
+          label="بانتظار التحويل"
+          value={fmtCurrency(s.awaitingPaymentTotal)}
+          tone={s.awaitingPaymentTotal > 0 ? "text-destructive" : ""}
+          hint={`${fmtNumber(s.awaitingPaymentCount)} مسوّق معتمد بدون دفع كامل`}
+        />
         <Kpi label="يحتاج مراجعة" value={fmtNumber(s.needsReview)} />
         <Kpi label="لم يتم دفعه بالكامل" value={fmtNumber(s.notFullyPaid)} hint={`${fmtNumber(s.count)} مسوّق بسجل`} />
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
@@ -290,10 +297,20 @@ function BonusCalculatorPage() {
                     <TableCell><WorkflowBadge status={r.workflow_status} /></TableCell>
                     <TableCell><PaymentBadge status={r.payment_status} /></TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
-                      </Button>
+                      <div className="flex gap-1">
+                        {isAdmin && isPayable(r) && (
+                          <Button size="sm" asChild>
+                            <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month, pay: true }}>
+                              تسجيل دفعة
+                            </Link>
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
+                        </Button>
+                      </div>
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
