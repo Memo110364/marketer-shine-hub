@@ -297,10 +297,20 @@ function BonusCalculatorPage() {
                     <TableCell><WorkflowBadge status={r.workflow_status} /></TableCell>
                     <TableCell><PaymentBadge status={r.payment_status} /></TableCell>
                     <TableCell>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
-                      </Button>
+                      <div className="flex gap-1">
+                        {isAdmin && isPayable(r) && (
+                          <Button size="sm" asChild>
+                            <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month, pay: true }}>
+                              تسجيل دفعة
+                            </Link>
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
+                        </Button>
+                      </div>
                     </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>
