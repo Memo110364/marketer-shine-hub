@@ -171,13 +171,20 @@ function BonusCalculatorPage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <Kpi label="إجمالي المستحقات" value={fmtCurrency(s.finalTotal)} tone="text-primary" />
-        <Kpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" />
+        <Kpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" hint={`${fmtNumber(s.fullyPaid)} مدفوع بالكامل`} />
         <Kpi label="المتبقي" value={fmtCurrency(s.remainingTotal)} tone={s.remainingTotal > 0 ? "text-destructive" : ""} />
+        <Kpi
+          label="بانتظار التحويل"
+          value={fmtCurrency(s.awaitingPaymentTotal)}
+          tone={s.awaitingPaymentTotal > 0 ? "text-destructive" : ""}
+          hint={`${fmtNumber(s.awaitingPaymentCount)} مسوّق معتمد بدون دفع كامل`}
+        />
         <Kpi label="يحتاج مراجعة" value={fmtNumber(s.needsReview)} />
         <Kpi label="لم يتم دفعه بالكامل" value={fmtNumber(s.notFullyPaid)} hint={`${fmtNumber(s.count)} مسوّق بسجل`} />
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
