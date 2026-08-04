@@ -274,6 +274,8 @@ export const linkMetaAccount = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const callerRole = await requireAdAccountManager(context as AuthedContext);
+
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
@@ -290,10 +292,23 @@ export const linkMetaAccount = createServerFn({ method: "POST" })
     // Find existing row keyed by external id, or insert a new one.
     const { data: existing } = await supabaseAdmin
       .from("ad_accounts")
-      .select("id")
+      .select("id, marketer_id")
       .eq("platform", "meta")
       .eq("external_account_id", data.externalId)
       .maybeSingle();
+
+    // Account managers may only overwrite ad accounts belonging to their own
+    // marketers (or unassigned ones); admins may overwrite any.
+    if (existing?.marketer_id && callerRole === "account_manager") {
+      const { data: owned } = await (context as AuthedContext).supabase.rpc(
+        "is_my_marketer",
+        { _marketer_id: existing.marketer_id },
+      );
+      if (owned !== true) {
+        throw new Error("Forbidden: this ad account belongs to another marketer");
+      }
+    }
+
 
     const payload = {
       platform: "meta" as const,
