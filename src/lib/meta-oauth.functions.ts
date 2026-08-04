@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 const PUBLIC_ORIGIN = "https://marketer-shine-hub.lovable.app";
 const REDIRECT_URI = `${PUBLIC_ORIGIN}/api/public/meta/callback`;
 const META_SCOPE = "ads_read,business_management";
 
 type AuthedContext = {
-  supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
+  supabase: SupabaseClient<Database>;
   userId: string;
 };
 
@@ -15,7 +17,9 @@ type AuthedContext = {
  * Roles are verified server-side with the caller's own (RLS-scoped) client,
  * never with the service-role client and never from client-supplied data.
  */
-async function requireAdAccountManager(context: AuthedContext): Promise<"admin" | "account_manager"> {
+async function requireAdAccountManager(
+  context: AuthedContext,
+): Promise<"admin" | "account_manager"> {
   const { data: isAdmin } = await context.supabase.rpc("has_role", {
     _user_id: context.userId,
     _role: "admin",
@@ -28,8 +32,11 @@ async function requireAdAccountManager(context: AuthedContext): Promise<"admin" 
   });
   if (isManager === true) return "account_manager";
 
-  throw new Error("Forbidden: ad account connections are restricted to administrators");
+  throw new Error(
+    "Forbidden: ad account connections are restricted to administrators",
+  );
 }
+
 
 /** Step 4: create a one-time state row and return the Meta authorize URL. */
 export const startMetaOAuth = createServerFn({ method: "POST" })
