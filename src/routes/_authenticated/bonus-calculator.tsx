@@ -15,7 +15,7 @@ import {
   MONTHS_AR, PAYMENT_LABELS, WORKFLOW_LABELS, WORKFLOW_STATUSES, PAYMENT_STATUSES,
   attentionRank, lastCompletedMonth, monthLabel,
 } from "@/lib/bonus";
-import { useBonusMonth, summarize, useRecalculateMonth } from "@/components/bonus/DashboardBonusSection";
+import { useBonusMonth, summarize, isPayable, useRecalculateMonth } from "@/components/bonus/DashboardBonusSection";
 import { Loader2, RefreshCw, Trophy, CheckCircle2, Lock } from "lucide-react";
 import { toast } from "sonner";
 
