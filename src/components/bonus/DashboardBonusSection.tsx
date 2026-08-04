@@ -161,13 +161,20 @@ export function DashboardBonusSection() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <MiniKpi label="إجمالي المستحقات" value={fmtCurrency(s.finalTotal)} tone="text-primary" />
-          <MiniKpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" />
+          <MiniKpi label="تم دفعه" value={fmtCurrency(s.paidTotal)} tone="text-success" hint={`${fmtNumber(s.fullyPaid)} مدفوع بالكامل`} />
           <MiniKpi label="المتبقي" value={fmtCurrency(s.remainingTotal)} tone={s.remainingTotal > 0 ? "text-destructive" : ""} />
+          <MiniKpi
+            label="بانتظار التحويل"
+            value={fmtCurrency(s.awaitingPaymentTotal)}
+            tone={s.awaitingPaymentTotal > 0 ? "text-destructive" : ""}
+            hint={`${fmtNumber(s.awaitingPaymentCount)} مسوّق معتمد بدون دفع كامل`}
+          />
           <MiniKpi label="يحتاج مراجعة" value={fmtNumber(s.needsReview)} hint={`${fmtNumber(s.awaitingApproval)} بانتظار الاعتماد`} />
           <MiniKpi label="لم يتم دفعه بالكامل" value={fmtNumber(s.notFullyPaid)} hint={`${fmtNumber(s.count)} مسوّق بسجل`} />
         </div>
+
 
         {isLoading ? (
           <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin" /></div>
