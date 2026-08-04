@@ -20,7 +20,7 @@ import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
 import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
 import { toast } from "sonner";
 
-type BonusSearch = { year?: number; month?: number };
+type BonusSearch = { year?: number; month?: number; pay?: boolean };
 
 export const Route = createFileRoute("/_authenticated/marketers/$id_/bonus")({
   validateSearch: (search: Record<string, unknown>): BonusSearch => {
@@ -29,8 +29,10 @@ export const Route = createFileRoute("/_authenticated/marketers/$id_/bonus")({
     return {
       year: Number.isFinite(y) && y > 2000 ? y : undefined,
       month: Number.isFinite(m) && m >= 1 && m <= 12 ? m : undefined,
+      pay: search.pay === true || search.pay === "1" || search.pay === "true" ? true : undefined,
     };
   },
+
   head: () => ({
     meta: [
       { title: "بونص ومستحقات المسوّق الشهرية" },
