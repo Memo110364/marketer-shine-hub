@@ -246,9 +246,17 @@ export function DashboardBonusSection() {
                   <div className="flex flex-wrap items-center gap-2">
                     <WorkflowBadge status={r.workflow_status} />
                     <PaymentBadge status={r.payment_status} />
+                    {isAdmin && isPayable(r) && (
+                      <Button size="sm" asChild>
+                        <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month, pay: true }}>
+                          تسجيل دفعة
+                        </Link>
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" className="mr-auto" asChild>
                       <Link to="/marketers/$id/bonus" params={{ id: r.marketer_id }} search={{ year, month }}>عرض التفاصيل</Link>
                     </Button>
+
                   </div>
                 </div>
               ))}
