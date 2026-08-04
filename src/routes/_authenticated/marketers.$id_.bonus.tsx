@@ -100,7 +100,7 @@ function MarketerBonusPage() {
     },
   });
 
-  const { data: payments = [] } = useQuery({
+  const { data: paymentData } = useQuery({
     enabled: !!bonus?.id,
     queryKey: ["bonus-payments", bonus?.id],
     queryFn: async () => {
@@ -108,9 +108,29 @@ function MarketerBonusPage() {
         .from("bonus_payments").select("*")
         .eq("monthly_bonus_id", bonus.id)
         .order("payment_date", { ascending: false });
-      return (data ?? []) as any[];
+      const rows = (data ?? []) as any[];
+      const ids = Array.from(
+        new Set(rows.flatMap((r) => [r.created_by, r.deleted_by]).filter(Boolean)),
+      );
+      let names: Record<string, string> = {};
+      if (ids.length) {
+        const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+        names = Object.fromEntries((profs ?? []).map((p: any) => [p.id, p.full_name]));
+      }
+      const withNames = rows.map((r) => ({
+        ...r,
+        creator_name: names[r.created_by] ?? null,
+        deleter_name: r.deleted_by ? (names[r.deleted_by] ?? null) : null,
+      }));
+      return {
+        active: withNames.filter((r) => !r.deleted_at),
+        deleted: withNames.filter((r) => !!r.deleted_at),
+      };
     },
   });
+  const payments = paymentData?.active ?? [];
+  const deletedPayments = paymentData?.deleted ?? [];
+
 
   const { data: auditLogs = [] } = useQuery({
     enabled: !!bonus?.id && !isMarketer,
