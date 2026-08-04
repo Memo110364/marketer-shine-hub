@@ -1,14 +1,49 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 const PUBLIC_ORIGIN = "https://marketer-shine-hub.lovable.app";
 const REDIRECT_URI = `${PUBLIC_ORIGIN}/api/public/meta/callback`;
 const META_SCOPE = "ads_read,business_management";
 
+type AuthedContext = {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+};
+
+/**
+ * Only admins and account managers may manage ad account connections.
+ * Roles are verified server-side with the caller's own (RLS-scoped) client,
+ * never with the service-role client and never from client-supplied data.
+ */
+async function requireAdAccountManager(
+  context: AuthedContext,
+): Promise<"admin" | "account_manager"> {
+  const { data: isAdmin } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "admin",
+  });
+  if (isAdmin === true) return "admin";
+
+  const { data: isManager } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "account_manager",
+  });
+  if (isManager === true) return "account_manager";
+
+  throw new Error(
+    "Forbidden: ad account connections are restricted to administrators",
+  );
+}
+
+
 /** Step 4: create a one-time state row and return the Meta authorize URL. */
 export const startMetaOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireAdAccountManager(context as AuthedContext);
+
     const appId = process.env.META_APP_ID;
     if (!appId) throw new Error("META_APP_ID not configured");
 
@@ -59,6 +94,8 @@ export const listMetaAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { state: string }) => data)
   .handler(async ({ data, context }): Promise<{ accounts: MetaAccount[] }> => {
+    await requireAdAccountManager(context as AuthedContext);
+
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
@@ -248,6 +285,8 @@ export const linkMetaAccount = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const callerRole = await requireAdAccountManager(context as AuthedContext);
+
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
@@ -264,10 +303,23 @@ export const linkMetaAccount = createServerFn({ method: "POST" })
     // Find existing row keyed by external id, or insert a new one.
     const { data: existing } = await supabaseAdmin
       .from("ad_accounts")
-      .select("id")
+      .select("id, marketer_id")
       .eq("platform", "meta")
       .eq("external_account_id", data.externalId)
       .maybeSingle();
+
+    // Account managers may only overwrite ad accounts belonging to their own
+    // marketers (or unassigned ones); admins may overwrite any.
+    if (existing?.marketer_id && callerRole === "account_manager") {
+      const { data: owned } = await (context as AuthedContext).supabase.rpc(
+        "is_my_marketer",
+        { _marketer_id: existing.marketer_id },
+      );
+      if (owned !== true) {
+        throw new Error("Forbidden: this ad account belongs to another marketer");
+      }
+    }
+
 
     const payload = {
       platform: "meta" as const,
