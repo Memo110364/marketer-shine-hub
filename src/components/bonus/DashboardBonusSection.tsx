@@ -30,8 +30,16 @@ export function useBonusMonth(year: number, month: number) {
   });
 }
 
+export function isPayable(row: BonusRow) {
+  return (
+    (row.workflow_status === "approved" || row.workflow_status === "locked") &&
+    Number(row.remaining_amount ?? 0) > 0
+  );
+}
+
 export function summarize(rows: BonusRow[]) {
   const num = (v: unknown) => Number(v ?? 0);
+  const payable = rows.filter(isPayable);
   return {
     count: rows.length,
     finalTotal: rows.reduce((s, r) => s + num(r.final_approved_amount), 0),
@@ -40,8 +48,12 @@ export function summarize(rows: BonusRow[]) {
     needsReview: rows.filter((r) => REVIEW_STATES.includes(r.workflow_status)).length,
     awaitingApproval: rows.filter((r) => r.workflow_status !== "approved" && r.workflow_status !== "locked").length,
     notFullyPaid: rows.filter((r) => r.payment_status !== "paid").length,
+    awaitingPaymentCount: payable.length,
+    awaitingPaymentTotal: payable.reduce((s, r) => s + num(r.remaining_amount), 0),
+    fullyPaid: rows.filter((r) => r.payment_status === "paid").length,
   };
 }
+
 
 export function useRecalculateMonth(year: number, month: number) {
   const { role } = useAuth();
