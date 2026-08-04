@@ -94,6 +94,8 @@ export const listMetaAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { state: string }) => data)
   .handler(async ({ data, context }): Promise<{ accounts: MetaAccount[] }> => {
+    await requireAdAccountManager(context as AuthedContext);
+
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
