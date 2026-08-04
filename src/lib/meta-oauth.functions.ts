@@ -42,6 +42,8 @@ async function requireAdAccountManager(
 export const startMetaOAuth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    await requireAdAccountManager(context as AuthedContext);
+
     const appId = process.env.META_APP_ID;
     if (!appId) throw new Error("META_APP_ID not configured");
 
