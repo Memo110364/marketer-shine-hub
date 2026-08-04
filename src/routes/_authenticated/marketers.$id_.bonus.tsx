@@ -436,7 +436,14 @@ function MarketerBonusPage() {
           </div>
 
           {/* Payments */}
-          <BonusPayments bonus={bonus} payments={payments} />
+          <BonusPayments
+            bonus={bonus}
+            payments={payments}
+            deletedPayments={deletedPayments}
+            isAdmin={isAdmin}
+            autoOpenPay={!!search.pay}
+          />
+
         </>
       )}
 
