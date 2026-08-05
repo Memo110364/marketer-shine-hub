@@ -13,21 +13,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { KpiCard } from "@/components/KpiCard";
 import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
+import { SPEND_TYPE_LABELS, type SpendType } from "@/lib/constants";
 import { Wallet, Receipt, TrendingDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/ad-spend")({
   component: AdSpendPage,
 });
-
-const SPEND_TYPE_LABELS = {
-  meta_ads: "Meta Ads",
-  tiktok_ads: "Tiktok Ads",
-  easy_order: "Easy Order",
-  salary: "Salary",
-  other: "Other",
-} as const;
-type SpendType = keyof typeof SPEND_TYPE_LABELS;
 
 function AdSpendPage() {
   const { user } = useAuth();

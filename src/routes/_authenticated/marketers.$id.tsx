@@ -16,7 +16,10 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
-import { ORDER_STATUS_KEYS, COMMISSION_EXCLUDED_STATUSES, type OrderStatus } from "@/lib/constants";
+import {
+  ORDER_STATUS_KEYS, COMMISSION_EXCLUDED_STATUSES, SPEND_TYPE_LABELS,
+  type OrderStatus, type SpendType,
+} from "@/lib/constants";
 import {
   ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp, Package,
 } from "lucide-react";
@@ -42,15 +45,6 @@ export const Route = createFileRoute("/_authenticated/marketers/$id")({
 
 const COMMISSION_EXCLUDED: OrderStatus[] = COMMISSION_EXCLUDED_STATUSES;
 const NET_PROFIT_STATUSES: OrderStatus[] = ["delivered", "done"];
-
-const SPEND_TYPE_LABELS = {
-  meta_ads: "Meta Ads",
-  tiktok_ads: "Tiktok Ads",
-  easy_order: "Easy Order",
-  salary: "Salary",
-  other: "Other",
-} as const;
-type SpendType = keyof typeof SPEND_TYPE_LABELS;
 
 function MarketerDetails() {
   const { id } = Route.useParams();

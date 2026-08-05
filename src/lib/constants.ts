@@ -62,6 +62,16 @@ export const ROLE_LABELS = {
   marketer: "مسوّق",
 } as const;
 
+export const SPEND_TYPE_LABELS = {
+  meta_ads: "Meta Ads",
+  tiktok_ads: "Tiktok Ads",
+  easy_order: "Easy Order",
+  salary: "Salary",
+  other: "Other",
+} as const;
+
+export type SpendType = keyof typeof SPEND_TYPE_LABELS;
+
 export const SYSTEM_FIELDS = [
   { key: "external_order_id", label: "رقم الطلب" },
   { key: "marketer_code", label: "كود المسوّق" },
