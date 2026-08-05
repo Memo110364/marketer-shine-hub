@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtCurrency, fmtNumber } from "@/lib/format";
 import { WorkflowBadge, PaymentBadge, TierChip } from "@/components/bonus/BonusBadges";
+import { AttentionSignals } from "@/components/bonus/AttentionSignals";
+import { useNavigate } from "@tanstack/react-router";
 import { MONTHS_AR, REVIEW_STATES, attentionRank, lastCompletedMonth } from "@/lib/bonus";
 import { Trophy, RefreshCw, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -107,6 +109,7 @@ export function DashboardBonusSection() {
     },
   });
   const recalc = useRecalculateMonth(year, month);
+  const navigate = useNavigate();
 
   const s = useMemo(() => summarize(rows), [rows]);
   const attention = useMemo(
@@ -200,7 +203,22 @@ export function DashboardBonusSection() {
                 <TableBody>
                   {attention.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.marketers?.name ?? "—"}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{r.marketers?.name ?? "—"}</span>
+                          <AttentionSignals
+                            row={r}
+                            tiers={tiers}
+                            onOpen={() =>
+                              navigate({
+                                to: "/marketers/$id/bonus",
+                                params: { id: r.marketer_id },
+                                search: { year, month },
+                              })
+                            }
+                          />
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <TierChip name={r.earned_tier_name_snapshot} colorHex={tierColor(r.earned_tier_name_snapshot)} />
                       </TableCell>
@@ -235,7 +253,10 @@ export function DashboardBonusSection() {
               {attention.map((r) => (
                 <div key={r.id} className="rounded-xl border p-3 space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium text-sm">{r.marketers?.name ?? "—"}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-sm">{r.marketers?.name ?? "—"}</div>
+                      <AttentionSignals row={r} tiers={tiers} />
+                    </div>
                     <TierChip name={r.earned_tier_name_snapshot} colorHex={tierColor(r.earned_tier_name_snapshot)} />
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
