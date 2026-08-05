@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { parseProductField } from "@/lib/parse-product";
+import { COMMISSION_EXCLUDED_STATUSES } from "@/lib/constants";
 import { KpiCard } from "@/components/KpiCard";
 import { Loader2, RefreshCw, Package, CheckCircle2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
@@ -65,7 +66,9 @@ function ProductsPerf() {
       const deliveredOrders = new Set(
         list.filter((x) => x.order_status === "delivered" || x.order_status === "done").map((x) => x.order_id),
       ).size;
-      const grossProfit = list.reduce((s, x) => s + Number(x.commission_share || 0), 0);
+      const grossProfit = list
+        .filter((x) => !COMMISSION_EXCLUDED_STATUSES.includes(x.order_status as any))
+        .reduce((s, x) => s + Number(x.commission_share || 0), 0);
       const realizedProfit = list
         .filter((x) => x.order_status === "delivered" || x.order_status === "done")
         .reduce((s, x) => s + Number(x.commission_share || 0), 0);

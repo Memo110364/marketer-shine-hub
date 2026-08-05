@@ -415,7 +415,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
           <div className="space-y-1">
             <Label>كلمة السر (8 أحرف على الأقل)</Label>
-            <Input type="text" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input type="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label>الدور</Label>

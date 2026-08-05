@@ -20,7 +20,7 @@ import {
   TrendingUp, TrendingDown, Wallet, DollarSign, Percent, CalendarDays, Trophy, AlertOctagon,
 } from "lucide-react";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
-import { ORDER_STATUS, ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
+import { ORDER_STATUS, ORDER_STATUS_KEYS, COMMISSION_EXCLUDED_STATUSES, type OrderStatus } from "@/lib/constants";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -44,7 +44,7 @@ type OrderRow = {
 
 type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
 
-const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request", "cancelled"]);
+const EXCLUDED_FROM_GROSS = new Set<string>(COMMISSION_EXCLUDED_STATUSES);
 
 function daysBetween(from: string, to: string): number {
   const a = new Date(from).getTime();

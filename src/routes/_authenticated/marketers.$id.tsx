@@ -16,7 +16,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { fmtCurrency, fmtDate, fmtNumber, fmtPercent } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
-import { ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
+import { ORDER_STATUS_KEYS, COMMISSION_EXCLUDED_STATUSES, type OrderStatus } from "@/lib/constants";
 import {
   ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp, Package,
 } from "lucide-react";
@@ -40,7 +40,7 @@ export const Route = createFileRoute("/_authenticated/marketers/$id")({
   component: MarketerDetails,
 });
 
-const COMMISSION_EXCLUDED: OrderStatus[] = ["refunded", "refund_request"];
+const COMMISSION_EXCLUDED: OrderStatus[] = COMMISSION_EXCLUDED_STATUSES;
 const NET_PROFIT_STATUSES: OrderStatus[] = ["delivered", "done"];
 
 const SPEND_TYPE_LABELS = {
