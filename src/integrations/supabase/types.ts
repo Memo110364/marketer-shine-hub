@@ -328,6 +328,9 @@ export type Database = {
           amount: number
           created_at: string
           created_by: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           id: string
           marketer_id: string
           monthly_bonus_id: string
@@ -336,12 +339,17 @@ export type Database = {
           payment_method: string
           proof_url: string | null
           reference_code: string | null
+          update_reason: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           amount: number
           created_at?: string
           created_by: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           id?: string
           marketer_id: string
           monthly_bonus_id: string
@@ -350,12 +358,17 @@ export type Database = {
           payment_method: string
           proof_url?: string | null
           reference_code?: string | null
+          update_reason?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           amount?: number
           created_at?: string
           created_by?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           id?: string
           marketer_id?: string
           monthly_bonus_id?: string
@@ -364,7 +377,9 @@ export type Database = {
           payment_method?: string
           proof_url?: string | null
           reference_code?: string | null
+          update_reason?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1121,6 +1136,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_bonus_payment: {
+        Args: {
+          _amount: number
+          _monthly_bonus_id: string
+          _notes?: string
+          _payment_date: string
+          _payment_method: string
+          _proof_url?: string
+          _reference_code?: string
+        }
+        Returns: Json
+      }
+      approve_monthly_bonus: {
+        Args: { _monthly_bonus_id: string }
+        Returns: Json
+      }
       calculate_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
@@ -1140,6 +1171,10 @@ export type Database = {
         Returns: Json
       }
       current_marketer_id: { Args: never; Returns: string }
+      delete_bonus_payment: {
+        Args: { _delete_reason: string; _payment_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1152,9 +1187,55 @@ export type Database = {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
       }
+      lock_monthly_bonus: { Args: { _monthly_bonus_id: string }; Returns: Json }
+      preview_bonus_scenario: {
+        Args: {
+          _extra_ad_spend?: number
+          _extra_commission?: number
+          _extra_delivered?: number
+          _extra_shipped?: number
+          _marketer_id: string
+          _month: number
+          _year: number
+        }
+        Returns: Json
+      }
       preview_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
+      }
+      propose_bonus_adjustment: {
+        Args: {
+          _adjustment_amount: number
+          _adjustment_reason?: string
+          _monthly_bonus_id: string
+        }
+        Returns: Json
+      }
+      submit_bonus_for_review: {
+        Args: { _monthly_bonus_id: string }
+        Returns: Json
+      }
+      unlock_monthly_bonus: {
+        Args: { _monthly_bonus_id: string; _unlock_reason: string }
+        Returns: Json
+      }
+      update_bonus_payment: {
+        Args: {
+          _amount: number
+          _notes?: string
+          _payment_date: string
+          _payment_id: string
+          _payment_method: string
+          _proof_url?: string
+          _reference_code?: string
+          _update_reason: string
+        }
+        Returns: Json
+      }
+      validate_bonus_payment_input: {
+        Args: { _payment_method: string; _reference_code: string }
+        Returns: string
       }
     }
     Enums: {

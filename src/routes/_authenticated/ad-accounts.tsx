@@ -206,7 +206,7 @@ function AdAccountsPage() {
         open={metaConnectOpen}
         onClose={() => setMetaConnectOpen(false)}
         onManual={() => { setMetaConnectOpen(false); setEditing(null); setOpen(true); }}
-        onStartWizard={() => { setMetaConnectOpen(false); navigate({ to: "/ad-accounts/connect-meta" }); }}
+        onStartWizard={() => { setMetaConnectOpen(false); navigate({ to: "/ad-accounts/connect-meta", search: {} }); }}
       />
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
