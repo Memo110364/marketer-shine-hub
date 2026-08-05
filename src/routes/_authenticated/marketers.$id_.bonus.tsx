@@ -13,18 +13,13 @@ import { WorkflowBadge, PaymentBadge, TierChip } from "@/components/bonus/BonusB
 import { TierProgress, type Tier } from "@/components/bonus/TierProgress";
 import { DeliveryQuality } from "@/components/bonus/DeliveryQuality";
 import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
-import { BonusTimeline, type AuditLog } from "@/components/bonus/BonusTimeline";
+import { BonusTimeline } from "@/components/bonus/BonusTimeline";
 import { BonusPayments } from "@/components/bonus/BonusPayments";
-import { BonusWorkflowActions } from "@/components/bonus/BonusWorkflowActions";
-import { BonusExplanation } from "@/components/bonus/BonusExplanation";
-import { BonusInsights } from "@/components/bonus/BonusInsights";
-import { BonusTrend } from "@/components/bonus/BonusTrend";
-import { BonusSimulator } from "@/components/bonus/BonusSimulator";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
 import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
 import { toast } from "sonner";
 
-type BonusSearch = { year?: number; month?: number; pay?: boolean };
+type BonusSearch = { year?: number; month?: number };
 
 export const Route = createFileRoute("/_authenticated/marketers/$id_/bonus")({
   validateSearch: (search: Record<string, unknown>): BonusSearch => {
@@ -33,10 +28,8 @@ export const Route = createFileRoute("/_authenticated/marketers/$id_/bonus")({
     return {
       year: Number.isFinite(y) && y > 2000 ? y : undefined,
       month: Number.isFinite(m) && m >= 1 && m <= 12 ? m : undefined,
-      pay: search.pay === true || search.pay === "1" || search.pay === "true" ? true : undefined,
     };
   },
-
   head: () => ({
     meta: [
       { title: "بونص ومستحقات المسوّق الشهرية" },
@@ -57,9 +50,7 @@ function MarketerBonusPage() {
   const { role } = useAuth();
   const qc = useQueryClient();
   const isMarketer = role === "marketer";
-  const isAdmin = role === "admin";
   const canRecalculate = role === "admin" || role === "account_manager";
-
 
   const def = lastCompletedMonth();
   const year = search.year ?? def.year;
@@ -104,7 +95,7 @@ function MarketerBonusPage() {
     },
   });
 
-  const { data: paymentData } = useQuery({
+  const { data: payments = [] } = useQuery({
     enabled: !!bonus?.id,
     queryKey: ["bonus-payments", bonus?.id],
     queryFn: async () => {
@@ -112,47 +103,7 @@ function MarketerBonusPage() {
         .from("bonus_payments").select("*")
         .eq("monthly_bonus_id", bonus.id)
         .order("payment_date", { ascending: false });
-      const rows = (data ?? []) as any[];
-      const ids = Array.from(
-        new Set(rows.flatMap((r) => [r.created_by, r.deleted_by]).filter(Boolean)),
-      );
-      let names: Record<string, string> = {};
-      if (ids.length) {
-        const { data: profs } = await supabase.from("profiles").select("id, full_name").in("id", ids);
-        names = Object.fromEntries((profs ?? []).map((p: any) => [p.id, p.full_name]));
-      }
-      const withNames = rows.map((r) => ({
-        ...r,
-        creator_name: names[r.created_by] ?? null,
-        deleter_name: r.deleted_by ? (names[r.deleted_by] ?? null) : null,
-      }));
-      return {
-        active: withNames.filter((r) => !r.deleted_at),
-        deleted: withNames.filter((r) => !!r.deleted_at),
-      };
-    },
-  });
-  const payments = paymentData?.active ?? [];
-  const deletedPayments = paymentData?.deleted ?? [];
-
-
-  const { data: auditLogs = [] } = useQuery({
-    enabled: !!bonus?.id && !isMarketer,
-    queryKey: ["bonus-audit-logs", bonus?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("bonus_audit_logs").select("*")
-        .eq("monthly_bonus_id", bonus.id)
-        .order("performed_at", { ascending: true });
-      const rows = (data ?? []) as any[];
-      const actorIds = Array.from(new Set(rows.map((r) => r.performed_by).filter(Boolean)));
-      let names: Record<string, string> = {};
-      if (actorIds.length) {
-        const { data: profs } = await supabase
-          .from("profiles").select("id, full_name").in("id", actorIds);
-        names = Object.fromEntries((profs ?? []).map((p: any) => [p.id, p.full_name]));
-      }
-      return rows.map((r) => ({ ...r, actor_name: names[r.performed_by] ?? null })) as AuditLog[];
+      return (data ?? []) as any[];
     },
   });
 
@@ -168,7 +119,6 @@ function MarketerBonusPage() {
       return (data ?? []) as any[];
     },
   });
-
 
   const recalc = useMutation({
     mutationFn: async () => {
@@ -329,25 +279,12 @@ function MarketerBonusPage() {
             </CardContent>
           </Card>
 
-          {/* Review / approval workflow */}
-          <BonusWorkflowActions bonus={bonus} />
-
           {/* Volume tier progress */}
           <TierProgress
             shipped={Number(bonus.shipped_orders_count ?? 0)}
             tiers={tiers}
             volumeTierName={bonus.volume_tier_name_snapshot}
           />
-
-          {/* Phase 3E — explanation, score, recommendations, trend, simulator (display only) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            <BonusExplanation bonus={bonus} />
-            <BonusTrend history={history} tiers={tiers} />
-          </div>
-          <BonusInsights bonus={bonus} tiers={tiers} earnedTier={earnedTier} />
-          <BonusSimulator marketerId={id} year={year} month={month} bonus={bonus} />
-
-
 
           {/* Volume vs earned tier */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -445,19 +382,12 @@ function MarketerBonusPage() {
               <BonusBreakdown bonus={bonus} earnedTier={earnedTier} />
             </div>
             <div className="space-y-4">
-              <BonusTimeline bonus={bonus} isMarketer={isMarketer} logs={auditLogs} />
+              <BonusTimeline bonus={bonus} isMarketer={isMarketer} />
             </div>
           </div>
 
           {/* Payments */}
-          <BonusPayments
-            bonus={bonus}
-            payments={payments}
-            deletedPayments={deletedPayments}
-            isAdmin={isAdmin}
-            autoOpenPay={!!search.pay}
-          />
-
+          <BonusPayments bonus={bonus} payments={payments} />
         </>
       )}
 
