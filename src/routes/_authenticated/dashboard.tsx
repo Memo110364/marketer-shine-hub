@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { fetchAll } from "@/lib/fetch-all";
 import { KpiCard } from "@/components/KpiCard";
 import { DashboardBonusSection } from "@/components/bonus/DashboardBonusSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,10 +16,10 @@ import {
 } from "@/components/ui/table";
 import {
   ShoppingBag, Clock, Truck, CheckCircle2, XCircle, AlertTriangle,
-  TrendingUp, TrendingDown, Wallet, DollarSign, Percent, CalendarDays, Trophy, AlertOctagon,
+  TrendingUp, TrendingDown, Wallet, DollarSign, Percent, CalendarDays, Trophy, AlertOctagon, Sparkles,
 } from "lucide-react";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
-import { ORDER_STATUS, ORDER_STATUS_KEYS, COMMISSION_EXCLUDED_STATUSES, type OrderStatus } from "@/lib/constants";
+import { ORDER_STATUS, ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constants";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -31,20 +30,46 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
 });
 
-type OrderRow = {
-  id: string;
-  status: string;
-  commission: number | null;
-  marketer_id: string | null;
-  order_date: string | null;
-  product_id: string | null;
-  shipping_company_id: string | null;
-  quantity: number | null;
+// Shapes returned by the get_dashboard_* RPCs (supabase/migrations) — the
+// aggregation (SUM/COUNT per status/day/marketer) happens in Postgres now;
+// everything below this line is unchanged display/ratio logic.
+type DashboardCounts = {
+  pending: number; cancelled: number; in_delivery: number;
+  delivered: number; done: number; refunded: number; refund_request: number;
+};
+type DashboardSummary = {
+  total: number;
+  total_pieces: number;
+  delivered_pieces: number;
+  gross_profit: number;
+  delivered_commissions: number;
+  in_delivery_commissions: number;
+  ad_spend: number;
+  counts: DashboardCounts;
+};
+type DailyRow = {
+  day: string;
+  total: number;
+  delivered: number;
+  refunded: number;
+  commissions: number;
+  spend: number;
+};
+type MarketerBreakdownRow = {
+  marketer_id: string;
+  orders: number;
+  delivered: number;
+  refunded: number;
+  gross: number;
+  spend: number;
+  commissions: number;
 };
 
-type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
-
-const EXCLUDED_FROM_GROSS = new Set<string>(COMMISSION_EXCLUDED_STATUSES);
+const EMPTY_SUMMARY: DashboardSummary = {
+  total: 0, total_pieces: 0, delivered_pieces: 0, gross_profit: 0,
+  delivered_commissions: 0, in_delivery_commissions: 0, ad_spend: 0,
+  counts: { pending: 0, cancelled: 0, in_delivery: 0, delivered: 0, done: 0, refunded: 0, refund_request: 0 },
+};
 
 function daysBetween(from: string, to: string): number {
   const a = new Date(from).getTime();
@@ -59,9 +84,14 @@ function shiftRange(from: string, to: string): { from: string; to: string } {
   return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
 }
 
-function growth(curr: number, prev: number): number {
-  if (prev === 0) return curr === 0 ? 0 : 1;
+/** "new" marks a period that went from zero to non-zero — not a real % change. */
+function growth(curr: number, prev: number): number | "new" {
+  if (prev === 0) return curr === 0 ? 0 : "new";
   return (curr - prev) / Math.abs(prev);
+}
+
+function growthSortValue(g: number | "new"): number {
+  return g === "new" ? Infinity : g;
 }
 
 function DashboardPage() {
@@ -101,94 +131,77 @@ function DashboardPage() {
     },
   });
 
-  // Current period
-  const { data: ordersAll = [] } = useQuery({
-    queryKey: ["orders-dash", from, to],
-    queryFn: () =>
-      fetchAll<OrderRow>((a, b) =>
-        supabase
-          .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id, quantity")
-          .gte("order_date", from)
-          .lte("order_date", to)
-          .range(a, b),
-      ),
+  // "all" (the UI sentinel) becomes NULL for the RPCs below, i.e. no filter.
+  const marketerParam = marketerF === "all" ? null : marketerF;
+  const productParam = productF === "all" ? null : productF;
+  const shippingParam = shippingF === "all" ? null : shippingF;
+  const statusParam = statusF === "all" ? null : statusF;
+  const rpcArgs = (rangeFrom: string, rangeTo: string) => ({
+    _from: rangeFrom,
+    _to: rangeTo,
+    _marketer_id: marketerParam,
+    _product_id: productParam,
+    _shipping_company_id: shippingParam,
+    _status: statusParam,
   });
 
-  const { data: spend = [] } = useQuery({
-    queryKey: ["spend-dash", from, to],
-    queryFn: () =>
-      fetchAll<SpendRow>((a, b) =>
-        supabase
-          .from("ad_spend_transactions")
-          .select("amount, marketer_id, transaction_date")
-          .gte("transaction_date", from)
-          .lte("transaction_date", to)
-          .range(a, b),
-      ),
+  // Current + previous period summaries (single aggregated row each — the
+  // SUM/COUNT work that used to happen in the browser over every order and
+  // ad-spend row now happens in Postgres; see get_dashboard_summary).
+  const { data: summary } = useQuery({
+    queryKey: ["dash-summary", from, to, marketerParam, productParam, shippingParam, statusParam],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_dashboard_summary", rpcArgs(from, to));
+      if (error) throw error;
+      return data as DashboardSummary;
+    },
+  });
+  const { data: summaryPrev } = useQuery({
+    queryKey: ["dash-summary-prev", prev.from, prev.to, marketerParam, productParam, shippingParam, statusParam],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_dashboard_summary", rpcArgs(prev.from, prev.to));
+      if (error) throw error;
+      return data as DashboardSummary;
+    },
+  });
+  const s = summary ?? EMPTY_SUMMARY;
+  const sp = summaryPrev ?? EMPTY_SUMMARY;
+
+  // One row per day in range (for the line chart + best/worst-day cards).
+  const { data: dailyRows = [] } = useQuery({
+    queryKey: ["dash-daily", from, to, marketerParam, productParam, shippingParam, statusParam],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_dashboard_daily_series", rpcArgs(from, to));
+      if (error) throw error;
+      return (data ?? []) as DailyRow[];
+    },
   });
 
-  // Previous period (for comparison)
-  const { data: ordersPrev = [] } = useQuery({
-    queryKey: ["orders-prev", prev.from, prev.to],
-    queryFn: () =>
-      fetchAll<OrderRow>((a, b) =>
-        supabase
-          .from("orders")
-          .select("id, status, commission, marketer_id, order_date, product_id, shipping_company_id, quantity")
-          .gte("order_date", prev.from)
-          .lte("order_date", prev.to)
-          .range(a, b),
-      ),
+  // One row per marketer for current + previous period (for the per-marketer
+  // table and the growth badges).
+  const { data: marketerBreakdown = [] } = useQuery({
+    queryKey: ["dash-marketers", from, to, marketerParam, productParam, shippingParam, statusParam],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_dashboard_marketer_breakdown", rpcArgs(from, to));
+      if (error) throw error;
+      return (data ?? []) as MarketerBreakdownRow[];
+    },
   });
-  const { data: spendPrev = [] } = useQuery({
-    queryKey: ["spend-prev", prev.from, prev.to],
-    queryFn: () =>
-      fetchAll<SpendRow>((a, b) =>
-        supabase
-          .from("ad_spend_transactions")
-          .select("amount, marketer_id, transaction_date")
-          .gte("transaction_date", prev.from)
-          .lte("transaction_date", prev.to)
-          .range(a, b),
-      ),
+  const { data: marketerBreakdownPrev = [] } = useQuery({
+    queryKey: ["dash-marketers-prev", prev.from, prev.to, marketerParam, productParam, shippingParam, statusParam],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_dashboard_marketer_breakdown", rpcArgs(prev.from, prev.to));
+      if (error) throw error;
+      return (data ?? []) as MarketerBreakdownRow[];
+    },
   });
 
-  // Apply filters
-  const orders = useMemo(() => ordersAll.filter((o) => {
-    if (marketerF !== "all" && o.marketer_id !== marketerF) return false;
-    if (productF !== "all" && o.product_id !== productF) return false;
-    if (shippingF !== "all" && o.shipping_company_id !== shippingF) return false;
-    if (statusF !== "all" && o.status !== statusF) return false;
-    return true;
-  }), [ordersAll, marketerF, productF, shippingF, statusF]);
-
-  const ordersPrevFiltered = useMemo(() => ordersPrev.filter((o) => {
-    if (marketerF !== "all" && o.marketer_id !== marketerF) return false;
-    if (productF !== "all" && o.product_id !== productF) return false;
-    if (shippingF !== "all" && o.shipping_company_id !== shippingF) return false;
-    if (statusF !== "all" && o.status !== statusF) return false;
-    return true;
-  }), [ordersPrev, marketerF, productF, shippingF, statusF]);
-
-  const spendFiltered = useMemo(() => spend.filter((s) =>
-    marketerF === "all" || s.marketer_id === marketerF), [spend, marketerF]);
-  const spendPrevFiltered = useMemo(() => spendPrev.filter((s) =>
-    marketerF === "all" || s.marketer_id === marketerF), [spendPrev, marketerF]);
-
-  // Basic aggregates
-  const counts = ORDER_STATUS_KEYS.reduce((acc, k) => {
-    acc[k] = orders.filter((o) => o.status === k).length;
-    return acc;
-  }, {} as Record<string, number>);
-  const total = orders.length;
-  const grossProfit = orders
-    .filter((o) => !EXCLUDED_FROM_GROSS.has(o.status))
-    .reduce((s, o) => s + Number(o.commission || 0), 0);
-  const deliveredCommissions = orders
-    .filter((o) => o.status === "delivered" || o.status === "done")
-    .reduce((s, o) => s + Number(o.commission || 0), 0);
-  const adSpend = spendFiltered.reduce((s, t) => s + Number(t.amount || 0), 0);
+  // Basic aggregates (same formulas as before, now reading the aggregated row)
+  const counts = s.counts;
+  const total = s.total;
+  const grossProfit = Number(s.gross_profit || 0);
+  const deliveredCommissions = Number(s.delivered_commissions || 0);
+  const adSpend = Number(s.ad_spend || 0);
   const netProfit = deliveredCommissions - adSpend;
   const delivered = (counts.delivered ?? 0) + (counts.done ?? 0);
   const refunded = (counts.refunded ?? 0) + (counts.refund_request ?? 0);
@@ -207,54 +220,36 @@ function DashboardPage() {
   const avgAdCostPerShipped = shippedCount > 0 ? adSpend / shippedCount : 0;
   const realCpa = delivered > 0 ? adSpend / delivered : 0;
   const profitPerDelivered = delivered > 0 ? deliveredCommissions / delivered : 0;
-  const totalPieces = orders.reduce((s, o) => s + Number(o.quantity || 0), 0);
+  const totalPieces = Number(s.total_pieces || 0);
   const avgPiecesPerOrder = total > 0 ? totalPieces / total : 0;
-  const deliveredPieces = orders
-    .filter((o) => o.status === "delivered" || o.status === "done")
-    .reduce((s, o) => s + Number(o.quantity || 0), 0);
-  const inDeliveryCommissions = orders
-    .filter((o) => o.status === "in_delivery")
-    .reduce((s, o) => s + Number(o.commission || 0), 0);
+  const deliveredPieces = Number(s.delivered_pieces || 0);
+  const inDeliveryCommissions = Number(s.in_delivery_commissions || 0);
   // Expected profit = commissions from in_delivery + delivered + done (per spec)
   const expectedProfit = deliveredCommissions + inDeliveryCommissions;
-  const performanceTrend = growth(total, ordersPrevFiltered.length);
+  const prevTotal = sp.total;
+  const performanceTrend = growth(total, prevTotal);
 
   // Previous period aggregates for comparison
-  const prevDelivered = ordersPrevFiltered.filter((o) => o.status === "delivered" || o.status === "done");
-  const prevDeliveredCount = prevDelivered.length;
-  const prevDeliveredCommissions = prevDelivered.reduce((s, o) => s + Number(o.commission || 0), 0);
-  const prevAdSpend = spendPrevFiltered.reduce((s, t) => s + Number(t.amount || 0), 0);
+  const prevDeliveredCount = (sp.counts.delivered ?? 0) + (sp.counts.done ?? 0);
+  const prevDeliveredCommissions = Number(sp.delivered_commissions || 0);
+  const prevAdSpend = Number(sp.ad_spend || 0);
   const prevNet = prevDeliveredCommissions - prevAdSpend;
-  const prevTotal = ordersPrevFiltered.length;
   const prevDeliveryRate = prevTotal > 0 ? prevDeliveredCount / prevTotal : 0;
 
-  // Daily series
-  const dailySeries = useMemo(() => {
-    const map = new Map<string, { date: string; total: number; delivered: number; refunded: number; commissions: number; spend: number }>();
-    // seed days
-    const start = new Date(from);
-    for (let i = 0; i < numDays; i++) {
-      const d = new Date(start.getTime() + i * 86400000).toISOString().slice(0, 10);
-      map.set(d, { date: d, total: 0, delivered: 0, refunded: 0, commissions: 0, spend: 0 });
-    }
-    orders.forEach((o) => {
-      if (!o.order_date) return;
-      const r = map.get(o.order_date);
-      if (!r) return;
-      r.total += 1;
-      if (o.status === "delivered" || o.status === "done") {
-        r.delivered += 1;
-        r.commissions += Number(o.commission || 0);
-      }
-      if (o.status === "refunded" || o.status === "refund_request") r.refunded += 1;
-    });
-    spendFiltered.forEach((s) => {
-      const r = map.get(s.transaction_date);
-      if (!r) return;
-      r.spend += Number(s.amount || 0);
-    });
-    return Array.from(map.values()).map((r) => ({ ...r, net: r.commissions - r.spend }));
-  }, [orders, spendFiltered, from, numDays]);
+  // Daily series — one row per day already comes back from the RPC.
+  const dailySeries = useMemo(() => dailyRows.map((r) => {
+    const commissions = Number(r.commissions || 0);
+    const spend = Number(r.spend || 0);
+    return {
+      date: r.day,
+      total: Number(r.total || 0),
+      delivered: Number(r.delivered || 0),
+      refunded: Number(r.refunded || 0),
+      commissions,
+      spend,
+      net: commissions - spend,
+    };
+  }), [dailyRows]);
 
   // Daily averages
   const avgDailyOrders = total / numDays;
@@ -277,60 +272,46 @@ function DashboardPage() {
     return { best, worst, bestRate, bestProfit };
   }, [dailySeries]);
 
-  // Marketer table with current vs previous
+  // Marketer table with current vs previous — one row per marketer already
+  // comes aggregated from get_dashboard_marketer_breakdown; only the current
+  // period's marketers are listed (matches the previous client-side reduce,
+  // which only ever iterated the "current" map).
   const marketerRows = useMemo(() => {
-    type Agg = { orders: number; delivered: number; refunded: number; gross: number; spend: number; commissions: number };
-    const empty = (): Agg => ({ orders: 0, delivered: 0, refunded: 0, gross: 0, spend: 0, commissions: 0 });
-    const cur = new Map<string, Agg>();
-    const pr = new Map<string, Agg>();
-
-    const fill = (rows: OrderRow[], spendRows: SpendRow[], target: Map<string, Agg>) => {
-      rows.forEach((o) => {
-        if (!o.marketer_id) return;
-        const a = target.get(o.marketer_id) ?? empty();
-        a.orders += 1;
-        if (!EXCLUDED_FROM_GROSS.has(o.status)) a.gross += Number(o.commission || 0);
-        if (o.status === "delivered" || o.status === "done") {
-          a.delivered += 1;
-          a.commissions += Number(o.commission || 0);
-        }
-        if (o.status === "refunded" || o.status === "refund_request") a.refunded += 1;
-        target.set(o.marketer_id, a);
-      });
-      spendRows.forEach((s) => {
-        if (!s.marketer_id) return;
-        const a = target.get(s.marketer_id) ?? empty();
-        a.spend += Number(s.amount || 0);
-        target.set(s.marketer_id, a);
-      });
-    };
-    fill(orders, spendFiltered, cur);
-    fill(ordersPrevFiltered, spendPrevFiltered, pr);
-
-    return Array.from(cur.entries()).map(([id, a]) => {
-      const p = pr.get(id) ?? empty();
-      const net = a.commissions - a.spend;
-      const prevNetM = p.commissions - p.spend;
+    const prevById = new Map(marketerBreakdownPrev.map((r) => [r.marketer_id, r]));
+    return marketerBreakdown.map((r) => {
+      const p = prevById.get(r.marketer_id);
+      const orders = Number(r.orders || 0);
+      const delivered = Number(r.delivered || 0);
+      const gross = Number(r.gross || 0);
+      const spend = Number(r.spend || 0);
+      const commissions = Number(r.commissions || 0);
+      const net = commissions - spend;
+      const prevOrders = Number(p?.orders || 0);
+      const prevCommissions = Number(p?.commissions || 0);
+      const prevSpend = Number(p?.spend || 0);
+      const prevNetM = prevCommissions - prevSpend;
       return {
-        id,
-        name: marketers.find((m) => m.id === id)?.name ?? "—",
-        orders: a.orders,
-        delivered: a.delivered,
-        refundRate: a.orders > 0 ? a.refunded / a.orders : 0,
-        gross: a.gross,
-        spend: a.spend,
+        id: r.marketer_id,
+        name: marketers.find((m) => m.id === r.marketer_id)?.name ?? "—",
+        orders,
+        delivered,
+        refundRate: orders > 0 ? Number(r.refunded || 0) / orders : 0,
+        gross,
+        spend,
         net,
-        avgOrders: a.orders / numDays,
-        avgDelivered: a.delivered / numDays,
+        avgOrders: orders / numDays,
+        avgDelivered: delivered / numDays,
         avgNet: net / numDays,
-        growth: growth(a.orders, p.orders),
+        growth: growth(orders, prevOrders),
         netGrowth: growth(net, prevNetM),
       };
     }).sort((a, b) => b.orders - a.orders);
-  }, [orders, ordersPrevFiltered, spendFiltered, spendPrevFiltered, marketers, numDays]);
+  }, [marketerBreakdown, marketerBreakdownPrev, marketers, numDays]);
 
   const topGrowing = useMemo(() =>
-    [...marketerRows].filter((m) => m.orders > 0).sort((a, b) => b.growth - a.growth).slice(0, 5),
+    [...marketerRows].filter((m) => m.orders > 0)
+      .sort((a, b) => growthSortValue(b.growth) - growthSortValue(a.growth))
+      .slice(0, 5),
   [marketerRows]);
 
   const pieData = ORDER_STATUS_KEYS.map((k) => ({
@@ -347,7 +328,15 @@ function DashboardPage() {
     return fmtNumber(Number(value ?? 0));
   };
 
-  function GrowthBadge({ value }: { value: number }) {
+  function GrowthBadge({ value }: { value: number | "new" }) {
+    if (value === "new") {
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--info)]">
+          <Sparkles className="h-3.5 w-3.5" />
+          جديد
+        </span>
+      );
+    }
     const up = value >= 0;
     const Icon = up ? TrendingUp : TrendingDown;
     return (
@@ -475,13 +464,20 @@ function DashboardPage() {
             <CardContent className="p-4">
               <div className="text-xs font-medium text-muted-foreground tracking-wide">اتجاه الأداء</div>
               <div className="mt-2 flex items-center gap-2">
-                {performanceTrend >= 0 ? (
+                {performanceTrend === "new" ? (
+                  <Sparkles className="h-6 w-6 text-[var(--info)]" />
+                ) : performanceTrend >= 0 ? (
                   <TrendingUp className="h-6 w-6 text-[var(--success)]" />
                 ) : (
                   <TrendingDown className="h-6 w-6 text-[var(--destructive)]" />
                 )}
-                <span className={`text-2xl font-display font-bold ${performanceTrend >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]"}`}>
-                  {performanceTrend >= 0 ? "↑" : "↓"} {fmtPercent(Math.abs(performanceTrend))}
+                <span className={`text-2xl font-display font-bold ${
+                  performanceTrend === "new" ? "text-[var(--info)]" :
+                  performanceTrend >= 0 ? "text-[var(--success)]" : "text-[var(--destructive)]"
+                }`}>
+                  {performanceTrend === "new"
+                    ? "جديد"
+                    : `${performanceTrend >= 0 ? "↑" : "↓"} ${fmtPercent(Math.abs(performanceTrend))}`}
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-1">مقارنة بالفترة السابقة</div>
