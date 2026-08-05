@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
 import { WorkflowBadge, PaymentBadge, TierChip } from "@/components/bonus/BonusBadges";
+import { AttentionSignals } from "@/components/bonus/AttentionSignals";
 import {
   MONTHS_AR, PAYMENT_LABELS, WORKFLOW_LABELS, WORKFLOW_STATUSES, PAYMENT_STATUSES,
   attentionRank, lastCompletedMonth, monthLabel,
@@ -282,7 +283,12 @@ function BonusCalculatorPage() {
                         />
                       </TableCell>
                     )}
-                    <TableCell className="font-medium">{r.marketers?.name ?? "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{r.marketers?.name ?? "—"}</span>
+                        <AttentionSignals row={r} tiers={tiers} />
+                      </div>
+                    </TableCell>
 
                     <TableCell>{fmtNumber(r.shipped_orders_count)}</TableCell>
                     <TableCell>{fmtNumber(r.delivered_orders_count)}</TableCell>

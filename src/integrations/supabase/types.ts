@@ -1188,6 +1188,18 @@ export type Database = {
         Returns: Json
       }
       lock_monthly_bonus: { Args: { _monthly_bonus_id: string }; Returns: Json }
+      preview_bonus_scenario: {
+        Args: {
+          _extra_ad_spend?: number
+          _extra_commission?: number
+          _extra_delivered?: number
+          _extra_shipped?: number
+          _marketer_id: string
+          _month: number
+          _year: number
+        }
+        Returns: Json
+      }
       preview_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json

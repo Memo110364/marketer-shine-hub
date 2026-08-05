@@ -16,6 +16,10 @@ import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
 import { BonusTimeline, type AuditLog } from "@/components/bonus/BonusTimeline";
 import { BonusPayments } from "@/components/bonus/BonusPayments";
 import { BonusWorkflowActions } from "@/components/bonus/BonusWorkflowActions";
+import { BonusExplanation } from "@/components/bonus/BonusExplanation";
+import { BonusInsights } from "@/components/bonus/BonusInsights";
+import { BonusTrend } from "@/components/bonus/BonusTrend";
+import { BonusSimulator } from "@/components/bonus/BonusSimulator";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
 import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -334,6 +338,16 @@ function MarketerBonusPage() {
             tiers={tiers}
             volumeTierName={bonus.volume_tier_name_snapshot}
           />
+
+          {/* Phase 3E — explanation, score, recommendations, trend, simulator (display only) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            <BonusExplanation bonus={bonus} />
+            <BonusTrend history={history} tiers={tiers} />
+          </div>
+          <BonusInsights bonus={bonus} tiers={tiers} earnedTier={earnedTier} />
+          <BonusSimulator marketerId={id} year={year} month={month} bonus={bonus} />
+
+
 
           {/* Volume vs earned tier */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
