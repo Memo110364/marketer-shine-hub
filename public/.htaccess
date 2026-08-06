@@ -1,0 +1,13 @@
+# Static SPA hosting (Bluehost / plain Apache — no Node.js).
+# The app is a client-rendered SPA: every route that isn't a real file or
+# folder must fall back to index.html so client-side routing can take over.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  RewriteRule ^ index.html [L]
+</IfModule>
