@@ -30,19 +30,9 @@ jobs:
           local-dir: ./dist/client/
           server-dir: ${{ secrets.BLUEHOST_REMOTE_DIR }}
 
-  deploy-edge-functions:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Deploy Supabase Edge Functions
-        run: |
-          supabase functions deploy admin-create-user --project-ref ghybwdbjflzqjnhfqmzn
-          supabase functions deploy meta-oauth --project-ref ghybwdbjflzqjnhfqmzn
-          supabase functions deploy meta-oauth-callback --project-ref ghybwdbjflzqjnhfqmzn --no-verify-jwt
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  # Edge Functions deploy is intentionally not automated here: this project's
+  # Supabase backend is fully managed by Lovable Cloud, with no external
+  # admin/API access available to deploy supabase/functions/* from CI.
+  # Those features (admin-create-user, Meta OAuth) keep working on the
+  # Lovable-hosted deployment, which publishes server functions automatically.
+  # Revisit if/when this project gets direct Supabase project access.
