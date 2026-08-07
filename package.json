@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "build:static": "BUILD_TARGET=static vite build && cp dist/client/_shell.html dist/client/index.html",
+    "build:static": "vite build --config vite.static.config.ts && mv dist/client/index.static.html dist/client/index.html",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
