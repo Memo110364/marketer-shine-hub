@@ -1,1 +1,10 @@
 project_id = "ghybwdbjflzqjnhfqmzn"
+
+[functions.admin-create-user]
+verify_jwt = true
+
+[functions.meta-oauth]
+verify_jwt = true
+
+[functions.meta-oauth-callback]
+verify_jwt = false

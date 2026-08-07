@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,11 +15,15 @@ import {
   ArrowRight, Sparkles, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  startMetaOAuth,
-  listMetaAccounts,
-  linkMetaAccount,
-} from "@/lib/meta-oauth.functions";
+import { invokeFn } from "@/lib/edge-functions";
+
+type MetaAccountResult = {
+  externalId: string;
+  name: string;
+  currency: string;
+  business: string;
+  accountStatus: number | null;
+};
 
 export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -250,10 +253,6 @@ function ConnectMetaWizard() {
   const [fetchedForState, setFetchedForState] = useState<string | null>(null);
   const [metaError, setMetaError] = useState<MetaErrorInfo | null>(null);
 
-  const startFn = useServerFn(startMetaOAuth);
-  const listFn = useServerFn(listMetaAccounts);
-  const linkFn = useServerFn(linkMetaAccount);
-
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
 
   const goNext = () => setStep((s) => Math.min(6, s + 1));
@@ -307,7 +306,10 @@ function ConnectMetaWizard() {
       setMetaError(null);
       console.log("[ConnectMeta] calling listMetaAccounts with state:", oauthState);
       try {
-        const res = await listFn({ data: { state: oauthState } });
+        const res = await invokeFn<{ accounts: MetaAccountResult[] }>(
+          "meta-oauth",
+          { action: "list", state: oauthState },
+        );
         console.log("[ConnectMeta] accounts returned count:", res.accounts.length);
         setAccounts(
           res.accounts.map((a, i) => ({
@@ -337,7 +339,10 @@ function ConnectMetaWizard() {
     setLoadingMessage("جاري فتح Meta...");
     setMetaError(null);
     try {
-      const { authorizeUrl } = await startFn();
+      const { authorizeUrl } = await invokeFn<{ authorizeUrl: string }>(
+        "meta-oauth",
+        { action: "start" },
+      );
       window.location.href = authorizeUrl;
     } catch (e) {
       const info = parseServerError(e, "start");
@@ -356,14 +361,13 @@ function ConnectMetaWizard() {
         state: oauthState,
         externalId: selectedAccount.externalId,
       });
-      return linkFn({
-        data: {
-          state: oauthState,
-          externalId: selectedAccount.externalId,
-          name: selectedAccount.name,
-          currency: selectedAccount.currency,
-          business: selectedAccount.business,
-        },
+      return invokeFn<{ adAccountId: string }>("meta-oauth", {
+        action: "link",
+        state: oauthState,
+        externalId: selectedAccount.externalId,
+        name: selectedAccount.name,
+        currency: selectedAccount.currency,
+        business: selectedAccount.business,
       });
     },
     onSuccess: () => {

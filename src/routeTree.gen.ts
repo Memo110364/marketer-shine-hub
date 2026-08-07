@@ -9,39 +9,37 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
-import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
-import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedBonusCalculatorRouteImport } from './routes/_authenticated/bonus-calculator'
-import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdAccountsRouteImport } from './routes/_authenticated/ad-accounts'
-import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users.index'
-import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
-import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
-import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
-import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authenticated/products.$name'
-import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
-import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
-import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
+import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticated/ad-spend'
+import { Route as AuthenticatedBonusCalculatorRouteImport } from './routes/_authenticated/bonus-calculator'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
+import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
+import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
 import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts_.connect-meta'
-import { Route as ApiPublicMetaCallbackRouteImport } from './routes/api/public/meta/callback'
-import { Route as AuthenticatedMarketersIdExpensesRouteImport } from './routes/_authenticated/marketers.$id_.expenses'
+import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
+import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
+import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
+import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
+import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
+import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authenticated/products.$name'
+import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
+import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users.index'
 import { Route as AuthenticatedMarketersIdBonusRouteImport } from './routes/_authenticated/marketers.$id_.bonus'
+import { Route as AuthenticatedMarketersIdExpensesRouteImport } from './routes/_authenticated/marketers.$id_.expenses'
 
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -49,33 +47,24 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRoute = AuthenticatedRouteImport.update({
-  id: '/_authenticated',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedShippingRoute = AuthenticatedShippingRouteImport.update({
-  id: '/shipping',
-  path: '/shipping',
+const AuthenticatedAdAccountsRoute = AuthenticatedAdAccountsRouteImport.update({
+  id: '/ad-accounts',
+  path: '/ad-accounts',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedAdSpendRoute = AuthenticatedAdSpendRouteImport.update({
+  id: '/ad-spend',
+  path: '/ad-spend',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedBonusCalculatorRoute =
@@ -84,26 +73,31 @@ const AuthenticatedBonusCalculatorRoute =
     path: '/bonus-calculator',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedAdSpendRoute = AuthenticatedAdSpendRouteImport.update({
-  id: '/ad-spend',
-  path: '/ad-spend',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedAdAccountsRoute = AuthenticatedAdAccountsRouteImport.update({
-  id: '/ad-accounts',
-  path: '/ad-accounts',
+const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
-  id: '/users/',
-  path: '/users/',
+const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedOrdersIndexRoute =
-  AuthenticatedOrdersIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedOrdersRoute,
+const AuthenticatedShippingRoute = AuthenticatedShippingRouteImport.update({
+  id: '/shipping',
+  path: '/shipping',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdAccountsConnectMetaRoute =
+  AuthenticatedAdAccountsConnectMetaRouteImport.update({
+    id: '/ad-accounts_/connect-meta',
+    path: '/ad-accounts/connect-meta',
+    getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedMarketersIndexRoute =
   AuthenticatedMarketersIndexRouteImport.update({
@@ -111,22 +105,16 @@ const AuthenticatedMarketersIndexRoute =
     path: '/marketers/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedSettingsMappingsRoute =
-  AuthenticatedSettingsMappingsRouteImport.update({
-    id: '/settings/mappings',
-    path: '/settings/mappings',
+const AuthenticatedMarketersIdRoute =
+  AuthenticatedMarketersIdRouteImport.update({
+    id: '/marketers/$id',
+    path: '/marketers/$id',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedProductsNameRoute =
-  AuthenticatedProductsNameRouteImport.update({
-    id: '/$name',
-    path: '/$name',
-    getParentRoute: () => AuthenticatedProductsRoute,
-  } as any)
-const AuthenticatedOrdersUpdateStatusRoute =
-  AuthenticatedOrdersUpdateStatusRouteImport.update({
-    id: '/update-status',
-    path: '/update-status',
+const AuthenticatedOrdersIndexRoute =
+  AuthenticatedOrdersIndexRouteImport.update({
+    id: '/',
+    path: '/',
     getParentRoute: () => AuthenticatedOrdersRoute,
   } as any)
 const AuthenticatedOrdersImportRoute =
@@ -135,33 +123,39 @@ const AuthenticatedOrdersImportRoute =
     path: '/import',
     getParentRoute: () => AuthenticatedOrdersRoute,
   } as any)
-const AuthenticatedMarketersIdRoute =
-  AuthenticatedMarketersIdRouteImport.update({
-    id: '/marketers/$id',
-    path: '/marketers/$id',
+const AuthenticatedOrdersUpdateStatusRoute =
+  AuthenticatedOrdersUpdateStatusRouteImport.update({
+    id: '/update-status',
+    path: '/update-status',
+    getParentRoute: () => AuthenticatedOrdersRoute,
+  } as any)
+const AuthenticatedProductsNameRoute =
+  AuthenticatedProductsNameRouteImport.update({
+    id: '/$name',
+    path: '/$name',
+    getParentRoute: () => AuthenticatedProductsRoute,
+  } as any)
+const AuthenticatedSettingsMappingsRoute =
+  AuthenticatedSettingsMappingsRouteImport.update({
+    id: '/settings/mappings',
+    path: '/settings/mappings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedAdAccountsConnectMetaRoute =
-  AuthenticatedAdAccountsConnectMetaRouteImport.update({
-    id: '/ad-accounts_/connect-meta',
-    path: '/ad-accounts/connect-meta',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const ApiPublicMetaCallbackRoute = ApiPublicMetaCallbackRouteImport.update({
-  id: '/api/public/meta/callback',
-  path: '/api/public/meta/callback',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedMarketersIdExpensesRoute =
-  AuthenticatedMarketersIdExpensesRouteImport.update({
-    id: '/marketers/$id_/expenses',
-    path: '/marketers/$id/expenses',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedMarketersIdBonusRoute =
   AuthenticatedMarketersIdBonusRouteImport.update({
     id: '/marketers/$id_/bonus',
     path: '/marketers/$id/bonus',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMarketersIdExpensesRoute =
+  AuthenticatedMarketersIdExpensesRouteImport.update({
+    id: '/marketers/$id_/expenses',
+    path: '/marketers/$id/expenses',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -188,7 +182,6 @@ export interface FileRoutesByFullPath {
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
-  '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -212,7 +205,6 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersIndexRoute
   '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
-  '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -239,7 +231,6 @@ export interface FileRoutesById {
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/marketers/$id_/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/_authenticated/marketers/$id_/expenses': typeof AuthenticatedMarketersIdExpensesRoute
-  '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -266,7 +257,6 @@ export interface FileRouteTypes {
     | '/users/'
     | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
-    | '/api/public/meta/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -290,7 +280,6 @@ export interface FileRouteTypes {
     | '/users'
     | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
-    | '/api/public/meta/callback'
   id:
     | '__root__'
     | '/'
@@ -316,7 +305,6 @@ export interface FileRouteTypes {
     | '/_authenticated/users/'
     | '/_authenticated/marketers/$id_/bonus'
     | '/_authenticated/marketers/$id_/expenses'
-    | '/api/public/meta/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -325,30 +313,15 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiPublicMetaCallbackRoute: typeof ApiPublicMetaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -358,46 +331,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/shipping': {
-      id: '/_authenticated/shipping'
-      path: '/shipping'
-      fullPath: '/shipping'
-      preLoaderRoute: typeof AuthenticatedShippingRouteImport
-      parentRoute: typeof AuthenticatedRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/products': {
-      id: '/_authenticated/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof AuthenticatedProductsRouteImport
-      parentRoute: typeof AuthenticatedRoute
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/orders': {
-      id: '/_authenticated/orders'
-      path: '/orders'
-      fullPath: '/orders'
-      preLoaderRoute: typeof AuthenticatedOrdersRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/bonus-calculator': {
-      id: '/_authenticated/bonus-calculator'
-      path: '/bonus-calculator'
-      fullPath: '/bonus-calculator'
-      preLoaderRoute: typeof AuthenticatedBonusCalculatorRouteImport
+    '/_authenticated/ad-accounts': {
+      id: '/_authenticated/ad-accounts'
+      path: '/ad-accounts'
+      fullPath: '/ad-accounts'
+      preLoaderRoute: typeof AuthenticatedAdAccountsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/ad-spend': {
@@ -407,67 +366,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdSpendRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/ad-accounts': {
-      id: '/_authenticated/ad-accounts'
-      path: '/ad-accounts'
-      fullPath: '/ad-accounts'
-      preLoaderRoute: typeof AuthenticatedAdAccountsRouteImport
+    '/_authenticated/bonus-calculator': {
+      id: '/_authenticated/bonus-calculator'
+      path: '/bonus-calculator'
+      fullPath: '/bonus-calculator'
+      preLoaderRoute: typeof AuthenticatedBonusCalculatorRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/users/': {
-      id: '/_authenticated/users/'
-      path: '/users'
-      fullPath: '/users/'
-      preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/orders/': {
-      id: '/_authenticated/orders/'
-      path: '/'
-      fullPath: '/orders/'
-      preLoaderRoute: typeof AuthenticatedOrdersIndexRouteImport
-      parentRoute: typeof AuthenticatedOrdersRoute
-    }
-    '/_authenticated/marketers/': {
-      id: '/_authenticated/marketers/'
-      path: '/marketers'
-      fullPath: '/marketers/'
-      preLoaderRoute: typeof AuthenticatedMarketersIndexRouteImport
+    '/_authenticated/orders': {
+      id: '/_authenticated/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof AuthenticatedOrdersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/settings/mappings': {
-      id: '/_authenticated/settings/mappings'
-      path: '/settings/mappings'
-      fullPath: '/settings/mappings'
-      preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
+    '/_authenticated/products': {
+      id: '/_authenticated/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof AuthenticatedProductsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/products/$name': {
-      id: '/_authenticated/products/$name'
-      path: '/$name'
-      fullPath: '/products/$name'
-      preLoaderRoute: typeof AuthenticatedProductsNameRouteImport
-      parentRoute: typeof AuthenticatedProductsRoute
-    }
-    '/_authenticated/orders/update-status': {
-      id: '/_authenticated/orders/update-status'
-      path: '/update-status'
-      fullPath: '/orders/update-status'
-      preLoaderRoute: typeof AuthenticatedOrdersUpdateStatusRouteImport
-      parentRoute: typeof AuthenticatedOrdersRoute
-    }
-    '/_authenticated/orders/import': {
-      id: '/_authenticated/orders/import'
-      path: '/import'
-      fullPath: '/orders/import'
-      preLoaderRoute: typeof AuthenticatedOrdersImportRouteImport
-      parentRoute: typeof AuthenticatedOrdersRoute
-    }
-    '/_authenticated/marketers/$id': {
-      id: '/_authenticated/marketers/$id'
-      path: '/marketers/$id'
-      fullPath: '/marketers/$id'
-      preLoaderRoute: typeof AuthenticatedMarketersIdRouteImport
+    '/_authenticated/shipping': {
+      id: '/_authenticated/shipping'
+      path: '/shipping'
+      fullPath: '/shipping'
+      preLoaderRoute: typeof AuthenticatedShippingRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/ad-accounts_/connect-meta': {
@@ -477,18 +408,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdAccountsConnectMetaRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/public/meta/callback': {
-      id: '/api/public/meta/callback'
-      path: '/api/public/meta/callback'
-      fullPath: '/api/public/meta/callback'
-      preLoaderRoute: typeof ApiPublicMetaCallbackRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/marketers/': {
+      id: '/_authenticated/marketers/'
+      path: '/marketers'
+      fullPath: '/marketers/'
+      preLoaderRoute: typeof AuthenticatedMarketersIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/marketers/$id_/expenses': {
-      id: '/_authenticated/marketers/$id_/expenses'
-      path: '/marketers/$id/expenses'
-      fullPath: '/marketers/$id/expenses'
-      preLoaderRoute: typeof AuthenticatedMarketersIdExpensesRouteImport
+    '/_authenticated/marketers/$id': {
+      id: '/_authenticated/marketers/$id'
+      path: '/marketers/$id'
+      fullPath: '/marketers/$id'
+      preLoaderRoute: typeof AuthenticatedMarketersIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orders/': {
+      id: '/_authenticated/orders/'
+      path: '/'
+      fullPath: '/orders/'
+      preLoaderRoute: typeof AuthenticatedOrdersIndexRouteImport
+      parentRoute: typeof AuthenticatedOrdersRoute
+    }
+    '/_authenticated/orders/import': {
+      id: '/_authenticated/orders/import'
+      path: '/import'
+      fullPath: '/orders/import'
+      preLoaderRoute: typeof AuthenticatedOrdersImportRouteImport
+      parentRoute: typeof AuthenticatedOrdersRoute
+    }
+    '/_authenticated/orders/update-status': {
+      id: '/_authenticated/orders/update-status'
+      path: '/update-status'
+      fullPath: '/orders/update-status'
+      preLoaderRoute: typeof AuthenticatedOrdersUpdateStatusRouteImport
+      parentRoute: typeof AuthenticatedOrdersRoute
+    }
+    '/_authenticated/products/$name': {
+      id: '/_authenticated/products/$name'
+      path: '/$name'
+      fullPath: '/products/$name'
+      preLoaderRoute: typeof AuthenticatedProductsNameRouteImport
+      parentRoute: typeof AuthenticatedProductsRoute
+    }
+    '/_authenticated/settings/mappings': {
+      id: '/_authenticated/settings/mappings'
+      path: '/settings/mappings'
+      fullPath: '/settings/mappings'
+      preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/users/': {
+      id: '/_authenticated/users/'
+      path: '/users'
+      fullPath: '/users/'
+      preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/marketers/$id_/bonus': {
@@ -496,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/marketers/$id/bonus'
       fullPath: '/marketers/$id/bonus'
       preLoaderRoute: typeof AuthenticatedMarketersIdBonusRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/marketers/$id_/expenses': {
+      id: '/_authenticated/marketers/$id_/expenses'
+      path: '/marketers/$id/expenses'
+      fullPath: '/marketers/$id/expenses'
+      preLoaderRoute: typeof AuthenticatedMarketersIdExpensesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
@@ -574,8 +554,17 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiPublicMetaCallbackRoute: ApiPublicMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
