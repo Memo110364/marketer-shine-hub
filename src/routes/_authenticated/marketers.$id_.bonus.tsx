@@ -16,7 +16,7 @@ import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
 import { BonusTimeline } from "@/components/bonus/BonusTimeline";
 import { BonusPayments } from "@/components/bonus/BonusPayments";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
-import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
+import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 type BonusSearch = { year?: number; month?: number };
@@ -139,6 +139,29 @@ function MarketerBonusPage() {
         ? [e.message, e.details, e.hint, e.code].filter(Boolean).join(" | ")
         : String(error);
       toast.error("تعذر تنفيذ الاحتساب، برجاء المحاولة مرة أخرى", { description: message });
+    },
+  });
+
+  const approveOverride = useMutation({
+    mutationFn: async () => {
+      if (!bonus?.id) throw new Error("لا توجد حسبة لهذا الشهر بعد");
+      const { data, error } = await (supabase.rpc as any)("approve_bonus_tier_override", {
+        _bonus_id: bonus.id,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("تم اعتماد رفع الباقة");
+      qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
+      qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
+    },
+    onError: (error: unknown) => {
+      const e = error as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const message = e?.message
+        ? [e.message, e.details, e.hint, e.code].filter(Boolean).join(" | ")
+        : String(error);
+      toast.error("تعذر اعتماد رفع الباقة", { description: message });
     },
   });
 
@@ -321,7 +344,7 @@ function MarketerBonusPage() {
           {downgraded ? (
             <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
               <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground" />
-              <div>
+              <div className="flex-1">
                 <div className="font-medium">
                   {bonus.volume_tier_name_snapshot} ← {bonus.earned_tier_name_snapshot}
                 </div>
@@ -329,11 +352,31 @@ function MarketerBonusPage() {
                   تم تخفيض الباقة بسبب عدم تحقيق نسبة التسليم المطلوبة
                   {!isMarketer && bonus.tier_change_reason ? ` — ${bonus.tier_change_reason}` : ""}
                 </div>
+                {canRecalculate && bonus.tier_downgrade_within_tolerance && !bonus.is_locked && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs">
+                      نسبة التسليم قريبة من تحقيق باقة {bonus.volume_tier_name_snapshot} (ضمن هامش ٥٪) —
+                      يمكن اعتماد رفع الباقة يدويًا.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => approveOverride.mutate()}
+                      disabled={approveOverride.isPending}
+                    >
+                      {approveOverride.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 ml-1 animate-spin" />
+                        : <CheckCircle2 className="h-3.5 w-3.5 ml-1" />}
+                      اعتماد رفع الباقة
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success">
               تم تحقيق الباقة المستحقة بالكامل بدون تخفيض.
+              {bonus.tier_override_approved && " (باقة مرفوعة باعتماد الأدمن لقرب نسبة التسليم من التحقيق)"}
             </div>
           )}
 
