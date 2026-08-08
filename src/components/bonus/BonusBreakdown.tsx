@@ -26,6 +26,7 @@ export function BonusBreakdown({ bonus, earnedTier }: { bonus: any; earnedTier?:
             <Row label="نسبة التسليم" value={fmtPercent(n(bonus.delivery_rate))} />
             <Row label="العمولات المحققة" value={fmtCurrency(bonus.realized_commission)} />
             <Row label="الإنفاق الإعلاني" value={fmtCurrency(bonus.ad_spend)} />
+            <Row label="تكلفة إيزي أوردر" value={fmtCurrency(bonus.easy_order_cost)} />
             <Row label="المصروفات الأخرى" value={fmtCurrency(bonus.other_expenses)} />
             <Row
               label="صافي الربح قبل البونص"
