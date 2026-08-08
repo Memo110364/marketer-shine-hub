@@ -134,7 +134,10 @@ function MarketerBonusPage() {
       qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
+      const e = error as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const message = e?.message
+        ? [e.message, e.details, e.hint, e.code].filter(Boolean).join(" | ")
+        : String(error);
       toast.error("تعذر تنفيذ الاحتساب، برجاء المحاولة مرة أخرى", { description: message });
     },
   });
