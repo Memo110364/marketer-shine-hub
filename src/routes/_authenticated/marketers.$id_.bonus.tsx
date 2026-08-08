@@ -393,7 +393,15 @@ function MarketerBonusPage() {
           </div>
 
           {/* Payments */}
-          <BonusPayments bonus={bonus} payments={payments} />
+          <BonusPayments
+            bonus={bonus}
+            payments={payments}
+            onPaymentRecorded={() => {
+              qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
+              qc.invalidateQueries({ queryKey: ["bonus-payments", bonus.id] });
+              qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
+            }}
+          />
         </>
       )}
 
