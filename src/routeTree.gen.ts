@@ -25,6 +25,7 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
 import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
+import { Route as AuthenticatedSettingsBonusTiersRouteImport } from './routes/_authenticated/settings.bonus-tiers'
 import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authenticated/products.$name'
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
@@ -116,6 +117,12 @@ const AuthenticatedSettingsMappingsRoute =
     path: '/settings/mappings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedSettingsBonusTiersRoute =
+  AuthenticatedSettingsBonusTiersRouteImport.update({
+    id: '/settings/bonus-tiers',
+    path: '/settings/bonus-tiers',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedProductsNameRoute =
   AuthenticatedProductsNameRouteImport.update({
     id: '/$name',
@@ -176,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/products/$name': typeof AuthenticatedProductsNameRoute
+  '/settings/bonus-tiers': typeof AuthenticatedSettingsBonusTiersRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/products/$name': typeof AuthenticatedProductsNameRoute
+  '/settings/bonus-tiers': typeof AuthenticatedSettingsBonusTiersRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/_authenticated/products/$name': typeof AuthenticatedProductsNameRoute
+  '/_authenticated/settings/bonus-tiers': typeof AuthenticatedSettingsBonusTiersRoute
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
@@ -251,6 +261,7 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/update-status'
     | '/products/$name'
+    | '/settings/bonus-tiers'
     | '/settings/mappings'
     | '/marketers/'
     | '/orders/'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/update-status'
     | '/products/$name'
+    | '/settings/bonus-tiers'
     | '/settings/mappings'
     | '/marketers'
     | '/orders'
@@ -299,6 +311,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
     | '/_authenticated/products/$name'
+    | '/_authenticated/settings/bonus-tiers'
     | '/_authenticated/settings/mappings'
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
@@ -429,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/settings/bonus-tiers': {
+      id: '/_authenticated/settings/bonus-tiers'
+      path: '/settings/bonus-tiers'
+      fullPath: '/settings/bonus-tiers'
+      preLoaderRoute: typeof AuthenticatedSettingsBonusTiersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/products/$name': {
       id: '/_authenticated/products/$name'
       path: '/$name'
@@ -519,6 +539,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
   AuthenticatedAdAccountsConnectMetaRoute: typeof AuthenticatedAdAccountsConnectMetaRoute
   AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
+  AuthenticatedSettingsBonusTiersRoute: typeof AuthenticatedSettingsBonusTiersRoute
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -537,6 +558,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdAccountsConnectMetaRoute:
     AuthenticatedAdAccountsConnectMetaRoute,
   AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
+  AuthenticatedSettingsBonusTiersRoute: AuthenticatedSettingsBonusTiersRoute,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,

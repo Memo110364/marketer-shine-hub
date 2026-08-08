@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Users, ShoppingBag, Upload, Wallet, Package,
-  Truck, Settings, Megaphone, LogOut, BarChart3, RefreshCw, UserCog,
+  Truck, Settings, Megaphone, LogOut, BarChart3, RefreshCw, UserCog, Trophy,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { to: "/shipping", label: "شركات الشحن", icon: Truck, roles: ["admin", "account_manager"] },
   { to: "/ad-accounts", label: "حسابات الإعلانات", icon: Megaphone, roles: ["admin", "account_manager"] },
   { to: "/settings/mappings", label: "إعدادات الاستيراد", icon: Settings, roles: ["admin", "account_manager"] },
+  { to: "/settings/bonus-tiers", label: "إعدادات باقات البونص", icon: Trophy, roles: ["admin"] },
   { to: "/users", label: "إدارة المستخدمين", icon: UserCog, roles: ["admin"] },
 ];
 
