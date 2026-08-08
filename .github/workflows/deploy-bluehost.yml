@@ -1,8 +1,9 @@
 name: Deploy to Bluehost
 
+# Superseded by deploy-cloudflare.yml: the static/CSR build this workflow
+# ships was the likely cause of a page-freeze bug on click. Kept for manual
+# runs only (workflow_dispatch) in case Bluehost hosting is needed again.
 on:
-  push:
-    branches: [main]
   workflow_dispatch: {}
 
 jobs:
