@@ -376,7 +376,6 @@ function MarketerBonusPage() {
                 </div>
                 <div className="text-muted-foreground">
                   تم تخفيض الباقة بسبب عدم تحقيق نسبة التسليم المطلوبة
-                  {!isMarketer && bonus.tier_change_reason ? ` — ${bonus.tier_change_reason}` : ""}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   المستحق الحالي (قبل أي اعتماد): راتب {fmtCurrency(bonus.calculated_salary)} + بونص{" "}
