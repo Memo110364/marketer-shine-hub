@@ -72,7 +72,7 @@ type PreparedRow = {
   // payload used for insert/update (without __resolve)
   payload: any;
   // resolution metadata for confirm step
-  resolve: { marketerCode: string; sku: string; pname: string; sname: string };
+  resolve: { marketerCode: string; sku: string; pname: string; sname: string; cname: string };
   // for updates: existing row id + diffed fields summary
   existingId?: string;
   changedFields?: string[];
@@ -112,6 +112,7 @@ const UPDATABLE_FIELDS = [
   "marketer_id",
   "product_id",
   "shipping_company_id",
+  "campaign_id",
   "customer_name",
   "customer_phone",
   "governorate",
@@ -217,6 +218,12 @@ function ImportPage() {
     const productByName = new Map((productsAll ?? []).map((p) => [p.name, p.id]));
     const { data: shippingsAll } = await supabase.from("shipping_companies").select("id, name");
     const shippingByName = new Map((shippingsAll ?? []).map((s) => [s.name, s.id]));
+    // Campaigns come from the Meta sync only — never auto-created here, just
+    // matched by name (case-insensitive) scoped to the row's marketer.
+    const { data: campaignsAll } = await supabase.from("ad_campaigns").select("id, name, marketer_id");
+    const campaignByKey = new Map(
+      (campaignsAll ?? []).map((c) => [`${c.marketer_id}:${c.name.toLowerCase()}`, c.id]),
+    );
 
     const validationErrors: ImportError[] = [];
     const prepared: PreparedRow[] = [];
@@ -242,6 +249,10 @@ function ImportPage() {
         const sname = String(pick(r, "shipping_company") ?? "").trim();
         const shippingId: string | null = sname ? (shippingByName.get(sname) ?? null) : null;
 
+        const cname = String(pick(r, "campaign_name") ?? "").trim();
+        const campaignId: string | null =
+          cname && marketerId ? (campaignByKey.get(`${marketerId}:${cname.toLowerCase()}`) ?? null) : null;
+
         const externalId = (String(pick(r, "external_order_id") ?? "").trim()) || null;
 
         const payload = {
@@ -249,6 +260,7 @@ function ImportPage() {
           marketer_id: marketerId,
           product_id: productId,
           shipping_company_id: shippingId,
+          campaign_id: campaignId,
           customer_name: String(pick(r, "customer_name") ?? "") || null,
           customer_phone: String(pick(r, "customer_phone") ?? "") || null,
           governorate: String(pick(r, "governorate") ?? "") || null,
@@ -267,7 +279,7 @@ function ImportPage() {
           externalId,
           action: "new",
           payload,
-          resolve: { marketerCode, sku, pname, sname },
+          resolve: { marketerCode, sku, pname, sname, cname },
         });
       } catch (err: any) {
         validationErrors.push({
@@ -327,7 +339,7 @@ function ImportPage() {
         const oldVal = existing[f];
         // Don't overwrite a real value with null for the FK refs that we may
         // resolve/create during confirm.
-        if (newVal == null && (f === "marketer_id" || f === "product_id" || f === "shipping_company_id")) continue;
+        if (newVal == null && (f === "marketer_id" || f === "product_id" || f === "shipping_company_id" || f === "campaign_id")) continue;
         if (!valEq(newVal, oldVal)) changed.push(f);
       }
       if (changed.length === 0) {

@@ -77,6 +77,7 @@ export const SYSTEM_FIELDS = [
   { key: "status", label: "الحالة" },
   { key: "order_date", label: "تاريخ الطلب" },
   { key: "delivered_date", label: "تاريخ التسليم" },
+  { key: "campaign_name", label: "اسم الحملة الإعلانية (اختياري)" },
 ] as const;
 
 export type SystemField = (typeof SYSTEM_FIELDS)[number]["key"];

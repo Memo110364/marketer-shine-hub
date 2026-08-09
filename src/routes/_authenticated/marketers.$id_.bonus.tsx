@@ -16,7 +16,7 @@ import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
 import { BonusTimeline } from "@/components/bonus/BonusTimeline";
 import { BonusPayments } from "@/components/bonus/BonusPayments";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
-import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Wallet, Trophy, Megaphone, RefreshCw, Loader2, AlertTriangle, Lock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 type BonusSearch = { year?: number; month?: number };
@@ -217,6 +217,9 @@ function MarketerBonusPage() {
         </Button>
         <Button asChild>
           <Link to="/marketers/$id/bonus" params={{ id }}><Trophy className="h-4 w-4 ml-1" /> البونص والمستحقات</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link to="/marketers/$id/ad-performance" params={{ id }}><Megaphone className="h-4 w-4 ml-1" /> أداء الإعلانات</Link>
         </Button>
       </div>
 

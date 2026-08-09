@@ -102,6 +102,150 @@ export type Database = {
           },
         ]
       }
+      ad_campaign_insights_daily: {
+        Row: {
+          campaign_id: string
+          clicks: number
+          cost_per_result: number | null
+          created_at: string
+          ctr: number | null
+          currency: string
+          id: string
+          impressions: number
+          insight_date: string
+          marketer_id: string | null
+          primary_result_count: number | null
+          primary_result_type: string | null
+          reach: number
+          results_breakdown: Json | null
+          source: string
+          spend_amount: number
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          clicks?: number
+          cost_per_result?: number | null
+          created_at?: string
+          ctr?: number | null
+          currency?: string
+          id?: string
+          impressions?: number
+          insight_date: string
+          marketer_id?: string | null
+          primary_result_count?: number | null
+          primary_result_type?: string | null
+          reach?: number
+          results_breakdown?: Json | null
+          source?: string
+          spend_amount?: number
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          clicks?: number
+          cost_per_result?: number | null
+          created_at?: string
+          ctr?: number | null
+          currency?: string
+          id?: string
+          impressions?: number
+          insight_date?: string
+          marketer_id?: string | null
+          primary_result_count?: number | null
+          primary_result_type?: string | null
+          reach?: number
+          results_breakdown?: Json | null
+          source?: string
+          spend_amount?: number
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaign_insights_daily_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_campaign_insights_daily_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_campaigns: {
+        Row: {
+          ad_account_id: string
+          created_at: string
+          currency: string
+          daily_budget: number | null
+          external_campaign_id: string
+          id: string
+          last_synced_at: string | null
+          lifetime_budget: number | null
+          marketer_id: string | null
+          name: string
+          objective: string | null
+          platform: Database["public"]["Enums"]["ad_platform"]
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          created_at?: string
+          currency?: string
+          daily_budget?: number | null
+          external_campaign_id: string
+          id?: string
+          last_synced_at?: string | null
+          lifetime_budget?: number | null
+          marketer_id?: string | null
+          name: string
+          objective?: string | null
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          created_at?: string
+          currency?: string
+          daily_budget?: number | null
+          external_campaign_id?: string
+          id?: string
+          last_synced_at?: string | null
+          lifetime_budget?: number | null
+          marketer_id?: string | null
+          name?: string
+          objective?: string | null
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaigns_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_campaigns_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_spend_change_requests: {
         Row: {
           action: string
@@ -915,6 +1059,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          campaign_id: string | null
           commission: number | null
           created_at: string
           customer_name: string | null
@@ -936,6 +1081,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          campaign_id?: string | null
           commission?: number | null
           created_at?: string
           customer_name?: string | null
@@ -957,6 +1103,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          campaign_id?: string | null
           commission?: number | null
           created_at?: string
           customer_name?: string | null
@@ -978,6 +1125,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_import_batch_id_fkey"
             columns: ["import_batch_id"]

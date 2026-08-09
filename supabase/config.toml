@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.meta-oauth-callback]
 verify_jwt = false
+
+[functions.meta-insights-sync]
+verify_jwt = true

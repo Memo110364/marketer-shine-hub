@@ -33,6 +33,7 @@ import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts_.connect-meta'
 import { Route as AuthenticatedMarketersIdExpensesRouteImport } from './routes/_authenticated/marketers.$id_.expenses'
 import { Route as AuthenticatedMarketersIdBonusRouteImport } from './routes/_authenticated/marketers.$id_.bonus'
+import { Route as AuthenticatedMarketersIdAdPerformanceRouteImport } from './routes/_authenticated/marketers.$id_.ad-performance'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -165,6 +166,12 @@ const AuthenticatedMarketersIdBonusRoute =
     path: '/marketers/$id/bonus',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedMarketersIdAdPerformanceRoute =
+  AuthenticatedMarketersIdAdPerformanceRouteImport.update({
+    id: '/marketers/$id_/ad-performance',
+    path: '/marketers/$id/ad-performance',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/ad-performance': typeof AuthenticatedMarketersIdAdPerformanceRoute
   '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
 }
@@ -212,6 +220,7 @@ export interface FileRoutesByTo {
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/ad-performance': typeof AuthenticatedMarketersIdAdPerformanceRoute
   '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
 }
@@ -239,6 +248,7 @@ export interface FileRoutesById {
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/marketers/$id_/ad-performance': typeof AuthenticatedMarketersIdAdPerformanceRoute
   '/_authenticated/marketers/$id_/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/_authenticated/marketers/$id_/expenses': typeof AuthenticatedMarketersIdExpensesRoute
 }
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/marketers/'
     | '/orders/'
     | '/users/'
+    | '/marketers/$id/ad-performance'
     | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
   fileRoutesByTo: FileRoutesByTo
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/marketers'
     | '/orders'
     | '/users'
+    | '/marketers/$id/ad-performance'
     | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
   id:
@@ -316,6 +328,7 @@ export interface FileRouteTypes {
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
     | '/_authenticated/users/'
+    | '/_authenticated/marketers/$id_/ad-performance'
     | '/_authenticated/marketers/$id_/bonus'
     | '/_authenticated/marketers/$id_/expenses'
   fileRoutesById: FileRoutesById
@@ -498,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMarketersIdBonusRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/marketers/$id_/ad-performance': {
+      id: '/_authenticated/marketers/$id_/ad-performance'
+      path: '/marketers/$id/ad-performance'
+      fullPath: '/marketers/$id/ad-performance'
+      preLoaderRoute: typeof AuthenticatedMarketersIdAdPerformanceRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -543,6 +563,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
+  AuthenticatedMarketersIdAdPerformanceRoute: typeof AuthenticatedMarketersIdAdPerformanceRoute
   AuthenticatedMarketersIdBonusRoute: typeof AuthenticatedMarketersIdBonusRoute
   AuthenticatedMarketersIdExpensesRoute: typeof AuthenticatedMarketersIdExpensesRoute
 }
@@ -562,6 +583,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
+  AuthenticatedMarketersIdAdPerformanceRoute:
+    AuthenticatedMarketersIdAdPerformanceRoute,
   AuthenticatedMarketersIdBonusRoute: AuthenticatedMarketersIdBonusRoute,
   AuthenticatedMarketersIdExpensesRoute: AuthenticatedMarketersIdExpensesRoute,
 }
