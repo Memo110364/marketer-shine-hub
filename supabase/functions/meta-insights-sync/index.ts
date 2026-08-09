@@ -286,6 +286,35 @@ Deno.serve(async (req) => {
       insightsUpserted++;
     }
 
+    // 3) Roll campaign spend up into the account-level daily total
+    // (ad_spend_daily) — the table the "ربط حساب Meta" wizard promised to
+    // keep synced, previously only ever written to by the manual-entry dialog.
+    let spendDaysUpserted = 0;
+    if (account.marketer_id) {
+      const spendByDate = new Map<string, number>();
+      for (const row of insightRows) {
+        const amt = Number(row.spend) || 0;
+        spendByDate.set(row.date_start, (spendByDate.get(row.date_start) ?? 0) + amt);
+      }
+      for (const [date, spend] of spendByDate) {
+        const { error } = await supabaseAdmin.from("ad_spend_daily").upsert(
+          {
+            marketer_id: account.marketer_id,
+            ad_account_id: adAccountId,
+            platform: "meta",
+            spend_date: date,
+            spend_amount: spend,
+            currency: account.currency ?? "EGP",
+            source: "meta_api",
+            sync_status: "ok",
+          },
+          { onConflict: "ad_account_id,spend_date,source" },
+        );
+        if (error) throw new Error(error.message);
+        spendDaysUpserted++;
+      }
+    }
+
     await supabaseAdmin
       .from("ad_accounts")
       .update({ last_sync_at: new Date().toISOString(), connection_status: "connected" })
@@ -296,7 +325,7 @@ Deno.serve(async (req) => {
       .update({
         status: "success",
         sync_finished_at: new Date().toISOString(),
-        records_created: campaignsUpserted + insightsUpserted,
+        records_created: campaignsUpserted + insightsUpserted + spendDaysUpserted,
         records_updated: 0,
       })
       .eq("id", logId);
@@ -304,6 +333,7 @@ Deno.serve(async (req) => {
     return json({
       campaigns: campaignsUpserted,
       insightRows: insightsUpserted,
+      spendDays: spendDaysUpserted,
       since: fmt(since),
       until: fmt(until),
     });

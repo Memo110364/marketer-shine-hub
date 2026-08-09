@@ -111,7 +111,7 @@ function AdSpendPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KpiCard label="إجمالي الإنفاق (محفظة)" value={fmtCurrency(total)} icon={Wallet} tone="warning" />
-        <KpiCard label="الإنفاق اليومي للحسابات" value={fmtCurrency(dailyTotal)} icon={TrendingDown} tone="info" hint="مجموع ad_spend_daily (يدوي + Meta/TikTok مستقبلاً)" />
+        <KpiCard label="الإنفاق اليومي للحسابات" value={fmtCurrency(dailyTotal)} icon={TrendingDown} tone="info" hint="مجموع ad_spend_daily (يدوي + مزامنة Meta التلقائية)" />
         <KpiCard label="عدد المعاملات" value={fmtNumber(tx.length)} icon={Receipt} />
         <KpiCard label="متوسط المعاملة" value={fmtCurrency(tx.length ? total / tx.length : 0)} icon={TrendingDown} />
       </div>
