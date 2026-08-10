@@ -42,7 +42,7 @@ type OrderRow = {
   quantity: number | null;
 };
 
-type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string };
+type SpendRow = { amount: number; marketer_id: string | null; transaction_date: string; spend_type: string };
 
 const EXCLUDED_FROM_GROSS = new Set(["refunded", "refund_request", "cancelled"]);
 
@@ -121,7 +121,7 @@ function DashboardPage() {
       fetchAll<SpendRow>((a, b) =>
         supabase
           .from("ad_spend_transactions")
-          .select("amount, marketer_id, transaction_date")
+          .select("amount, marketer_id, transaction_date, spend_type")
           .gte("transaction_date", from)
           .lte("transaction_date", to)
           .range(a, b),
@@ -147,7 +147,7 @@ function DashboardPage() {
       fetchAll<SpendRow>((a, b) =>
         supabase
           .from("ad_spend_transactions")
-          .select("amount, marketer_id, transaction_date")
+          .select("amount, marketer_id, transaction_date, spend_type")
           .gte("transaction_date", prev.from)
           .lte("transaction_date", prev.to)
           .range(a, b),
@@ -171,10 +171,14 @@ function DashboardPage() {
     return true;
   }), [ordersPrev, marketerF, productF, shippingF, statusF]);
 
+  // test_ads is excluded here so every downstream ad-spend/profit figure on
+  // this dashboard (adSpend, netProfit, CPA, daily/marketer breakdowns) stays
+  // consistent with the bonus engine: the company absorbs that cost, not the
+  // marketer's numbers.
   const spendFiltered = useMemo(() => spend.filter((s) =>
-    marketerF === "all" || s.marketer_id === marketerF), [spend, marketerF]);
+    s.spend_type !== "test_ads" && (marketerF === "all" || s.marketer_id === marketerF)), [spend, marketerF]);
   const spendPrevFiltered = useMemo(() => spendPrev.filter((s) =>
-    marketerF === "all" || s.marketer_id === marketerF), [spendPrev, marketerF]);
+    s.spend_type !== "test_ads" && (marketerF === "all" || s.marketer_id === marketerF)), [spendPrev, marketerF]);
 
   // Basic aggregates
   const counts = ORDER_STATUS_KEYS.reduce((acc, k) => {

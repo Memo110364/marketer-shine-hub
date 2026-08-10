@@ -1317,6 +1317,7 @@ export type Database = {
         | "meta_ads"
         | "tiktok_ads"
         | "easy_order"
+        | "test_ads"
         | "salary"
         | "other"
       app_role: "admin" | "account_manager" | "marketer"
@@ -1462,6 +1463,7 @@ export const Constants = {
         "meta_ads",
         "tiktok_ads",
         "easy_order",
+        "test_ads",
         "salary",
         "other",
       ],
