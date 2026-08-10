@@ -22,6 +22,7 @@ const SPEND_TYPE_LABELS = {
   meta_ads: "Meta Ads",
   tiktok_ads: "Tiktok Ads",
   easy_order: "Easy Order",
+  test_ads: "Test Ads",
   salary: "Salary",
   other: "Other",
 } as const;
@@ -464,6 +465,11 @@ function EditDialog({
                 ))}
               </SelectContent>
             </Select>
+            {spendType === "test_ads" && (
+              <p className="text-xs text-muted-foreground mt-1">
+                مصاريف تجارب تطلبها الشركة — مش بتتخصم من أرباح أو بونص المسوّق.
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-xs">كود فوري</Label>
