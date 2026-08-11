@@ -847,37 +847,42 @@ function ImportPage() {
               <Stat label="أخطاء" value={report.errors.length} tone="destructive" />
             </div>
 
-            {report.rowResults.length > 0 && (
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-16">الصف</TableHead>
-                      <TableHead className="w-32">الحالة</TableHead>
-                      <TableHead>الرسالة</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.rowResults.slice(0, 200).map((r, i) => (
-                      <TableRow key={i} className={rowToneClass(r.action)}>
-                        <TableCell className="text-xs">{r.rowNumber || "—"}</TableCell>
-                        <TableCell className="text-xs"><ActionBadge action={r.action} /></TableCell>
-                        <TableCell className="text-xs break-all">
-                          {r.action === "error"
-                            ? <span className="text-destructive">{r.message}</span>
-                            : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {report.rowResults.length > 200 && (
-                  <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                    عرض أول 200 صف من {report.rowResults.length}
+            {(() => {
+              const errorRows = report.rowResults.filter((r) => r.action === "error");
+              if (errorRows.length === 0) return null;
+              return (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="p-2 text-xs font-medium text-destructive border-b bg-destructive/5">
+                    صفوف بها مشاكل ({errorRows.length})
                   </div>
-                )}
-              </div>
-            )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">الصف</TableHead>
+                        <TableHead className="w-32">الحالة</TableHead>
+                        <TableHead>الرسالة</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {errorRows.slice(0, 200).map((r, i) => (
+                        <TableRow key={i} className={rowToneClass(r.action)}>
+                          <TableCell className="text-xs">{r.rowNumber || "—"}</TableCell>
+                          <TableCell className="text-xs"><ActionBadge action={r.action} /></TableCell>
+                          <TableCell className="text-xs break-all">
+                            <span className="text-destructive">{r.message}</span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {errorRows.length > 200 && (
+                    <div className="p-2 text-xs text-muted-foreground text-center border-t">
+                      عرض أول 200 صف من {errorRows.length}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
