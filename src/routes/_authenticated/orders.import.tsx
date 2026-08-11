@@ -107,6 +107,7 @@ export const Route = createFileRoute("/_authenticated/orders/import")({
 });
 
 const NONE = "__none__";
+const NEW_TEMPLATE = "__new__";
 
 // Fields we compare and update on existing orders
 const UPDATABLE_FIELDS = [
@@ -157,6 +158,9 @@ function ImportPage() {
   const [mapping, setMapping] = useState<Partial<Record<SystemField, string>>>({});
   const [mappingName, setMappingName] = useState("");
   const [setAsDefault, setSetAsDefault] = useState(false);
+  // "__new__" = building a fresh template; anything else = the id of an
+  // existing one being edited. Drives which controls the header shows.
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(NEW_TEMPLATE);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
@@ -189,6 +193,7 @@ function ImportPage() {
       setMapping(defaultMapping.mapping as any);
       setMappingName(defaultMapping.name);
       setSetAsDefault(true);
+      setSelectedTemplateId(defaultMapping.id);
       toast.success(`تم تحميل ${json.length} صف — واتطبق القالب الافتراضي "${defaultMapping.name}"`);
       return;
     }
@@ -203,10 +208,23 @@ function ImportPage() {
       if (h) guess[f.key] = h;
     }
     setMapping(guess);
+    setMappingName("");
+    setSetAsDefault(false);
+    setSelectedTemplateId(NEW_TEMPLATE);
     toast.success(`تم تحميل ${json.length} صف`);
   }
 
-  function loadMapping(id: string) {
+  // One control decides everything: either editing an existing saved
+  // template (id), or building a brand new one ("__new__"). No more showing
+  // a "load" dropdown and a "save as" name field side by side — that's what
+  // let three duplicate "طلبات انجزني" rows pile up.
+  function selectTemplate(id: string) {
+    setSelectedTemplateId(id);
+    if (id === NEW_TEMPLATE) {
+      setMappingName("");
+      setSetAsDefault(false);
+      return;
+    }
     const m = savedMappings.find((x) => x.id === id);
     if (m) {
       setMapping(m.mapping as any);
@@ -216,9 +234,12 @@ function ImportPage() {
   }
 
   async function saveMapping() {
-    if (!mappingName) { toast.error("أدخل اسم القالب"); return; }
+    const isNew = selectedTemplateId === NEW_TEMPLATE;
+    if (isNew && !mappingName.trim()) { toast.error("أدخل اسم القالب الجديد"); return; }
     const { data: u } = await supabase.auth.getUser();
-    const existing = savedMappings.find((m) => m.name === mappingName);
+    const existing = isNew
+      ? savedMappings.find((m) => m.name === mappingName.trim())
+      : savedMappings.find((m) => m.id === selectedTemplateId);
 
     // If we're setting this template as default, clear the flag off every
     // other template first — only one default at a time.
@@ -236,12 +257,14 @@ function ImportPage() {
         .eq("id", existing.id);
       if (error) { toast.error("فشل تحديث القالب"); return; }
       toast.success("تم تحديث القالب");
+      setSelectedTemplateId(existing.id);
     } else {
-      const { error } = await supabase.from("column_mappings").insert({
-        name: mappingName, mapping, is_default: setAsDefault, created_by: u.user?.id,
-      });
+      const { data: inserted, error } = await supabase.from("column_mappings").insert({
+        name: mappingName.trim(), mapping, is_default: setAsDefault, created_by: u.user?.id,
+      }).select().single();
       if (error) { toast.error("فشل حفظ القالب"); return; }
       toast.success("تم حفظ القالب");
+      if (inserted) setSelectedTemplateId(inserted.id);
     }
     qc.invalidateQueries({ queryKey: ["mappings"] });
   }
@@ -712,15 +735,22 @@ function ImportPage() {
                   مطلوب: <b>كود المسوّق</b>. ربط <b>رقم الطلب</b> مهم لمنع التكرار وتفعيل التحديث التلقائي.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Select onValueChange={loadMapping}>
-                  <SelectTrigger className="w-48 h-9"><SelectValue placeholder="تحميل قالب محفوظ" /></SelectTrigger>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={selectedTemplateId} onValueChange={selectTemplate}>
+                  <SelectTrigger className="w-48 h-9"><SelectValue placeholder="القالب" /></SelectTrigger>
                   <SelectContent>
-                    {savedMappings.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    <SelectItem value={NEW_TEMPLATE}>+ قالب جديد</SelectItem>
+                    {savedMappings.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}{m.is_default ? " (افتراضي)" : ""}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <Input placeholder="اسم القالب لحفظه" value={mappingName}
-                  onChange={(e) => setMappingName(e.target.value)} className="w-44 h-9" />
+                {selectedTemplateId === NEW_TEMPLATE && (
+                  <Input placeholder="اسم القالب الجديد" value={mappingName}
+                    onChange={(e) => setMappingName(e.target.value)} className="w-44 h-9" />
+                )}
                 <div className="flex items-center gap-1.5">
                   <Checkbox id="mapping-default" checked={setAsDefault}
                     onCheckedChange={(v) => setSetAsDefault(v === true)} />
@@ -728,7 +758,10 @@ function ImportPage() {
                     قالب افتراضي
                   </Label>
                 </div>
-                <Button variant="outline" size="sm" onClick={saveMapping}><Save className="h-4 w-4 ml-1" /> حفظ</Button>
+                <Button variant="outline" size="sm" onClick={saveMapping}>
+                  <Save className="h-4 w-4 ml-1" />
+                  {selectedTemplateId === NEW_TEMPLATE ? "حفظ" : "تحديث القالب"}
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
