@@ -40,7 +40,14 @@ function MappingsSettings() {
         <Card key={m.id}>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base">{m.name}</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                {m.name}
+                {m.is_default && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30">
+                    افتراضي
+                  </span>
+                )}
+              </CardTitle>
               <div className="text-xs text-muted-foreground">{fmtDate(m.created_at)}</div>
             </div>
             <Button variant="ghost" size="sm" onClick={() => remove(m.id)}>
