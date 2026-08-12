@@ -816,6 +816,7 @@ export type Database = {
           shipped_orders_count: number
           status: string
           system_calculated_total: number
+          test_ads_cost: number
           tier_change_reason: string | null
           tier_downgrade_within_tolerance: boolean
           tier_override_approved: boolean
@@ -883,6 +884,7 @@ export type Database = {
           shipped_orders_count?: number
           status?: string
           system_calculated_total?: number
+          test_ads_cost?: number
           tier_change_reason?: string | null
           tier_downgrade_within_tolerance?: boolean
           tier_override_approved?: boolean
@@ -950,6 +952,7 @@ export type Database = {
           shipped_orders_count?: number
           status?: string
           system_calculated_total?: number
+          test_ads_cost?: number
           tier_change_reason?: string | null
           tier_downgrade_within_tolerance?: boolean
           tier_override_approved?: boolean
@@ -1357,6 +1360,18 @@ export type Database = {
               _other_expenses?: number
               _realized_commission: number
               _shipped_orders: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _ad_spend: number
+              _delivered_orders: number
+              _easy_order_cost?: number
+              _other_expenses?: number
+              _realized_commission: number
+              _shipped_orders: number
+              _test_ads_cost?: number
             }
             Returns: Json
           }
