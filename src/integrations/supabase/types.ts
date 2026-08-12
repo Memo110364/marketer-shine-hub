@@ -1341,40 +1341,18 @@ export type Database = {
         Args: { _month: number; _year: number }
         Returns: Json
       }
-      compute_bonus_figures:
-        | {
-            Args: {
-              _ad_spend: number
-              _delivered_orders: number
-              _other_expenses?: number
-              _realized_commission: number
-              _shipped_orders: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _ad_spend: number
-              _delivered_orders: number
-              _easy_order_cost?: number
-              _other_expenses?: number
-              _realized_commission: number
-              _shipped_orders: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _ad_spend: number
-              _delivered_orders: number
-              _easy_order_cost?: number
-              _other_expenses?: number
-              _realized_commission: number
-              _shipped_orders: number
-              _test_ads_cost?: number
-            }
-            Returns: Json
-          }
+      compute_bonus_figures: {
+        Args: {
+          _ad_spend: number
+          _delivered_orders: number
+          _easy_order_cost?: number
+          _other_expenses?: number
+          _realized_commission: number
+          _shipped_orders: number
+          _test_ads_cost?: number
+        }
+        Returns: Json
+      }
       current_marketer_id: { Args: never; Returns: string }
       get_daily_order_summary: {
         Args: { _from: string; _to: string }
