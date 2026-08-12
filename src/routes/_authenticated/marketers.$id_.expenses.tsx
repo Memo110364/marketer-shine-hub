@@ -15,18 +15,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { fmtCurrency, fmtDate } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
+import { SPEND_TYPE_LABELS, type SpendType } from "@/lib/constants";
 import { ArrowRight, Download, Wallet, Pencil, Trash2, Check, X, Clock } from "lucide-react";
 import { toast } from "sonner";
-
-const SPEND_TYPE_LABELS = {
-  meta_ads: "Meta Ads",
-  tiktok_ads: "Tiktok Ads",
-  easy_order: "Easy Order",
-  test_ads: "Test Ads",
-  salary: "Salary",
-  other: "Other",
-} as const;
-type SpendType = keyof typeof SPEND_TYPE_LABELS;
 
 export const Route = createFileRoute("/_authenticated/marketers/$id_/expenses")({
   component: ExpensesPage,
