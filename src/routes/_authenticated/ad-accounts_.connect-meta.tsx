@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,19 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  CheckCircle2, ChevronRight, ChevronLeft, Shield, Image as ImageIcon,
-  PlayCircle, Loader2, Link2, Building2, Wallet, IdCard, HelpCircle,
+  CheckCircle2, ChevronRight, ChevronLeft, Shield,
+  Loader2, Link2, Building2, Wallet, IdCard, HelpCircle,
   ArrowRight, Sparkles, AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  startMetaOAuth,
-  listMetaAccounts,
-  linkMetaAccount,
-} from "@/lib/meta-oauth.functions";
+import { invokeFn } from "@/lib/edge-functions";
+
+type MetaAccountResult = {
+  externalId: string;
+  name: string;
+  currency: string;
+  business: string;
+  accountStatus: number | null;
+};
 
 export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -44,12 +44,9 @@ export const Route = createFileRoute("/_authenticated/ad-accounts_/connect-meta"
 });
 
 const STEPS = [
-  { id: 1, label: "فحص الجاهزية" },
-  { id: 2, label: "كيف يعمل الربط" },
-  { id: 3, label: "تعليمات بالصور" },
-  { id: 4, label: "بدء الربط" },
-  { id: 5, label: "اختيار الحساب" },
-  { id: 6, label: "تم الربط" },
+  { id: 1, label: "ابدأ الربط" },
+  { id: 2, label: "اختيار الحساب" },
+  { id: 3, label: "تم الربط" },
 ];
 
 type MockAccount = {
@@ -241,7 +238,7 @@ function ConnectMetaWizard() {
   const search = Route.useSearch();
   const oauthState = search.state ?? null;
   const [step, setStep] = useState<number>(
-    oauthState ? 5 : (search.step ?? 1),
+    oauthState ? 2 : (search.step ?? 1),
   );
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -250,14 +247,7 @@ function ConnectMetaWizard() {
   const [fetchedForState, setFetchedForState] = useState<string | null>(null);
   const [metaError, setMetaError] = useState<MetaErrorInfo | null>(null);
 
-  const startFn = useServerFn(startMetaOAuth);
-  const listFn = useServerFn(listMetaAccounts);
-  const linkFn = useServerFn(linkMetaAccount);
-
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId) ?? null;
-
-  const goNext = () => setStep((s) => Math.min(6, s + 1));
-  const goBack = () => setStep((s) => Math.max(1, s - 1));
 
   // Surface any error returned by the OAuth callback (?meta_error=...).
   useEffect(() => {
@@ -278,7 +268,7 @@ function ConnectMetaWizard() {
     };
     console.error("[ConnectMeta] callback returned error", info);
     setMetaError(info);
-    setStep(4);
+    setStep(1);
     toast.error(info.friendly);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -293,13 +283,13 @@ function ConnectMetaWizard() {
 
   // Returning from Meta callback → state present in the URL: fetch accounts.
   useEffect(() => {
-    console.log("[ConnectMeta] Step 5 effect mounted", {
+    console.log("[ConnectMeta] account-select effect mounted", {
       oauthState,
       fetchedForState,
     });
     if (!oauthState) return;
     if (fetchedForState === oauthState) return;
-    setStep(5);
+    setStep(2);
     setFetchedForState(oauthState);
     void (async () => {
       setLoading(true);
@@ -307,7 +297,10 @@ function ConnectMetaWizard() {
       setMetaError(null);
       console.log("[ConnectMeta] calling listMetaAccounts with state:", oauthState);
       try {
-        const res = await listFn({ data: { state: oauthState } });
+        const res = await invokeFn<{ accounts: MetaAccountResult[] }>(
+          "meta-oauth",
+          { action: "list", state: oauthState },
+        );
         console.log("[ConnectMeta] accounts returned count:", res.accounts.length);
         setAccounts(
           res.accounts.map((a, i) => ({
@@ -323,7 +316,7 @@ function ConnectMetaWizard() {
         const info = parseServerError(e, "list");
         setMetaError(info);
         toast.error(info.friendly);
-        setStep(4);
+        setStep(1);
       } finally {
         setLoading(false);
         setLoadingMessage("");
@@ -337,7 +330,10 @@ function ConnectMetaWizard() {
     setLoadingMessage("جاري فتح Meta...");
     setMetaError(null);
     try {
-      const { authorizeUrl } = await startFn();
+      const { authorizeUrl } = await invokeFn<{ authorizeUrl: string }>(
+        "meta-oauth",
+        { action: "start" },
+      );
       window.location.href = authorizeUrl;
     } catch (e) {
       const info = parseServerError(e, "start");
@@ -356,14 +352,13 @@ function ConnectMetaWizard() {
         state: oauthState,
         externalId: selectedAccount.externalId,
       });
-      return linkFn({
-        data: {
-          state: oauthState,
-          externalId: selectedAccount.externalId,
-          name: selectedAccount.name,
-          currency: selectedAccount.currency,
-          business: selectedAccount.business,
-        },
+      return invokeFn<{ adAccountId: string }>("meta-oauth", {
+        action: "link",
+        state: oauthState,
+        externalId: selectedAccount.externalId,
+        name: selectedAccount.name,
+        currency: selectedAccount.currency,
+        business: selectedAccount.business,
       });
     },
     onSuccess: () => {
@@ -380,9 +375,8 @@ function ConnectMetaWizard() {
   });
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <div className="space-y-6 max-w-4xl mx-auto pb-12">
-        {/* Header */}
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -395,7 +389,7 @@ function ConnectMetaWizard() {
               مساعد ربط حساب Meta
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              نخليك تربط حسابك الإعلاني في خطوات بسيطة وآمنة
+              اربط حسابك الإعلاني بضغطة واحدة وبأمان
             </p>
           </div>
         </div>
@@ -409,24 +403,20 @@ function ConnectMetaWizard() {
             onDismiss={() => setMetaError(null)}
             onRetry={() => {
               setMetaError(null);
-              setStep(4);
+              setStep(1);
             }}
           />
         )}
 
         {/* Steps */}
-        {step === 1 && <StepReadiness onNext={goNext} />}
-        {step === 2 && <StepExplain onNext={goNext} onBack={goBack} />}
-        {step === 3 && <StepTutorial onNext={goNext} onBack={goBack} />}
-        {step === 4 && (
+        {step === 1 && (
           <StepStart
             loading={loading}
             loadingMessage={loadingMessage}
             onStart={startConnection}
-            onBack={goBack}
           />
         )}
-        {step === 5 && (
+        {step === 2 && (
           <StepSelectAccount
             accounts={accounts}
             loading={loading}
@@ -434,14 +424,13 @@ function ConnectMetaWizard() {
             selectedId={selectedAccountId}
             onSelect={setSelectedAccountId}
             onConfirm={() => confirmMutation.mutate()}
-            onBack={() => setStep(4)}
+            onBack={() => setStep(1)}
           />
         )}
-        {step === 6 && selectedAccount && (
+        {step === 3 && selectedAccount && (
           <StepSuccess account={selectedAccount} onDone={() => navigate({ to: "/ad-accounts" })} />
         )}
-      </div>
-    </TooltipProvider>
+    </div>
   );
 }
 
@@ -490,224 +479,50 @@ function ProgressBar({ current }: { current: number }) {
 
 /* ---------------- Step 1 ---------------- */
 
+const HOW_IT_WORKS = [
+  "هتسجّل الدخول في نافذة Meta الرسمية وتختار الحساب الإعلاني",
+  "النظام هياخد صلاحية قراءة الإنفاق بس — من غير أي تعديل على حملاتك",
+  "هترجع تلقائيًا هنا تختار الحساب اللي عايز تربطه",
+];
+
 const READINESS = [
-  { label: "لديك حساب Facebook", hint: "الحساب الشخصي اللي تستخدمه عادي على فيسبوك" },
-  { label: "لديك Business Manager", hint: "حساب مدير الأعمال على business.facebook.com" },
-  { label: "لديك حساب إعلاني", hint: "Ad Account مرتبط بمدير الأعمال وممول جاهز" },
-  { label: "لديك صلاحية Admin على الحساب الإعلاني", hint: "لازم تكون أدمن عشان تقدر تمنح صلاحية القراءة" },
+  { label: "حساب Facebook", hint: "الحساب الشخصي اللي تستخدمه عادي على فيسبوك" },
+  { label: "Business Manager", hint: "حساب مدير الأعمال على business.facebook.com" },
+  { label: "حساب إعلاني ممول", hint: "Ad Account مرتبط بمدير الأعمال وممول جاهز" },
+  { label: "صلاحية Admin على الحساب الإعلاني", hint: "لازم تكون أدمن عشان تقدر تمنح صلاحية القراءة" },
 ];
-
-function StepReadiness({ onNext }: { onNext: () => void }) {
-  const [checks, setChecks] = useState<boolean[]>(READINESS.map(() => false));
-  const allChecked = checks.every(Boolean);
-  return (
-    <Card>
-      <CardContent className="p-6 md:p-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-display font-bold">فحص الجاهزية</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            تأكد من توفر كل النقاط التالية قبل البدء
-          </p>
-        </div>
-
-        <div className="grid gap-3">
-          {READINESS.map((item, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() =>
-                setChecks((c) => c.map((v, idx) => (idx === i ? !v : v)))
-              }
-              className={cn(
-                "flex items-center gap-3 rounded-xl border p-4 text-right transition",
-                checks[i]
-                  ? "border-success/40 bg-success/5"
-                  : "border-border hover:bg-muted/50"
-              )}
-            >
-              <div
-                className={cn(
-                  "h-6 w-6 rounded-full border-2 grid place-items-center shrink-0",
-                  checks[i] ? "bg-success border-success text-white" : "border-border"
-                )}
-              >
-                {checks[i] && <CheckCircle2 className="h-4 w-4" />}
-              </div>
-              <span className="flex-1 font-medium">{item.label}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="text-muted-foreground hover:text-foreground">
-                    <HelpCircle className="h-4 w-4" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs">
-                  <p className="text-xs">{item.hint}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    إذا لم تكن متأكدًا، شاهد الشرح بالأسفل
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex justify-end">
-          <Button size="lg" onClick={onNext} disabled={!allChecked} className="min-w-32">
-            التالي
-            <ChevronLeft className="mr-1 h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ---------------- Step 2 ---------------- */
-
-function StepExplain({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  const points = [
-    "سيتم فتح نافذة Meta الرسمية",
-    "قم بتسجيل الدخول بحسابك",
-    "اختر الحساب الإعلاني الذي تريد ربطه",
-    "النظام سيستخدم صلاحية قراءة الإنفاق فقط",
-    "النظام لن ينشئ أو يعدل أو يحذف أي حملات",
-  ];
-  return (
-    <Card>
-      <CardContent className="p-6 md:p-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-display font-bold">إزاي بيشتغل الربط؟</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            شرح بسيط لكل ما يحدث خلال عملية الربط
-          </p>
-        </div>
-
-        <div className="grid gap-3">
-          {points.map((p, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 rounded-xl border bg-card p-4"
-            >
-              <div className="h-8 w-8 shrink-0 rounded-full bg-primary/10 text-primary grid place-items-center font-bold">
-                {i + 1}
-              </div>
-              <p className="text-sm leading-relaxed pt-1">{p}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-xl border border-success/30 bg-success/5 p-4 flex items-start gap-3">
-          <Shield className="h-5 w-5 text-success shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-sm">بياناتك في أمان</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              بياناتك الإعلانية آمنة ولن يتم استخدامها إلا لعرض الإنفاق والإحصائيات داخل النظام.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <Button variant="outline" size="lg" onClick={onBack}>
-            <ChevronRight className="ml-1 h-4 w-4" />
-            العودة
-          </Button>
-          <Button size="lg" onClick={onNext} className="min-w-32">
-            التالي
-            <ChevronLeft className="mr-1 h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ---------------- Step 3 ---------------- */
-
-const TUTORIAL = [
-  { title: "تسجيل الدخول", text: "افتح نافذة Meta وسجّل الدخول بحسابك العادي." },
-  { title: "اختيار الحساب", text: "اختر الحساب الإعلاني المراد ربطه من القائمة." },
-  { title: "منح الصلاحية", text: "وافق على صلاحية قراءة بيانات الإعلانات فقط." },
-  { title: "تأكيد الربط", text: "ستعود تلقائيًا للنظام بعد إتمام الربط بنجاح." },
-];
-
-function StepTutorial({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  return (
-    <Card>
-      <CardContent className="p-6 md:p-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-display font-bold">تعليمات بالصور</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            دليل مرئي يوضح خطوات الربط داخل Meta
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TUTORIAL.map((t, i) => (
-            <div key={i} className="rounded-xl border overflow-hidden bg-card">
-              <div className="aspect-video bg-gradient-to-br from-muted to-muted/40 grid place-items-center border-b">
-                <div className="text-center text-muted-foreground">
-                  <ImageIcon className="h-10 w-10 mx-auto opacity-40" />
-                  <p className="text-xs mt-2">صورة توضيحية ({i + 1})</p>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="secondary" className="text-[10px]">خطوة {i + 1}</Badge>
-                  <p className="font-semibold text-sm">{t.title}</p>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{t.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-xl border border-dashed bg-muted/30 p-6 text-center">
-          <PlayCircle className="h-10 w-10 mx-auto text-primary/70" />
-          <p className="font-semibold mt-2">شاهد فيديو الشرح</p>
-          <p className="text-xs text-muted-foreground mt-1">سيتوفر قريبًا فيديو يشرح كل الخطوات</p>
-          <Button variant="outline" size="sm" className="mt-3" disabled>
-            تشغيل الفيديو
-            <Badge variant="secondary" className="mr-2 text-[10px]">قريبًا</Badge>
-          </Button>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <Button variant="outline" size="lg" onClick={onBack}>
-            <ChevronRight className="ml-1 h-4 w-4" />
-            العودة
-          </Button>
-          <Button size="lg" onClick={onNext} className="min-w-32">
-            التالي
-            <ChevronLeft className="mr-1 h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ---------------- Step 4 ---------------- */
 
 function StepStart({
-  loading, loadingMessage, onStart, onBack,
+  loading, loadingMessage, onStart,
 }: {
-  loading: boolean; loadingMessage: string; onStart: () => void; onBack: () => void;
+  loading: boolean; loadingMessage: string; onStart: () => void;
 }) {
   return (
     <Card>
-      <CardContent className="p-6 md:p-10 space-y-8 text-center">
+      <CardContent className="p-6 md:p-10 space-y-6 text-center">
         <div>
-          <h2 className="text-2xl font-display font-bold">جاهز لبدء الربط</h2>
+          <h2 className="text-2xl font-display font-bold">اربط حساب Meta بضغطة واحدة</h2>
           <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            اضغط على الزر بالأسفل لفتح نافذة Meta وإتمام عملية الربط بأمان
+            هتفتح نافذة Meta الرسمية، تسجّل دخول وتختار حسابك، وترجع تلقائيًا هنا
           </p>
         </div>
 
-        <div className="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 grid place-items-center">
+        <div className="grid gap-2 max-w-md mx-auto text-right">
+          {HOW_IT_WORKS.map((p, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-xl border bg-card p-3">
+              <div className="h-6 w-6 shrink-0 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold">
+                {i + 1}
+              </div>
+              <p className="text-sm leading-relaxed">{p}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 grid place-items-center">
           {loading ? (
-            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+            <Loader2 className="h-9 w-9 text-primary animate-spin" />
           ) : (
-            <Link2 className="h-10 w-10 text-primary" />
+            <Link2 className="h-9 w-9 text-primary" />
           )}
         </div>
 
@@ -728,20 +543,38 @@ function StepStart({
           )}
         </Button>
 
-        {!loading && (
-          <div className="flex justify-center">
-            <Button variant="ghost" onClick={onBack}>
-              <ChevronRight className="ml-1 h-4 w-4" />
-              العودة
-            </Button>
+        <details className="max-w-md mx-auto text-right rounded-xl border bg-muted/30 p-4">
+          <summary className="cursor-pointer text-sm font-medium flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+            محتاج تتأكد من إيه قبل ما تبدأ؟
+          </summary>
+          <div className="grid gap-2 mt-3">
+            {READINESS.map((item, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/70" />
+                <span>
+                  <span className="text-foreground font-medium">{item.label}</span> — {item.hint}
+                </span>
+              </div>
+            ))}
           </div>
-        )}
+        </details>
+
+        <div className="max-w-md mx-auto rounded-xl border border-success/30 bg-success/5 p-4 flex items-start gap-3 text-right">
+          <Shield className="h-5 w-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm">بياناتك في أمان</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              بياناتك الإعلانية آمنة ولن يتم استخدامها إلا لعرض الإنفاق والإحصائيات داخل النظام.
+            </p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-/* ---------------- Step 5 ---------------- */
+/* ---------------- Step 2 ---------------- */
 
 function StepSelectAccount({
   accounts, selectedId, onSelect, onConfirm, onBack, loading, confirming,
@@ -838,7 +671,7 @@ function StepSelectAccount({
   );
 }
 
-/* ---------------- Step 6 ---------------- */
+/* ---------------- Step 3 ---------------- */
 
 function StepSuccess({ account, onDone }: { account: MockAccount; onDone: () => void }) {
   return (

@@ -14,6 +14,10 @@
 --     (see COMMISSION_EXCLUDED_STATUSES in src/lib/constants.ts)
 --   "delivered" = delivered + done
 --   "refunded" (KPI) = refunded + refund_request
+--   ad_spend excludes spend_type = 'test_ads' — the company absorbs that
+--     cost, so it must not touch the marketer's ad-spend/profit figures
+--     (matches the bonus engine, see 20260810113200_exclude_test_ads_
+--     from_bonus_calc.sql)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.get_dashboard_summary(
@@ -42,6 +46,7 @@ AS $$
     SELECT COALESCE(SUM(amount), 0) AS ad_spend
     FROM public.ad_spend_transactions
     WHERE transaction_date BETWEEN _from AND _to
+      AND spend_type <> 'test_ads'
       AND (_marketer_id IS NULL OR marketer_id = _marketer_id)
   )
   SELECT jsonb_build_object(
@@ -106,6 +111,7 @@ AS $$
     SELECT s.transaction_date AS day, COALESCE(SUM(s.amount), 0) AS spend
     FROM public.ad_spend_transactions s
     WHERE s.transaction_date BETWEEN _from AND _to
+      AND s.spend_type <> 'test_ads'
       AND (_marketer_id IS NULL OR s.marketer_id = _marketer_id)
     GROUP BY s.transaction_date
   )
@@ -165,6 +171,7 @@ AS $$
     FROM public.ad_spend_transactions s
     WHERE s.marketer_id IS NOT NULL
       AND s.transaction_date BETWEEN _from AND _to
+      AND s.spend_type <> 'test_ads'
       AND (_marketer_id IS NULL OR s.marketer_id = _marketer_id)
     GROUP BY s.marketer_id
   )

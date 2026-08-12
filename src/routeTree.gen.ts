@@ -25,14 +25,15 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedOrdersIndexRouteImport } from './routes/_authenticated/orders.index'
 import { Route as AuthenticatedMarketersIndexRouteImport } from './routes/_authenticated/marketers.index'
 import { Route as AuthenticatedSettingsMappingsRouteImport } from './routes/_authenticated/settings.mappings'
+import { Route as AuthenticatedSettingsBonusTiersRouteImport } from './routes/_authenticated/settings.bonus-tiers'
 import { Route as AuthenticatedProductsNameRouteImport } from './routes/_authenticated/products.$name'
 import { Route as AuthenticatedOrdersUpdateStatusRouteImport } from './routes/_authenticated/orders.update-status'
 import { Route as AuthenticatedOrdersImportRouteImport } from './routes/_authenticated/orders.import'
 import { Route as AuthenticatedMarketersIdRouteImport } from './routes/_authenticated/marketers.$id'
 import { Route as AuthenticatedAdAccountsConnectMetaRouteImport } from './routes/_authenticated/ad-accounts_.connect-meta'
-import { Route as ApiPublicMetaCallbackRouteImport } from './routes/api/public/meta/callback'
 import { Route as AuthenticatedMarketersIdExpensesRouteImport } from './routes/_authenticated/marketers.$id_.expenses'
 import { Route as AuthenticatedMarketersIdBonusRouteImport } from './routes/_authenticated/marketers.$id_.bonus'
+import { Route as AuthenticatedMarketersIdAdPerformanceRouteImport } from './routes/_authenticated/marketers.$id_.ad-performance'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -117,6 +118,12 @@ const AuthenticatedSettingsMappingsRoute =
     path: '/settings/mappings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedSettingsBonusTiersRoute =
+  AuthenticatedSettingsBonusTiersRouteImport.update({
+    id: '/settings/bonus-tiers',
+    path: '/settings/bonus-tiers',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedProductsNameRoute =
   AuthenticatedProductsNameRouteImport.update({
     id: '/$name',
@@ -147,11 +154,6 @@ const AuthenticatedAdAccountsConnectMetaRoute =
     path: '/ad-accounts/connect-meta',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const ApiPublicMetaCallbackRoute = ApiPublicMetaCallbackRouteImport.update({
-  id: '/api/public/meta/callback',
-  path: '/api/public/meta/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedMarketersIdExpensesRoute =
   AuthenticatedMarketersIdExpensesRouteImport.update({
     id: '/marketers/$id_/expenses',
@@ -162,6 +164,12 @@ const AuthenticatedMarketersIdBonusRoute =
   AuthenticatedMarketersIdBonusRouteImport.update({
     id: '/marketers/$id_/bonus',
     path: '/marketers/$id/bonus',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMarketersIdAdPerformanceRoute =
+  AuthenticatedMarketersIdAdPerformanceRouteImport.update({
+    id: '/marketers/$id_/ad-performance',
+    path: '/marketers/$id/ad-performance',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -182,13 +190,14 @@ export interface FileRoutesByFullPath {
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/products/$name': typeof AuthenticatedProductsNameRoute
+  '/settings/bonus-tiers': typeof AuthenticatedSettingsBonusTiersRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/orders/': typeof AuthenticatedOrdersIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/ad-performance': typeof AuthenticatedMarketersIdAdPerformanceRoute
   '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
-  '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -206,13 +215,14 @@ export interface FileRoutesByTo {
   '/orders/import': typeof AuthenticatedOrdersImportRoute
   '/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/products/$name': typeof AuthenticatedProductsNameRoute
+  '/settings/bonus-tiers': typeof AuthenticatedSettingsBonusTiersRoute
   '/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/marketers': typeof AuthenticatedMarketersIndexRoute
   '/orders': typeof AuthenticatedOrdersIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/marketers/$id/ad-performance': typeof AuthenticatedMarketersIdAdPerformanceRoute
   '/marketers/$id/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/marketers/$id/expenses': typeof AuthenticatedMarketersIdExpensesRoute
-  '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -233,13 +243,14 @@ export interface FileRoutesById {
   '/_authenticated/orders/import': typeof AuthenticatedOrdersImportRoute
   '/_authenticated/orders/update-status': typeof AuthenticatedOrdersUpdateStatusRoute
   '/_authenticated/products/$name': typeof AuthenticatedProductsNameRoute
+  '/_authenticated/settings/bonus-tiers': typeof AuthenticatedSettingsBonusTiersRoute
   '/_authenticated/settings/mappings': typeof AuthenticatedSettingsMappingsRoute
   '/_authenticated/marketers/': typeof AuthenticatedMarketersIndexRoute
   '/_authenticated/orders/': typeof AuthenticatedOrdersIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/marketers/$id_/ad-performance': typeof AuthenticatedMarketersIdAdPerformanceRoute
   '/_authenticated/marketers/$id_/bonus': typeof AuthenticatedMarketersIdBonusRoute
   '/_authenticated/marketers/$id_/expenses': typeof AuthenticatedMarketersIdExpensesRoute
-  '/api/public/meta/callback': typeof ApiPublicMetaCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -260,13 +271,14 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/update-status'
     | '/products/$name'
+    | '/settings/bonus-tiers'
     | '/settings/mappings'
     | '/marketers/'
     | '/orders/'
     | '/users/'
+    | '/marketers/$id/ad-performance'
     | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
-    | '/api/public/meta/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -284,13 +296,14 @@ export interface FileRouteTypes {
     | '/orders/import'
     | '/orders/update-status'
     | '/products/$name'
+    | '/settings/bonus-tiers'
     | '/settings/mappings'
     | '/marketers'
     | '/orders'
     | '/users'
+    | '/marketers/$id/ad-performance'
     | '/marketers/$id/bonus'
     | '/marketers/$id/expenses'
-    | '/api/public/meta/callback'
   id:
     | '__root__'
     | '/'
@@ -310,13 +323,14 @@ export interface FileRouteTypes {
     | '/_authenticated/orders/import'
     | '/_authenticated/orders/update-status'
     | '/_authenticated/products/$name'
+    | '/_authenticated/settings/bonus-tiers'
     | '/_authenticated/settings/mappings'
     | '/_authenticated/marketers/'
     | '/_authenticated/orders/'
     | '/_authenticated/users/'
+    | '/_authenticated/marketers/$id_/ad-performance'
     | '/_authenticated/marketers/$id_/bonus'
     | '/_authenticated/marketers/$id_/expenses'
-    | '/api/public/meta/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -325,7 +339,6 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ApiPublicMetaCallbackRoute: typeof ApiPublicMetaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -442,6 +455,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsMappingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/settings/bonus-tiers': {
+      id: '/_authenticated/settings/bonus-tiers'
+      path: '/settings/bonus-tiers'
+      fullPath: '/settings/bonus-tiers'
+      preLoaderRoute: typeof AuthenticatedSettingsBonusTiersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/products/$name': {
       id: '/_authenticated/products/$name'
       path: '/$name'
@@ -477,13 +497,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdAccountsConnectMetaRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/public/meta/callback': {
-      id: '/api/public/meta/callback'
-      path: '/api/public/meta/callback'
-      fullPath: '/api/public/meta/callback'
-      preLoaderRoute: typeof ApiPublicMetaCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/marketers/$id_/expenses': {
       id: '/_authenticated/marketers/$id_/expenses'
       path: '/marketers/$id/expenses'
@@ -496,6 +509,13 @@ declare module '@tanstack/react-router' {
       path: '/marketers/$id/bonus'
       fullPath: '/marketers/$id/bonus'
       preLoaderRoute: typeof AuthenticatedMarketersIdBonusRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/marketers/$id_/ad-performance': {
+      id: '/_authenticated/marketers/$id_/ad-performance'
+      path: '/marketers/$id/ad-performance'
+      fullPath: '/marketers/$id/ad-performance'
+      preLoaderRoute: typeof AuthenticatedMarketersIdAdPerformanceRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
@@ -539,9 +559,11 @@ interface AuthenticatedRouteChildren {
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
   AuthenticatedAdAccountsConnectMetaRoute: typeof AuthenticatedAdAccountsConnectMetaRoute
   AuthenticatedMarketersIdRoute: typeof AuthenticatedMarketersIdRoute
+  AuthenticatedSettingsBonusTiersRoute: typeof AuthenticatedSettingsBonusTiersRoute
   AuthenticatedSettingsMappingsRoute: typeof AuthenticatedSettingsMappingsRoute
   AuthenticatedMarketersIndexRoute: typeof AuthenticatedMarketersIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
+  AuthenticatedMarketersIdAdPerformanceRoute: typeof AuthenticatedMarketersIdAdPerformanceRoute
   AuthenticatedMarketersIdBonusRoute: typeof AuthenticatedMarketersIdBonusRoute
   AuthenticatedMarketersIdExpensesRoute: typeof AuthenticatedMarketersIdExpensesRoute
 }
@@ -557,9 +579,12 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdAccountsConnectMetaRoute:
     AuthenticatedAdAccountsConnectMetaRoute,
   AuthenticatedMarketersIdRoute: AuthenticatedMarketersIdRoute,
+  AuthenticatedSettingsBonusTiersRoute: AuthenticatedSettingsBonusTiersRoute,
   AuthenticatedSettingsMappingsRoute: AuthenticatedSettingsMappingsRoute,
   AuthenticatedMarketersIndexRoute: AuthenticatedMarketersIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
+  AuthenticatedMarketersIdAdPerformanceRoute:
+    AuthenticatedMarketersIdAdPerformanceRoute,
   AuthenticatedMarketersIdBonusRoute: AuthenticatedMarketersIdBonusRoute,
   AuthenticatedMarketersIdExpensesRoute: AuthenticatedMarketersIdExpensesRoute,
 }
@@ -574,8 +599,17 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ApiPublicMetaCallbackRoute: ApiPublicMetaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

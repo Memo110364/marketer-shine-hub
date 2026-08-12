@@ -246,6 +246,11 @@ function AddExpenseDialog({
               ))}
             </SelectContent>
           </Select>
+          {spendType === "test_ads" && (
+            <p className="text-xs text-muted-foreground mt-1">
+              مصاريف تجارب تطلبها الشركة — الشركة هي اللي بتتحملها ومش بتتخصم من أرباح أو بونص المسوّق.
+            </p>
+          )}
         </div>
         <div>
           <Label className="text-xs">ملاحظات</Label>

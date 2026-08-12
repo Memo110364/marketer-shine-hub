@@ -1,6 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/lib/auth-context";
@@ -22,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { adminCreateUser } from "@/lib/users.functions";
+import { invokeFn } from "@/lib/edge-functions";
 
 export const Route = createFileRoute("/_authenticated/users/")({
   component: UsersPage,
@@ -368,7 +367,6 @@ function AssignMarketersDialog({ user, onClose }: { user: ProfileRow | null; onC
 
 function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const qc = useQueryClient();
-  const create = useServerFn(adminCreateUser);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -386,7 +384,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
     }
     setBusy(true);
     try {
-      await create({ data: { full_name: fullName, email, password, role } });
+      await invokeFn("admin-create-user", { full_name: fullName, email, password, role });
       toast.success("تم إنشاء المستخدم");
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
       qc.invalidateQueries({ queryKey: ["all-user-roles"] });

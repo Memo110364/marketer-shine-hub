@@ -196,7 +196,11 @@ function DashboardPage() {
     },
   });
 
-  // Basic aggregates (same formulas as before, now reading the aggregated row)
+  // Basic aggregates (same formulas as before, now reading the aggregated row).
+  // ad_spend excludes test_ads server-side (see get_dashboard_summary) so
+  // every downstream figure here (adSpend, netProfit, CPA, daily/marketer
+  // breakdowns) stays consistent with the bonus engine: the company absorbs
+  // that cost, not the marketer's numbers.
   const counts = s.counts;
   const total = s.total;
   const grossProfit = Number(s.gross_profit || 0);

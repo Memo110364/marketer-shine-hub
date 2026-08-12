@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -95,6 +95,150 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ad_accounts_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_campaign_insights_daily: {
+        Row: {
+          campaign_id: string
+          clicks: number
+          cost_per_result: number | null
+          created_at: string
+          ctr: number | null
+          currency: string
+          id: string
+          impressions: number
+          insight_date: string
+          marketer_id: string | null
+          primary_result_count: number | null
+          primary_result_type: string | null
+          reach: number
+          results_breakdown: Json | null
+          source: string
+          spend_amount: number
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          clicks?: number
+          cost_per_result?: number | null
+          created_at?: string
+          ctr?: number | null
+          currency?: string
+          id?: string
+          impressions?: number
+          insight_date: string
+          marketer_id?: string | null
+          primary_result_count?: number | null
+          primary_result_type?: string | null
+          reach?: number
+          results_breakdown?: Json | null
+          source?: string
+          spend_amount?: number
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          clicks?: number
+          cost_per_result?: number | null
+          created_at?: string
+          ctr?: number | null
+          currency?: string
+          id?: string
+          impressions?: number
+          insight_date?: string
+          marketer_id?: string | null
+          primary_result_count?: number | null
+          primary_result_type?: string | null
+          reach?: number
+          results_breakdown?: Json | null
+          source?: string
+          spend_amount?: number
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaign_insights_daily_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_campaign_insights_daily_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_campaigns: {
+        Row: {
+          ad_account_id: string
+          created_at: string
+          currency: string
+          daily_budget: number | null
+          external_campaign_id: string
+          id: string
+          last_synced_at: string | null
+          lifetime_budget: number | null
+          marketer_id: string | null
+          name: string
+          objective: string | null
+          platform: Database["public"]["Enums"]["ad_platform"]
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          created_at?: string
+          currency?: string
+          daily_budget?: number | null
+          external_campaign_id: string
+          id?: string
+          last_synced_at?: string | null
+          lifetime_budget?: number | null
+          marketer_id?: string | null
+          name: string
+          objective?: string | null
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          created_at?: string
+          currency?: string
+          daily_budget?: number | null
+          external_campaign_id?: string
+          id?: string
+          last_synced_at?: string | null
+          lifetime_budget?: number | null
+          marketer_id?: string | null
+          name?: string
+          objective?: string | null
+          platform?: Database["public"]["Enums"]["ad_platform"]
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaigns_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_campaigns_marketer_id_fkey"
             columns: ["marketer_id"]
             isOneToOne: false
             referencedRelation: "marketers"
@@ -647,6 +791,7 @@ export type Database = {
           earned_tier_id: string | null
           earned_tier_name_snapshot: string | null
           earned_tier_order_snapshot: number | null
+          easy_order_cost: number
           extra_delivered_orders: number
           final_approved_amount: number
           id: string
@@ -671,7 +816,24 @@ export type Database = {
           shipped_orders_count: number
           status: string
           system_calculated_total: number
+          test_ads_cost: number
           tier_change_reason: string | null
+          tier_downgrade_within_tolerance: boolean
+          tier_override_approved: boolean
+          tier_override_approved_at: string | null
+          tier_override_approved_by: string | null
+          tier_override_pre_calculated_extra_orders_bonus: number | null
+          tier_override_pre_calculated_profit_bonus: number | null
+          tier_override_pre_calculated_salary: number | null
+          tier_override_pre_earned_tier_id: string | null
+          tier_override_pre_earned_tier_name_snapshot: string | null
+          tier_override_pre_earned_tier_order_snapshot: number | null
+          tier_override_pre_extra_delivered_orders: number | null
+          tier_override_pre_minimum_delivered_orders: number | null
+          tier_override_pre_required_delivery_rate: number | null
+          tier_override_pre_system_calculated_total: number | null
+          tier_override_pre_tier_change_reason: string | null
+          tier_override_reason: string | null
           total_paid_amount: number
           updated_at: string
           volume_tier_id: string | null
@@ -697,6 +859,7 @@ export type Database = {
           earned_tier_id?: string | null
           earned_tier_name_snapshot?: string | null
           earned_tier_order_snapshot?: number | null
+          easy_order_cost?: number
           extra_delivered_orders?: number
           final_approved_amount?: number
           id?: string
@@ -721,7 +884,24 @@ export type Database = {
           shipped_orders_count?: number
           status?: string
           system_calculated_total?: number
+          test_ads_cost?: number
           tier_change_reason?: string | null
+          tier_downgrade_within_tolerance?: boolean
+          tier_override_approved?: boolean
+          tier_override_approved_at?: string | null
+          tier_override_approved_by?: string | null
+          tier_override_pre_calculated_extra_orders_bonus?: number | null
+          tier_override_pre_calculated_profit_bonus?: number | null
+          tier_override_pre_calculated_salary?: number | null
+          tier_override_pre_earned_tier_id?: string | null
+          tier_override_pre_earned_tier_name_snapshot?: string | null
+          tier_override_pre_earned_tier_order_snapshot?: number | null
+          tier_override_pre_extra_delivered_orders?: number | null
+          tier_override_pre_minimum_delivered_orders?: number | null
+          tier_override_pre_required_delivery_rate?: number | null
+          tier_override_pre_system_calculated_total?: number | null
+          tier_override_pre_tier_change_reason?: string | null
+          tier_override_reason?: string | null
           total_paid_amount?: number
           updated_at?: string
           volume_tier_id?: string | null
@@ -747,6 +927,7 @@ export type Database = {
           earned_tier_id?: string | null
           earned_tier_name_snapshot?: string | null
           earned_tier_order_snapshot?: number | null
+          easy_order_cost?: number
           extra_delivered_orders?: number
           final_approved_amount?: number
           id?: string
@@ -771,7 +952,24 @@ export type Database = {
           shipped_orders_count?: number
           status?: string
           system_calculated_total?: number
+          test_ads_cost?: number
           tier_change_reason?: string | null
+          tier_downgrade_within_tolerance?: boolean
+          tier_override_approved?: boolean
+          tier_override_approved_at?: string | null
+          tier_override_approved_by?: string | null
+          tier_override_pre_calculated_extra_orders_bonus?: number | null
+          tier_override_pre_calculated_profit_bonus?: number | null
+          tier_override_pre_calculated_salary?: number | null
+          tier_override_pre_earned_tier_id?: string | null
+          tier_override_pre_earned_tier_name_snapshot?: string | null
+          tier_override_pre_earned_tier_order_snapshot?: number | null
+          tier_override_pre_extra_delivered_orders?: number | null
+          tier_override_pre_minimum_delivered_orders?: number | null
+          tier_override_pre_required_delivery_rate?: number | null
+          tier_override_pre_system_calculated_total?: number | null
+          tier_override_pre_tier_change_reason?: string | null
+          tier_override_reason?: string | null
           total_paid_amount?: number
           updated_at?: string
           volume_tier_id?: string | null
@@ -915,6 +1113,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          campaign_id: string | null
           commission: number | null
           created_at: string
           customer_name: string | null
@@ -936,6 +1135,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          campaign_id?: string | null
           commission?: number | null
           created_at?: string
           customer_name?: string | null
@@ -957,6 +1157,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          campaign_id?: string | null
           commission?: number | null
           created_at?: string
           customer_name?: string | null
@@ -978,6 +1179,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "ad_campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_import_batch_id_fkey"
             columns: ["import_batch_id"]
@@ -1121,6 +1329,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_bonus_tier_override: {
+        Args: { _bonus_id: string; _reason?: string }
+        Returns: Json
+      }
       calculate_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
@@ -1129,17 +1341,53 @@ export type Database = {
         Args: { _month: number; _year: number }
         Returns: Json
       }
-      compute_bonus_figures: {
-        Args: {
-          _ad_spend: number
-          _delivered_orders: number
-          _other_expenses?: number
-          _realized_commission: number
-          _shipped_orders: number
-        }
-        Returns: Json
-      }
+      compute_bonus_figures:
+        | {
+            Args: {
+              _ad_spend: number
+              _delivered_orders: number
+              _other_expenses?: number
+              _realized_commission: number
+              _shipped_orders: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _ad_spend: number
+              _delivered_orders: number
+              _easy_order_cost?: number
+              _other_expenses?: number
+              _realized_commission: number
+              _shipped_orders: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _ad_spend: number
+              _delivered_orders: number
+              _easy_order_cost?: number
+              _other_expenses?: number
+              _realized_commission: number
+              _shipped_orders: number
+              _test_ads_cost?: number
+            }
+            Returns: Json
+          }
       current_marketer_id: { Args: never; Returns: string }
+      get_daily_order_summary: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          cancelled: number
+          delivered: number
+          order_date: string
+          pending: number
+          returned: number
+          shipped: number
+          total: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1156,6 +1404,10 @@ export type Database = {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
       }
+      revoke_bonus_tier_override: {
+        Args: { _bonus_id: string; _reason?: string }
+        Returns: Json
+      }
     }
     Enums: {
       ad_platform: "meta" | "tiktok" | "manual"
@@ -1165,6 +1417,7 @@ export type Database = {
         | "easy_order"
         | "salary"
         | "other"
+        | "test_ads"
       app_role: "admin" | "account_manager" | "marketer"
       marketer_status: "active" | "paused" | "inactive"
       order_status:
@@ -1310,6 +1563,7 @@ export const Constants = {
         "easy_order",
         "salary",
         "other",
+        "test_ads",
       ],
       app_role: ["admin", "account_manager", "marketer"],
       marketer_status: ["active", "paused", "inactive"],

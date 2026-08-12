@@ -66,6 +66,7 @@ export const SPEND_TYPE_LABELS = {
   meta_ads: "Meta Ads",
   tiktok_ads: "Tiktok Ads",
   easy_order: "Easy Order",
+  test_ads: "Test Ads",
   salary: "Salary",
   other: "Other",
 } as const;
@@ -87,6 +88,7 @@ export const SYSTEM_FIELDS = [
   { key: "status", label: "الحالة" },
   { key: "order_date", label: "تاريخ الطلب" },
   { key: "delivered_date", label: "تاريخ التسليم" },
+  { key: "campaign_name", label: "اسم الحملة الإعلانية (اختياري)" },
 ] as const;
 
 export type SystemField = (typeof SYSTEM_FIELDS)[number]["key"];

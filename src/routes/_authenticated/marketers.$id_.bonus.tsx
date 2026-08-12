@@ -16,7 +16,7 @@ import { BonusBreakdown } from "@/components/bonus/BonusBreakdown";
 import { BonusTimeline } from "@/components/bonus/BonusTimeline";
 import { BonusPayments } from "@/components/bonus/BonusPayments";
 import { MONTHS_AR, lastCompletedMonth, monthLabel } from "@/lib/bonus";
-import { ArrowRight, Wallet, Trophy, RefreshCw, Loader2, AlertTriangle, Lock } from "lucide-react";
+import { ArrowRight, Wallet, Trophy, Megaphone, RefreshCw, Loader2, AlertTriangle, Lock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
 type BonusSearch = { year?: number; month?: number };
@@ -133,7 +133,59 @@ function MarketerBonusPage() {
       qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
       qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
     },
-    onError: () => toast.error("تعذر تنفيذ الاحتساب، برجاء المحاولة مرة أخرى"),
+    onError: (error: unknown) => {
+      const e = error as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const message = e?.message
+        ? [e.message, e.details, e.hint, e.code].filter(Boolean).join(" | ")
+        : String(error);
+      toast.error("تعذر تنفيذ الاحتساب، برجاء المحاولة مرة أخرى", { description: message });
+    },
+  });
+
+  const approveOverride = useMutation({
+    mutationFn: async () => {
+      if (!bonus?.id) throw new Error("لا توجد حسبة لهذا الشهر بعد");
+      const { data, error } = await (supabase.rpc as any)("approve_bonus_tier_override", {
+        _bonus_id: bonus.id,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("تم اعتماد رفع الباقة");
+      qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
+      qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
+    },
+    onError: (error: unknown) => {
+      const e = error as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const message = e?.message
+        ? [e.message, e.details, e.hint, e.code].filter(Boolean).join(" | ")
+        : String(error);
+      toast.error("تعذر اعتماد رفع الباقة", { description: message });
+    },
+  });
+
+  const revokeOverride = useMutation({
+    mutationFn: async () => {
+      if (!bonus?.id) throw new Error("لا توجد حسبة لهذا الشهر بعد");
+      const { data, error } = await (supabase.rpc as any)("revoke_bonus_tier_override", {
+        _bonus_id: bonus.id,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("تم التراجع عن اعتماد رفع الباقة");
+      qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
+      qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
+    },
+    onError: (error: unknown) => {
+      const e = error as { message?: string; details?: string; hint?: string; code?: string } | null;
+      const message = e?.message
+        ? [e.message, e.details, e.hint, e.code].filter(Boolean).join(" | ")
+        : String(error);
+      toast.error("تعذر التراجع عن الاعتماد", { description: message });
+    },
   });
 
   const tierByName = (name: string | null | undefined) =>
@@ -165,6 +217,9 @@ function MarketerBonusPage() {
         </Button>
         <Button asChild>
           <Link to="/marketers/$id/bonus" params={{ id }}><Trophy className="h-4 w-4 ml-1" /> البونص والمستحقات</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link to="/marketers/$id/ad-performance" params={{ id }}><Megaphone className="h-4 w-4 ml-1" /> أداء الإعلانات</Link>
         </Button>
       </div>
 
@@ -315,19 +370,76 @@ function MarketerBonusPage() {
           {downgraded ? (
             <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
               <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground" />
-              <div>
+              <div className="flex-1">
                 <div className="font-medium">
                   {bonus.volume_tier_name_snapshot} ← {bonus.earned_tier_name_snapshot}
                 </div>
                 <div className="text-muted-foreground">
                   تم تخفيض الباقة بسبب عدم تحقيق نسبة التسليم المطلوبة
-                  {!isMarketer && bonus.tier_change_reason ? ` — ${bonus.tier_change_reason}` : ""}
                 </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  المستحق الحالي (قبل أي اعتماد): راتب {fmtCurrency(bonus.calculated_salary)} + بونص{" "}
+                  {fmtCurrency(bonus.calculated_profit_bonus)} + مكافأة طلبات إضافية{" "}
+                  {fmtCurrency(bonus.calculated_extra_orders_bonus)} = إجمالي{" "}
+                  <span className="font-medium text-foreground">{fmtCurrency(bonus.system_calculated_total)}</span>
+                </div>
+                {canRecalculate && bonus.tier_downgrade_within_tolerance && !bonus.is_locked && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs">
+                      نسبة التسليم قريبة من تحقيق باقة {bonus.volume_tier_name_snapshot} (ضمن هامش ٥٪) —
+                      يمكن اعتماد رفع الباقة يدويًا.
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => approveOverride.mutate()}
+                      disabled={approveOverride.isPending}
+                    >
+                      {approveOverride.isPending
+                        ? <Loader2 className="h-3.5 w-3.5 ml-1 animate-spin" />
+                        : <CheckCircle2 className="h-3.5 w-3.5 ml-1" />}
+                      اعتماد رفع الباقة
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="rounded-xl border border-success/30 bg-success/10 p-3 text-sm text-success">
-              تم تحقيق الباقة المستحقة بالكامل بدون تخفيض.
+              <div>
+                تم تحقيق الباقة المستحقة بالكامل بدون تخفيض.
+                {bonus.tier_override_approved && " (باقة مرفوعة باعتماد الأدمن لقرب نسبة التسليم من التحقيق)"}
+              </div>
+              {bonus.tier_override_approved && (
+                <div className="mt-2 space-y-2 text-xs text-success-foreground/80">
+                  <div>
+                    المستحق قبل الاعتماد كان: راتب {fmtCurrency(bonus.tier_override_pre_calculated_salary)} + بونص{" "}
+                    {fmtCurrency(bonus.tier_override_pre_calculated_profit_bonus)} + مكافأة طلبات إضافية{" "}
+                    {fmtCurrency(bonus.tier_override_pre_calculated_extra_orders_bonus)} = إجمالي{" "}
+                    <span className="font-medium">{fmtCurrency(bonus.tier_override_pre_system_calculated_total)}</span>
+                    {" "}(باقة {bonus.tier_override_pre_earned_tier_name_snapshot})
+                  </div>
+                  {canRecalculate && !bonus.is_locked && (
+                    bonus.payment_status === "unpaid" && Number(bonus.total_paid_amount ?? 0) === 0 ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => revokeOverride.mutate()}
+                        disabled={revokeOverride.isPending}
+                      >
+                        {revokeOverride.isPending
+                          ? <Loader2 className="h-3.5 w-3.5 ml-1 animate-spin" />
+                          : null}
+                        التراجع عن الاعتماد
+                      </Button>
+                    ) : (
+                      <div className="text-muted-foreground">
+                        لا يمكن التراجع عن الاعتماد بعد تحويل جزء من المستحقات.
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -387,7 +499,15 @@ function MarketerBonusPage() {
           </div>
 
           {/* Payments */}
-          <BonusPayments bonus={bonus} payments={payments} />
+          <BonusPayments
+            bonus={bonus}
+            payments={payments}
+            onPaymentRecorded={() => {
+              qc.invalidateQueries({ queryKey: ["marketer-bonus", id] });
+              qc.invalidateQueries({ queryKey: ["bonus-payments", bonus.id] });
+              qc.invalidateQueries({ queryKey: ["marketer-bonus-history", id] });
+            }}
+          />
         </>
       )}
 

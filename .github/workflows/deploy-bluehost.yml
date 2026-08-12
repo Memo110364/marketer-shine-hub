@@ -1,0 +1,39 @@
+name: Deploy to Bluehost
+
+# Superseded by deploy-cloudflare.yml: the static/CSR build this workflow
+# ships was the likely cause of a page-freeze bug on click. Kept for manual
+# runs only (workflow_dispatch) in case Bluehost hosting is needed again.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build static site
+        run: bun run build:static
+
+      - name: Upload to Bluehost via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.BLUEHOST_FTP_HOST }}
+          username: ${{ secrets.BLUEHOST_FTP_USERNAME }}
+          password: ${{ secrets.BLUEHOST_FTP_PASSWORD }}
+          local-dir: ./dist/client/
+          server-dir: ${{ secrets.BLUEHOST_REMOTE_DIR }}
+
+  # Edge Functions deploy is intentionally not automated here: this project's
+  # Supabase backend is fully managed by Lovable Cloud, with no external
+  # admin/API access available to deploy supabase/functions/* from CI.
+  # Those features (admin-create-user, Meta OAuth) keep working on the
+  # Lovable-hosted deployment, which publishes server functions automatically.
+  # Revisit if/when this project gets direct Supabase project access.
