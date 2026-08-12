@@ -35,15 +35,27 @@ const FULL_EXPORT_MAX_DAYS = 60;
 const PENDING_BUCKET_STATUSES: OrderStatus[] = ["pending", "in_delivery", "refund_request"];
 const DELIVERED_BUCKET_STATUSES: OrderStatus[] = ["delivered", "done"];
 const RETURNED_BUCKET_STATUSES: OrderStatus[] = ["refunded"];
+// Cancelled before shipping — not followed up with the shipping company,
+// but the confirmations team still tracks these (call quality, drop-offs).
+const CANCELLED_BUCKET_STATUSES: OrderStatus[] = ["cancelled"];
 
-type DailyRow = { order_date: string; total: number; delivered: number; returned: number; pending: number };
-type Bucket = "all" | "delivered" | "returned" | "pending";
+type DailyRow = {
+  order_date: string;
+  total: number;
+  delivered: number;
+  returned: number;
+  pending: number;
+  cancelled: number;
+  shipped: number;
+};
+type Bucket = "all" | "delivered" | "returned" | "pending" | "cancelled";
 
 const BUCKET_STATUSES: Record<Bucket, OrderStatus[] | null> = {
   all: null,
   delivered: DELIVERED_BUCKET_STATUSES,
   returned: RETURNED_BUCKET_STATUSES,
   pending: PENDING_BUCKET_STATUSES,
+  cancelled: CANCELLED_BUCKET_STATUSES,
 };
 
 const BUCKET_LABEL: Record<Bucket, string> = {
@@ -51,6 +63,7 @@ const BUCKET_LABEL: Record<Bucket, string> = {
   delivered: "تم التسليم",
   returned: "مرتجع",
   pending: "معلق",
+  cancelled: "ملغي",
 };
 
 function isoDate(d: Date) {
@@ -344,9 +357,14 @@ function OrdersPage() {
                   className="w-full text-right"
                 >
                   <div className="text-xs text-muted-foreground">{fmtDate(d.order_date)}</div>
-                  <div className="text-2xl font-display font-bold">{d.total}</div>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-2xl font-display font-bold">{d.total}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      خرج للشحن: <b className="text-foreground">{d.shipped}</b>
+                    </div>
+                  </div>
                 </button>
-                <div className="grid grid-cols-3 gap-1.5 text-[11px]">
+                <div className="grid grid-cols-4 gap-1.5 text-[11px]">
                   <button
                     type="button"
                     onClick={() => openDay(d.order_date, "delivered")}
@@ -367,6 +385,13 @@ function OrdersPage() {
                     className="rounded-md bg-warning/15 text-warning-foreground border border-warning/40 py-1 font-bold hover:bg-warning/25 transition-colors"
                   >
                     معلق<br /><b>{d.pending}</b>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDay(d.order_date, "cancelled")}
+                    className="rounded-md bg-muted text-muted-foreground border border-border py-1 hover:bg-muted/70 transition-colors"
+                  >
+                    ملغي<br /><b>{d.cancelled}</b>
                   </button>
                 </div>
               </Card>

@@ -1379,10 +1379,12 @@ export type Database = {
       get_daily_order_summary: {
         Args: { _from: string; _to: string }
         Returns: {
+          cancelled: number
           delivered: number
           order_date: string
           pending: number
           returned: number
+          shipped: number
           total: number
         }[]
       }
