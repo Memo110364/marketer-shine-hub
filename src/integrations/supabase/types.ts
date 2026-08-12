@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -791,6 +791,7 @@ export type Database = {
           earned_tier_id: string | null
           earned_tier_name_snapshot: string | null
           earned_tier_order_snapshot: number | null
+          easy_order_cost: number
           extra_delivered_orders: number
           final_approved_amount: number
           id: string
@@ -816,6 +817,22 @@ export type Database = {
           status: string
           system_calculated_total: number
           tier_change_reason: string | null
+          tier_downgrade_within_tolerance: boolean
+          tier_override_approved: boolean
+          tier_override_approved_at: string | null
+          tier_override_approved_by: string | null
+          tier_override_pre_calculated_extra_orders_bonus: number | null
+          tier_override_pre_calculated_profit_bonus: number | null
+          tier_override_pre_calculated_salary: number | null
+          tier_override_pre_earned_tier_id: string | null
+          tier_override_pre_earned_tier_name_snapshot: string | null
+          tier_override_pre_earned_tier_order_snapshot: number | null
+          tier_override_pre_extra_delivered_orders: number | null
+          tier_override_pre_minimum_delivered_orders: number | null
+          tier_override_pre_required_delivery_rate: number | null
+          tier_override_pre_system_calculated_total: number | null
+          tier_override_pre_tier_change_reason: string | null
+          tier_override_reason: string | null
           total_paid_amount: number
           updated_at: string
           volume_tier_id: string | null
@@ -841,6 +858,7 @@ export type Database = {
           earned_tier_id?: string | null
           earned_tier_name_snapshot?: string | null
           earned_tier_order_snapshot?: number | null
+          easy_order_cost?: number
           extra_delivered_orders?: number
           final_approved_amount?: number
           id?: string
@@ -866,6 +884,22 @@ export type Database = {
           status?: string
           system_calculated_total?: number
           tier_change_reason?: string | null
+          tier_downgrade_within_tolerance?: boolean
+          tier_override_approved?: boolean
+          tier_override_approved_at?: string | null
+          tier_override_approved_by?: string | null
+          tier_override_pre_calculated_extra_orders_bonus?: number | null
+          tier_override_pre_calculated_profit_bonus?: number | null
+          tier_override_pre_calculated_salary?: number | null
+          tier_override_pre_earned_tier_id?: string | null
+          tier_override_pre_earned_tier_name_snapshot?: string | null
+          tier_override_pre_earned_tier_order_snapshot?: number | null
+          tier_override_pre_extra_delivered_orders?: number | null
+          tier_override_pre_minimum_delivered_orders?: number | null
+          tier_override_pre_required_delivery_rate?: number | null
+          tier_override_pre_system_calculated_total?: number | null
+          tier_override_pre_tier_change_reason?: string | null
+          tier_override_reason?: string | null
           total_paid_amount?: number
           updated_at?: string
           volume_tier_id?: string | null
@@ -891,6 +925,7 @@ export type Database = {
           earned_tier_id?: string | null
           earned_tier_name_snapshot?: string | null
           earned_tier_order_snapshot?: number | null
+          easy_order_cost?: number
           extra_delivered_orders?: number
           final_approved_amount?: number
           id?: string
@@ -916,6 +951,22 @@ export type Database = {
           status?: string
           system_calculated_total?: number
           tier_change_reason?: string | null
+          tier_downgrade_within_tolerance?: boolean
+          tier_override_approved?: boolean
+          tier_override_approved_at?: string | null
+          tier_override_approved_by?: string | null
+          tier_override_pre_calculated_extra_orders_bonus?: number | null
+          tier_override_pre_calculated_profit_bonus?: number | null
+          tier_override_pre_calculated_salary?: number | null
+          tier_override_pre_earned_tier_id?: string | null
+          tier_override_pre_earned_tier_name_snapshot?: string | null
+          tier_override_pre_earned_tier_order_snapshot?: number | null
+          tier_override_pre_extra_delivered_orders?: number | null
+          tier_override_pre_minimum_delivered_orders?: number | null
+          tier_override_pre_required_delivery_rate?: number | null
+          tier_override_pre_system_calculated_total?: number | null
+          tier_override_pre_tier_change_reason?: string | null
+          tier_override_reason?: string | null
           total_paid_amount?: number
           updated_at?: string
           volume_tier_id?: string | null
@@ -1275,6 +1326,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_bonus_tier_override: {
+        Args: { _bonus_id: string; _reason?: string }
+        Returns: Json
+      }
       calculate_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
@@ -1283,17 +1338,39 @@ export type Database = {
         Args: { _month: number; _year: number }
         Returns: Json
       }
-      compute_bonus_figures: {
-        Args: {
-          _ad_spend: number
-          _delivered_orders: number
-          _other_expenses?: number
-          _realized_commission: number
-          _shipped_orders: number
-        }
-        Returns: Json
-      }
+      compute_bonus_figures:
+        | {
+            Args: {
+              _ad_spend: number
+              _delivered_orders: number
+              _other_expenses?: number
+              _realized_commission: number
+              _shipped_orders: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _ad_spend: number
+              _delivered_orders: number
+              _easy_order_cost?: number
+              _other_expenses?: number
+              _realized_commission: number
+              _shipped_orders: number
+            }
+            Returns: Json
+          }
       current_marketer_id: { Args: never; Returns: string }
+      get_daily_order_summary: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          delivered: number
+          order_date: string
+          pending: number
+          returned: number
+          total: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1310,6 +1387,10 @@ export type Database = {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
       }
+      revoke_bonus_tier_override: {
+        Args: { _bonus_id: string; _reason?: string }
+        Returns: Json
+      }
     }
     Enums: {
       ad_platform: "meta" | "tiktok" | "manual"
@@ -1317,9 +1398,9 @@ export type Database = {
         | "meta_ads"
         | "tiktok_ads"
         | "easy_order"
-        | "test_ads"
         | "salary"
         | "other"
+        | "test_ads"
       app_role: "admin" | "account_manager" | "marketer"
       marketer_status: "active" | "paused" | "inactive"
       order_status:
@@ -1463,9 +1544,9 @@ export const Constants = {
         "meta_ads",
         "tiktok_ads",
         "easy_order",
-        "test_ads",
         "salary",
         "other",
+        "test_ads",
       ],
       app_role: ["admin", "account_manager", "marketer"],
       marketer_status: ["active", "paused", "inactive"],

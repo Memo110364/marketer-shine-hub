@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -106,6 +107,7 @@ export const Route = createFileRoute("/_authenticated/orders/import")({
 });
 
 const NONE = "__none__";
+const NEW_TEMPLATE = "__new__";
 
 // Fields we compare and update on existing orders
 const UPDATABLE_FIELDS = [
@@ -131,6 +133,23 @@ function valEq(a: any, b: any): boolean {
   return String(a) === String(b);
 }
 
+// Runs `fn` over `items` with at most `limit` in flight at once — keeps the
+// import from either blocking the UI thread for minutes on large files (one
+// request at a time) or blowing past the browser's per-host connection cap
+// (unbounded Promise.all).
+async function mapLimit<T>(items: T[], limit: number, fn: (item: T, idx: number) => Promise<void>) {
+  let cursor = 0;
+  async function worker() {
+    while (cursor < items.length) {
+      const idx = cursor++;
+      await fn(items[idx], idx);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+}
+
+const IMPORT_CONCURRENCY = 6;
+
 function ImportPage() {
   const qc = useQueryClient();
   const [filename, setFilename] = useState("");
@@ -138,10 +157,15 @@ function ImportPage() {
   const [rows, setRows] = useState<Record<string, any>[]>([]);
   const [mapping, setMapping] = useState<Partial<Record<SystemField, string>>>({});
   const [mappingName, setMappingName] = useState("");
+  const [setAsDefault, setSetAsDefault] = useState(false);
+  // "__new__" = building a fresh template; anything else = the id of an
+  // existing one being edited. Drives which controls the header shows.
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(NEW_TEMPLATE);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [selectedError, setSelectedError] = useState<ImportError | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { data: savedMappings = [] } = useQuery({
     queryKey: ["mappings"],
@@ -161,6 +185,19 @@ function ImportPage() {
     if (json.length === 0) { toast.error("الملف فارغ"); return; }
     setHeaders(Object.keys(json[0]));
     setRows(json);
+
+    // A saved default template always wins over the auto-guess — that's the
+    // whole point of marking one as default: stop re-mapping every time.
+    const defaultMapping = savedMappings.find((m) => m.is_default);
+    if (defaultMapping) {
+      setMapping(defaultMapping.mapping as any);
+      setMappingName(defaultMapping.name);
+      setSetAsDefault(true);
+      setSelectedTemplateId(defaultMapping.id);
+      toast.success(`تم تحميل ${json.length} صف — واتطبق القالب الافتراضي "${defaultMapping.name}"`);
+      return;
+    }
+
     const guess: Partial<Record<SystemField, string>> = {};
     for (const f of SYSTEM_FIELDS) {
       const h = Object.keys(json[0]).find((k) =>
@@ -171,22 +208,64 @@ function ImportPage() {
       if (h) guess[f.key] = h;
     }
     setMapping(guess);
+    setMappingName("");
+    setSetAsDefault(false);
+    setSelectedTemplateId(NEW_TEMPLATE);
     toast.success(`تم تحميل ${json.length} صف`);
   }
 
-  function loadMapping(id: string) {
+  // One control decides everything: either editing an existing saved
+  // template (id), or building a brand new one ("__new__"). No more showing
+  // a "load" dropdown and a "save as" name field side by side — that's what
+  // let three duplicate "طلبات انجزني" rows pile up.
+  function selectTemplate(id: string) {
+    setSelectedTemplateId(id);
+    if (id === NEW_TEMPLATE) {
+      setMappingName("");
+      setSetAsDefault(false);
+      return;
+    }
     const m = savedMappings.find((x) => x.id === id);
-    if (m) setMapping(m.mapping as any);
+    if (m) {
+      setMapping(m.mapping as any);
+      setMappingName(m.name);
+      setSetAsDefault(!!m.is_default);
+    }
   }
 
   async function saveMapping() {
-    if (!mappingName) { toast.error("أدخل اسم القالب"); return; }
+    const isNew = selectedTemplateId === NEW_TEMPLATE;
+    if (isNew && !mappingName.trim()) { toast.error("أدخل اسم القالب الجديد"); return; }
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("column_mappings").insert({
-      name: mappingName, mapping, created_by: u.user?.id,
-    });
-    if (error) { toast.error("فشل حفظ القالب"); return; }
-    toast.success("تم حفظ القالب");
+    const existing = isNew
+      ? savedMappings.find((m) => m.name === mappingName.trim())
+      : savedMappings.find((m) => m.id === selectedTemplateId);
+
+    // If we're setting this template as default, clear the flag off every
+    // other template first — only one default at a time.
+    if (setAsDefault) {
+      const others = savedMappings.filter((m) => m.is_default && m.id !== existing?.id);
+      if (others.length) {
+        await supabase.from("column_mappings").update({ is_default: false })
+          .in("id", others.map((m) => m.id));
+      }
+    }
+
+    if (existing) {
+      const { error } = await supabase.from("column_mappings")
+        .update({ mapping, is_default: setAsDefault })
+        .eq("id", existing.id);
+      if (error) { toast.error("فشل تحديث القالب"); return; }
+      toast.success("تم تحديث القالب");
+      setSelectedTemplateId(existing.id);
+    } else {
+      const { data: inserted, error } = await supabase.from("column_mappings").insert({
+        name: mappingName.trim(), mapping, is_default: setAsDefault, created_by: u.user?.id,
+      }).select().single();
+      if (error) { toast.error("فشل حفظ القالب"); return; }
+      toast.success("تم حفظ القالب");
+      if (inserted) setSelectedTemplateId(inserted.id);
+    }
     qc.invalidateQueries({ queryKey: ["mappings"] });
   }
 
@@ -370,6 +449,9 @@ function ImportPage() {
   async function confirmImport() {
     if (!preview) return;
     setBusy(true);
+    const total = preview.newRows.length + preview.updateRows.length;
+    setProgress({ done: 0, total });
+    const bumpProgress = () => setProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) { toast.error("يجب تسجيل الدخول"); return; }
@@ -436,13 +518,30 @@ function ImportPage() {
         return { marketerId, productId, shippingId };
       }
 
-      // 3) INSERT new rows (resolve refs first, then insert one-by-one to
-      // safely catch unique-constraint races).
+      // 2b) Warm up the ref caches SERIALLY before the concurrent phase below.
+      // resolveRefs() creates a marketer/product/shipping company on first
+      // sight of a new code and caches the id — if two rows for the same new
+      // marketer code ran resolveRefs() at the same time, they'd both miss
+      // the cache and both try to INSERT it, and one would fail on the
+      // unique constraint. Running every row through it once, serially,
+      // first means every "create if missing" only ever happens once; the
+      // concurrent phase below then only ever hits the warm cache.
+      for (const item of [...preview.newRows, ...preview.updateRows]) {
+        try {
+          await resolveRefs(item);
+        } catch {
+          // Real failures are reported per-row when resolveRefs runs again
+          // (cache hit, so effectively free) inside the phases below.
+        }
+      }
+
+      // 3) INSERT new rows — resolved refs are now warm cache hits, so this
+      // can safely run several rows at a time instead of one at a time.
       let inserted = 0;
       let statusChanges = 0;
       const newHistoryRows: any[] = [];
 
-      for (const item of preview.newRows) {
+      await mapLimit(preview.newRows, IMPORT_CONCURRENCY, async (item) => {
         try {
           const refs = await resolveRefs(item);
           const payload = {
@@ -460,7 +559,7 @@ function ImportPage() {
               message: insErr.message, rowData: item.rowData,
             });
             rowResults.push({ rowNumber: item.rowIndex + 2, action: "error", message: insErr.message });
-            continue;
+            return;
           }
           inserted++;
           rowResults.push({ rowNumber: item.rowIndex + 2, action: "new" });
@@ -491,12 +590,14 @@ function ImportPage() {
             message: err?.message ?? String(err), rowData: item.rowData,
           });
           rowResults.push({ rowNumber: item.rowIndex + 2, action: "error", message: err?.message ?? String(err) });
+        } finally {
+          bumpProgress();
         }
-      }
+      });
 
       // 4) UPDATE existing rows (only changed fields). Record status history.
       let updated = 0;
-      for (const item of preview.updateRows) {
+      await mapLimit(preview.updateRows, IMPORT_CONCURRENCY, async (item) => {
         try {
           const refs = await resolveRefs(item);
           const fullPayload = {
@@ -523,7 +624,7 @@ function ImportPage() {
               message: updErr.message, rowData: item.rowData,
             });
             rowResults.push({ rowNumber: item.rowIndex + 2, action: "error", message: updErr.message });
-            continue;
+            return;
           }
           updated++;
           rowResults.push({ rowNumber: item.rowIndex + 2, action: "update" });
@@ -557,8 +658,10 @@ function ImportPage() {
             message: err?.message ?? String(err), rowData: item.rowData,
           });
           rowResults.push({ rowNumber: item.rowIndex + 2, action: "error", message: err?.message ?? String(err) });
+        } finally {
+          bumpProgress();
         }
-      }
+      });
 
       // 5) No-change rows in the report
       for (const item of preview.noChangeRows) {
@@ -601,6 +704,7 @@ function ImportPage() {
       toast.error("فشل تنفيذ الاستيراد");
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   }
 
@@ -631,16 +735,33 @@ function ImportPage() {
                   مطلوب: <b>كود المسوّق</b>. ربط <b>رقم الطلب</b> مهم لمنع التكرار وتفعيل التحديث التلقائي.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Select onValueChange={loadMapping}>
-                  <SelectTrigger className="w-48 h-9"><SelectValue placeholder="تحميل قالب محفوظ" /></SelectTrigger>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Select value={selectedTemplateId} onValueChange={selectTemplate}>
+                  <SelectTrigger className="w-48 h-9"><SelectValue placeholder="القالب" /></SelectTrigger>
                   <SelectContent>
-                    {savedMappings.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    <SelectItem value={NEW_TEMPLATE}>+ قالب جديد</SelectItem>
+                    {savedMappings.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}{m.is_default ? " (افتراضي)" : ""}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <Input placeholder="اسم القالب لحفظه" value={mappingName}
-                  onChange={(e) => setMappingName(e.target.value)} className="w-44 h-9" />
-                <Button variant="outline" size="sm" onClick={saveMapping}><Save className="h-4 w-4 ml-1" /> حفظ</Button>
+                {selectedTemplateId === NEW_TEMPLATE && (
+                  <Input placeholder="اسم القالب الجديد" value={mappingName}
+                    onChange={(e) => setMappingName(e.target.value)} className="w-44 h-9" />
+                )}
+                <div className="flex items-center gap-1.5">
+                  <Checkbox id="mapping-default" checked={setAsDefault}
+                    onCheckedChange={(v) => setSetAsDefault(v === true)} />
+                  <Label htmlFor="mapping-default" className="text-xs whitespace-nowrap cursor-pointer">
+                    قالب افتراضي
+                  </Label>
+                </div>
+                <Button variant="outline" size="sm" onClick={saveMapping}>
+                  <Save className="h-4 w-4 ml-1" />
+                  {selectedTemplateId === NEW_TEMPLATE ? "حفظ" : "تحديث القالب"}
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -714,6 +835,20 @@ function ImportPage() {
                   <Stat label="أخطاء تحقق" value={preview.validationErrors.length} tone="destructive" />
                 </div>
 
+                {progress && (
+                  <div className="space-y-1.5">
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${progress.total ? Math.round((progress.done / progress.total) * 100) : 0}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-muted-foreground text-center">
+                      جاري الرفع… {progress.done} من {progress.total}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setPreview(null)} disabled={busy}>إلغاء</Button>
                   <Button size="lg" onClick={confirmImport}
@@ -745,37 +880,42 @@ function ImportPage() {
               <Stat label="أخطاء" value={report.errors.length} tone="destructive" />
             </div>
 
-            {report.rowResults.length > 0 && (
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-16">الصف</TableHead>
-                      <TableHead className="w-32">الحالة</TableHead>
-                      <TableHead>الرسالة</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {report.rowResults.slice(0, 200).map((r, i) => (
-                      <TableRow key={i} className={rowToneClass(r.action)}>
-                        <TableCell className="text-xs">{r.rowNumber || "—"}</TableCell>
-                        <TableCell className="text-xs"><ActionBadge action={r.action} /></TableCell>
-                        <TableCell className="text-xs break-all">
-                          {r.action === "error"
-                            ? <span className="text-destructive">{r.message}</span>
-                            : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {report.rowResults.length > 200 && (
-                  <div className="p-2 text-xs text-muted-foreground text-center border-t">
-                    عرض أول 200 صف من {report.rowResults.length}
+            {(() => {
+              const errorRows = report.rowResults.filter((r) => r.action === "error");
+              if (errorRows.length === 0) return null;
+              return (
+                <div className="border rounded-md overflow-hidden">
+                  <div className="p-2 text-xs font-medium text-destructive border-b bg-destructive/5">
+                    صفوف بها مشاكل ({errorRows.length})
                   </div>
-                )}
-              </div>
-            )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-16">الصف</TableHead>
+                        <TableHead className="w-32">الحالة</TableHead>
+                        <TableHead>الرسالة</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {errorRows.slice(0, 200).map((r, i) => (
+                        <TableRow key={i} className={rowToneClass(r.action)}>
+                          <TableCell className="text-xs">{r.rowNumber || "—"}</TableCell>
+                          <TableCell className="text-xs"><ActionBadge action={r.action} /></TableCell>
+                          <TableCell className="text-xs break-all">
+                            <span className="text-destructive">{r.message}</span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {errorRows.length > 200 && (
+                    <div className="p-2 text-xs text-muted-foreground text-center border-t">
+                      عرض أول 200 صف من {errorRows.length}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       )}
