@@ -27,6 +27,7 @@ export function BonusBreakdown({ bonus, earnedTier }: { bonus: any; earnedTier?:
             <Row label="العمولات المحققة" value={fmtCurrency(bonus.realized_commission)} />
             <Row label="الإنفاق الإعلاني" value={fmtCurrency(bonus.ad_spend)} />
             <Row label="تكلفة إيزي أوردر" value={fmtCurrency(bonus.easy_order_cost)} />
+            <Row label="مصاريف التيست" value={fmtCurrency(bonus.test_ads_cost)} />
             <Row label="المصروفات الأخرى" value={fmtCurrency(bonus.other_expenses)} />
             <Row
               label="صافي الربح قبل البونص"
@@ -34,6 +35,11 @@ export function BonusBreakdown({ bonus, earnedTier }: { bonus: any; earnedTier?:
               className={netProfit > 0 ? "text-success" : "text-destructive"}
             />
           </div>
+          {n(bonus.test_ads_cost) > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              مصاريف التيست على حساب الشركة ولا تؤثر على صافي الربح أو البونص.
+            </p>
+          )}
         </Section>
 
         <Section title="ب. الراتب">
