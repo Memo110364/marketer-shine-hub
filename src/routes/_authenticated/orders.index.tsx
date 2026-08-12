@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/orders/")({
 });
 
 const DAYS_SHOWN = 30;
+const FULL_EXPORT_MAX_DAYS = 60;
 
 // Page-specific grouping — not the same thing as the literal 'pending'
 // order_status. "معلق" here means "still needs follow-up with the shipping
@@ -58,17 +59,27 @@ function isoDate(d: Date) {
 
 function OrdersPage() {
   const today = useMemo(() => new Date(), []);
-  const fromDate = useMemo(() => {
+  const defaultFrom = useMemo(() => {
     const d = new Date(today);
     d.setDate(d.getDate() - (DAYS_SHOWN - 1));
     return isoDate(d);
   }, [today]);
-  const toDate = useMemo(() => isoDate(today), [today]);
+  const defaultTo = useMemo(() => isoDate(today), [today]);
 
   const [pendingOnly, setPendingOnly] = useState(false);
-  const [jumpDate, setJumpDate] = useState("");
+  // The period shown in the day grid AND scoping the two range-bound
+  // download buttons below — one control for both, so "the selected
+  // period" always means the same thing everywhere on the page.
+  const [rangeFrom, setRangeFrom] = useState(defaultFrom);
+  const [rangeTo, setRangeTo] = useState(defaultTo);
   const [drillDown, setDrillDown] = useState<{ date: string; bucket: Bucket } | null>(null);
-  const [downloadingPending, setDownloadingPending] = useState(false);
+  const [downloading, setDownloading] = useState<null | "allPending" | "rangePending" | "rangeAll">(null);
+
+  const rangeValid = !!rangeFrom && !!rangeTo && rangeFrom <= rangeTo;
+  const rangeDayCount = rangeValid
+    ? Math.round((new Date(rangeTo).getTime() - new Date(rangeFrom).getTime()) / 86400000) + 1
+    : 0;
+  const rangeTooLongForFullExport = rangeDayCount > FULL_EXPORT_MAX_DAYS;
 
   // Detail-view-only filters (marketer/product/shipping/search) — only
   // relevant once you've drilled into a specific day.
@@ -92,18 +103,20 @@ function OrdersPage() {
   const marketerMap = useMemo(() => new Map(marketers.map((m) => [m.id, m])), [marketers]);
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
-  // One aggregate query for the whole month instead of pulling every order
+  // One aggregate query for the whole period instead of pulling every order
   // row to the browser and counting client-side — stays fast no matter how
-  // many thousand orders are in range.
+  // many thousand orders are in range, and no matter how wide the range is
+  // (it's still just one grouped row per day).
   const { data: dailySummary = [], isLoading: loadingSummary } = useQuery({
-    queryKey: ["orders-daily-summary", fromDate, toDate],
+    queryKey: ["orders-daily-summary", rangeFrom, rangeTo],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_daily_order_summary", {
-        _from: fromDate, _to: toDate,
+        _from: rangeFrom, _to: rangeTo,
       });
       if (error) throw error;
       return (data ?? []) as DailyRow[];
     },
+    enabled: rangeValid,
   });
 
   const visibleDays = useMemo(
@@ -142,11 +155,6 @@ function OrdersPage() {
     setDrillDown({ date, bucket });
   }
 
-  function jumpToDate() {
-    if (!jumpDate) { toast.error("اختر تاريخًا"); return; }
-    openDay(jumpDate, "all");
-  }
-
   function exportDetailCSV() {
     const rows = [
       ["رقم الطلب", "التاريخ", "المسوّق", "المنتج", "العميل", "الهاتف", "المحافظة", "الكمية", "السعر", "العمولة", "الحالة"],
@@ -168,21 +176,27 @@ function OrdersPage() {
     URL.revokeObjectURL(url);
   }
 
-  // Every order still open with a shipping company, across all time — not
-  // just the last 30 days shown in the grid — so this is the one place to
-  // grab the full follow-up list in one go.
-  async function downloadAllPending() {
-    setDownloadingPending(true);
+  async function downloadOrders(opts: {
+    kind: "allPending" | "rangePending" | "rangeAll";
+    statuses?: OrderStatus[];
+    from?: string;
+    to?: string;
+    filenamePrefix: string;
+    emptyMessage: string;
+  }) {
+    setDownloading(opts.kind);
     try {
-      const rows = await fetchAll<any>((from, to) =>
-        supabase
+      const rows = await fetchAll<any>((from, to) => {
+        let q = supabase
           .from("orders")
           .select("external_order_id, customer_name, customer_phone, governorate, quantity, price, commission, status, order_date, marketers(marketer_code, name), products(sku, name), shipping_companies(name)")
-          .in("status", PENDING_BUCKET_STATUSES)
-          .order("order_date", { ascending: true })
-          .range(from, to),
-      );
-      if (rows.length === 0) { toast.info("لا توجد طلبات معلقة حاليًا"); return; }
+          .order("order_date", { ascending: true });
+        if (opts.statuses) q = q.in("status", opts.statuses);
+        if (opts.from) q = q.gte("order_date", opts.from);
+        if (opts.to) q = q.lte("order_date", opts.to);
+        return q.range(from, to);
+      });
+      if (rows.length === 0) { toast.info(opts.emptyMessage); return; }
       const sheet = rows.map((r: any) => ({
         "رقم الطلب": r.external_order_id ?? "",
         "كود المسوّق": r.marketers?.marketer_code ?? "",
@@ -199,16 +213,41 @@ function OrdersPage() {
       }));
       const ws = XLSX.utils.json_to_sheet(sheet);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Pending");
-      XLSX.writeFile(wb, `pending-orders-${isoDate(new Date())}.xlsx`);
-      toast.success(`تم تنزيل ${rows.length} طلب معلّق`);
+      XLSX.utils.book_append_sheet(wb, ws, "Orders");
+      XLSX.writeFile(wb, `${opts.filenamePrefix}-${isoDate(new Date())}.xlsx`);
+      toast.success(`تم تنزيل ${rows.length} طلب`);
     } catch (e) {
       console.error(e);
       toast.error("فشل تنزيل الملف");
     } finally {
-      setDownloadingPending(false);
+      setDownloading(null);
     }
   }
+
+  // Every order still open with a shipping company, across all time — not
+  // scoped to the selected period — so this is the one place to grab the
+  // full follow-up list in one go.
+  const downloadAllPending = () => downloadOrders({
+    kind: "allPending",
+    statuses: PENDING_BUCKET_STATUSES,
+    filenamePrefix: "pending-orders-all",
+    emptyMessage: "لا توجد طلبات معلقة حاليًا",
+  });
+
+  const downloadPendingInRange = () => downloadOrders({
+    kind: "rangePending",
+    statuses: PENDING_BUCKET_STATUSES,
+    from: rangeFrom, to: rangeTo,
+    filenamePrefix: `pending-orders-${rangeFrom}-to-${rangeTo}`,
+    emptyMessage: "لا توجد طلبات معلقة في الفترة المحددة",
+  });
+
+  const downloadAllInRange = () => downloadOrders({
+    kind: "rangeAll",
+    from: rangeFrom, to: rangeTo,
+    filenamePrefix: `orders-${rangeFrom}-to-${rangeTo}`,
+    emptyMessage: "لا توجد طلبات في الفترة المحددة",
+  });
 
   return (
     <div className="space-y-4">
@@ -218,7 +257,9 @@ function OrdersPage() {
           <p className="text-sm text-muted-foreground">
             {drillDown
               ? `${fmtDate(drillDown.date)} — ${BUCKET_LABEL[drillDown.bucket]}`
-              : `آخر ${DAYS_SHOWN} يوم — مقسّمة يوم بيوم`}
+              : rangeValid
+                ? `${fmtDate(rangeFrom)} — ${fmtDate(rangeTo)} — مقسّمة يوم بيوم`
+                : "اختر فترة صحيحة (من تاريخ قبل إلى تاريخ)"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -227,34 +268,64 @@ function OrdersPage() {
       </div>
 
       {!drillDown && (
-        <Card className="p-4 flex flex-wrap items-end gap-3">
-          <div>
-            <Label className="text-xs">فلترة بتاريخ معيّن</Label>
-            <div className="flex gap-2">
-              <Input type="date" value={jumpDate} onChange={(e) => setJumpDate(e.target.value)} className="h-9" />
-              <Button variant="outline" size="sm" className="h-9" onClick={jumpToDate}>
-                <Search className="h-4 w-4 ml-1" /> فتح اليوم
-              </Button>
+        <Card className="p-4 space-y-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <Label className="text-xs">من تاريخ</Label>
+              <Input type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} className="h-9" />
+            </div>
+            <div>
+              <Label className="text-xs">إلى تاريخ</Label>
+              <Input type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} className="h-9" />
+            </div>
+            {!rangeValid && (
+              <span className="text-xs text-destructive pb-1.5">التاريخ "من" لازم يكون قبل أو يساوي "إلى"</span>
+            )}
+            <div className="flex items-center gap-2 pb-1.5">
+              <Switch id="pending-only" checked={pendingOnly} onCheckedChange={setPendingOnly} />
+              <Label htmlFor="pending-only" className="text-sm cursor-pointer">إظهار الأيام اللي فيها طلبات معلقة فقط</Label>
             </div>
           </div>
-          <div className="flex items-center gap-2 pb-1.5">
-            <Switch id="pending-only" checked={pendingOnly} onCheckedChange={setPendingOnly} />
-            <Label htmlFor="pending-only" className="text-sm cursor-pointer">إظهار الأيام اللي فيها طلبات معلقة فقط</Label>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t">
+            <Button onClick={downloadAllPending} disabled={downloading !== null} className="h-9 mt-3">
+              {downloading === "allPending" ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <Download className="h-4 w-4 ml-1" />}
+              تحميل كل الطلبات المعلقة
+            </Button>
+            <Button
+              variant="outline"
+              onClick={downloadPendingInRange}
+              disabled={downloading !== null || !rangeValid}
+              className="h-9 mt-3"
+            >
+              {downloading === "rangePending" ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <Download className="h-4 w-4 ml-1" />}
+              تحميل الطلبات المعلقة في الفترة المحددة
+            </Button>
+            <Button
+              variant="outline"
+              onClick={downloadAllInRange}
+              disabled={downloading !== null || !rangeValid || rangeTooLongForFullExport}
+              className="h-9 mt-3"
+              title={rangeTooLongForFullExport ? `متاح فقط لفترة ${FULL_EXPORT_MAX_DAYS} يوم أو أقل` : undefined}
+            >
+              {downloading === "rangeAll" ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <Download className="h-4 w-4 ml-1" />}
+              تحميل جميع الطلبات في الفترة المحددة
+            </Button>
+            {rangeTooLongForFullExport && (
+              <span className="text-xs text-muted-foreground mt-3">
+                (تحميل كل الطلبات متاح لفترة {FULL_EXPORT_MAX_DAYS} يوم أو أقل — الفترة الحالية {rangeDayCount} يوم)
+              </span>
+            )}
           </div>
-          <div className="flex-1" />
-          <Button onClick={downloadAllPending} disabled={downloadingPending} className="h-9">
-            {downloadingPending ? <Loader2 className="h-4 w-4 ml-1 animate-spin" /> : <Download className="h-4 w-4 ml-1" />}
-            تحميل كل الطلبات المعلقة
-          </Button>
         </Card>
       )}
 
       {!drillDown && (
-        loadingSummary ? (
+        !rangeValid ? null : loadingSummary ? (
           <Card className="p-8 text-center text-muted-foreground">جاري التحميل...</Card>
         ) : visibleDays.length === 0 ? (
           <Card className="p-8 text-center text-muted-foreground">
-            {pendingOnly ? "مفيش أيام فيها طلبات معلقة في آخر شهر" : "لا توجد طلبات في آخر شهر"}
+            {pendingOnly ? "مفيش أيام فيها طلبات معلقة في الفترة المحددة" : "لا توجد طلبات في الفترة المحددة"}
           </Card>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
