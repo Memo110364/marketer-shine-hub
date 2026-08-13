@@ -20,6 +20,19 @@ jobs:
 
       - name: Build (SSR, for Cloudflare Workers)
         run: bun run build
+        env:
+          # Vite bakes VITE_* vars into the bundle at build time. These used
+          # to come from a tracked .env file in the repo; #4 (rightly)
+          # stopped tracking .env, which silently broke every page that
+          # touches the Supabase client (client.ts throws "Missing Supabase
+          # environment variable(s)" the first time anything calls it) since
+          # this workflow never supplied its own copy. The anon/publishable
+          # key is meant to be public — it ships in the browser bundle to
+          # every visitor regardless, protected by RLS, not secrecy — so
+          # there's nothing gained by routing it through repo secrets here.
+          VITE_SUPABASE_URL: "https://unqegfksunohdsmmyqrb.supabase.co"
+          VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_04yIAphOT8rOavVSrWhcOQ_4qmmUsAQ"
+          VITE_SUPABASE_PROJECT_ID: "unqegfksunohdsmmyqrb"
 
       - name: Deploy to Cloudflare
         run: npx nitro deploy --prebuilt
