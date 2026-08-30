@@ -23,7 +23,6 @@ import { ORDER_STATUS, ORDER_STATUS_KEYS, type OrderStatus } from "@/lib/constan
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  LineChart, Line,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -326,12 +325,6 @@ function DashboardPage() {
 
   const topMarketers = marketerRows.slice(0, 5).map((m) => ({ name: m.name, orders: m.orders }));
 
-  // Tooltip formatter for daily chart
-  const dailyTooltip = (value: unknown, name: unknown): string => {
-    if (name === "صافي الربح") return fmtCurrency(Number(value ?? 0));
-    return fmtNumber(Number(value ?? 0));
-  };
-
   function GrowthBadge({ value }: { value: number | "new" }) {
     if (value === "new") {
       return (
@@ -566,36 +559,6 @@ function DashboardPage() {
               <div className="text-xs text-muted-foreground mt-1">السابق: {fmtPercent(prevDeliveryRate)}</div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Daily Orders Trend */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">أداء الطلبات اليومي</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {dailySeries.length === 0 ? (
-            <div className="text-center text-muted-foreground py-12 text-sm">لا توجد بيانات</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={dailySeries} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={dailyTooltip}
-                  labelStyle={{ fontWeight: 600 }}
-                  contentStyle={{ borderRadius: 12, border: "1px solid var(--border)" }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="total" name="إجمالي الطلبات" stroke="var(--primary)" strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                <Line type="monotone" dataKey="delivered" name="تم التسليم" stroke="var(--success)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="refunded" name="مرتجع" stroke="var(--destructive)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="net" name="صافي الربح" stroke="var(--chart-2)" strokeWidth={2} dot={false} strokeDasharray="4 4" />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
         </CardContent>
       </Card>
 
