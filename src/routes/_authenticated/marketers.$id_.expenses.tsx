@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { fmtCurrency, fmtDate } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { SPEND_TYPE_LABELS, type SpendType } from "@/lib/constants";
+import { TestSpendSection } from "@/components/TestSpendSection";
 import { ArrowRight, Download, Wallet, Pencil, Trash2, Check, X, Clock } from "lucide-react";
 import { toast } from "sonner";
 
@@ -203,6 +204,8 @@ function ExpensesPage() {
           <Download className="h-4 w-4 ml-1" /> تصدير CSV
         </Button>
       </div>
+
+      <TestSpendSection marketerId={id} />
 
       {pendingRequests.length > 0 && (
         <Card className="border-amber-500/40">
@@ -456,11 +459,6 @@ function EditDialog({
                 ))}
               </SelectContent>
             </Select>
-            {spendType === "test_ads" && (
-              <p className="text-xs text-muted-foreground mt-1">
-                مصاريف تجارب تطلبها الشركة — مش بتتخصم من أرباح أو بونص المسوّق.
-              </p>
-            )}
           </div>
           <div>
             <Label className="text-xs">كود فوري</Label>

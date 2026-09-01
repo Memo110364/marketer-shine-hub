@@ -10,6 +10,10 @@ export function BonusBreakdown({ bonus, earnedTier }: { bonus: any; earnedTier?:
   const salaryThreshold = n(earnedTier?.min_shipped_orders);
   const proportional = salaryThreshold > 0 && shipped < salaryThreshold;
   const netProfit = n(bonus.net_profit_before_bonus);
+  const testSpend = n(bonus.test_ads_cost);
+  // Rows saved before test spend became a funding classification have no
+  // total_ad_funding; reconstruct it so the equation still adds up.
+  const totalAdFunding = n(bonus.total_ad_funding) || n(bonus.ad_spend) + testSpend;
   const pct = n(earnedTier?.bonus_percentage);
   const perExtra = n(earnedTier?.extra_delivered_order_amount);
 
@@ -25,9 +29,14 @@ export function BonusBreakdown({ bonus, earnedTier }: { bonus: any; earnedTier?:
             <Row label="تم التسليم" value={`${fmtNumber(bonus.delivered_orders_count)} طلب`} />
             <Row label="نسبة التسليم" value={fmtPercent(n(bonus.delivery_rate))} />
             <Row label="العمولات المحققة" value={fmtCurrency(bonus.realized_commission)} />
-            <Row label="الإنفاق الإعلاني" value={fmtCurrency(bonus.ad_spend)} />
+            <Row label="إجمالي التمويل الإعلاني" value={fmtCurrency(totalAdFunding)} />
+            <Row label="مصروف التيست" value={`− ${fmtCurrency(testSpend)}`} />
+            <Row
+              label="المصروف الإعلاني المحتسب"
+              value={fmtCurrency(bonus.ad_spend)}
+              className="text-primary"
+            />
             <Row label="تكلفة إيزي أوردر" value={fmtCurrency(bonus.easy_order_cost)} />
-            <Row label="مصاريف التيست" value={fmtCurrency(bonus.test_ads_cost)} />
             <Row label="المصروفات الأخرى" value={fmtCurrency(bonus.other_expenses)} />
             <Row
               label="صافي الربح قبل البونص"
@@ -35,10 +44,16 @@ export function BonusBreakdown({ bonus, earnedTier }: { bonus: any; earnedTier?:
               className={netProfit > 0 ? "text-success" : "text-destructive"}
             />
           </div>
-          {n(bonus.test_ads_cost) > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              مصاريف التيست على حساب الشركة ولا تؤثر على صافي الربح أو البونص.
-            </p>
+          {testSpend > 0 && (
+            <div className="mt-3 rounded-lg border bg-muted/40 p-3">
+              <div className="text-center text-sm font-medium" dir="ltr">
+                {fmtCurrency(totalAdFunding)} − {fmtCurrency(testSpend)} = {fmtCurrency(bonus.ad_spend)}
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-1.5">
+                مصروف التيست جزء من التمويل الإعلاني وليس مبلغًا إضافيًا — الحسبة بتخصم
+                المصروف الإعلاني المحتسب فقط، فمش بيتخصم مرتين.
+              </p>
+            </div>
           )}
         </Section>
 

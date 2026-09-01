@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -834,6 +834,7 @@ export type Database = {
           tier_override_pre_system_calculated_total: number | null
           tier_override_pre_tier_change_reason: string | null
           tier_override_reason: string | null
+          total_ad_funding: number
           total_paid_amount: number
           updated_at: string
           volume_tier_id: string | null
@@ -902,6 +903,7 @@ export type Database = {
           tier_override_pre_system_calculated_total?: number | null
           tier_override_pre_tier_change_reason?: string | null
           tier_override_reason?: string | null
+          total_ad_funding?: number
           total_paid_amount?: number
           updated_at?: string
           volume_tier_id?: string | null
@@ -970,6 +972,7 @@ export type Database = {
           tier_override_pre_system_calculated_total?: number | null
           tier_override_pre_tier_change_reason?: string | null
           tier_override_reason?: string | null
+          total_ad_funding?: number
           total_paid_amount?: number
           updated_at?: string
           volume_tier_id?: string | null
@@ -1303,6 +1306,81 @@ export type Database = {
         }
         Relationships: []
       }
+      test_spend_entries: {
+        Row: {
+          amount: number
+          cost_per_order: number | null
+          created_at: string
+          created_by: string | null
+          delivered_orders: number | null
+          id: string
+          marketer_id: string
+          notes: string | null
+          orders_generated: number | null
+          product_id: string | null
+          product_name: string | null
+          result: string | null
+          revenue_generated: number | null
+          source_transaction_id: string | null
+          test_date: string
+          test_end_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          cost_per_order?: number | null
+          created_at?: string
+          created_by?: string | null
+          delivered_orders?: number | null
+          id?: string
+          marketer_id: string
+          notes?: string | null
+          orders_generated?: number | null
+          product_id?: string | null
+          product_name?: string | null
+          result?: string | null
+          revenue_generated?: number | null
+          source_transaction_id?: string | null
+          test_date?: string
+          test_end_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cost_per_order?: number | null
+          created_at?: string
+          created_by?: string | null
+          delivered_orders?: number | null
+          id?: string
+          marketer_id?: string
+          notes?: string | null
+          orders_generated?: number | null
+          product_id?: string | null
+          product_name?: string | null
+          result?: string | null
+          revenue_generated?: number | null
+          source_transaction_id?: string | null
+          test_date?: string
+          test_end_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_spend_entries_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_spend_entries_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1349,7 +1427,8 @@ export type Database = {
           _other_expenses?: number
           _realized_commission: number
           _shipped_orders: number
-          _test_ads_cost?: number
+          _test_spend?: number
+          _total_ad_funding?: number
         }
         Returns: Json
       }
@@ -1365,6 +1444,54 @@ export type Database = {
           shipped: number
           total: number
         }[]
+      }
+      get_dashboard_daily_series: {
+        Args: {
+          _from: string
+          _marketer_id?: string
+          _product_id?: string
+          _shipping_company_id?: string
+          _status?: string
+          _to: string
+        }
+        Returns: {
+          commissions: number
+          day: string
+          delivered: number
+          refunded: number
+          spend: number
+          total: number
+        }[]
+      }
+      get_dashboard_marketer_breakdown: {
+        Args: {
+          _from: string
+          _marketer_id?: string
+          _product_id?: string
+          _shipping_company_id?: string
+          _status?: string
+          _to: string
+        }
+        Returns: {
+          commissions: number
+          delivered: number
+          gross: number
+          marketer_id: string
+          orders: number
+          refunded: number
+          spend: number
+        }[]
+      }
+      get_dashboard_summary: {
+        Args: {
+          _from: string
+          _marketer_id?: string
+          _product_id?: string
+          _shipping_company_id?: string
+          _status?: string
+          _to: string
+        }
+        Returns: Json
       }
       has_role: {
         Args: {

@@ -246,11 +246,9 @@ function AddExpenseDialog({
               ))}
             </SelectContent>
           </Select>
-          {spendType === "test_ads" && (
-            <p className="text-xs text-muted-foreground mt-1">
-              مصاريف تجارب تطلبها الشركة — الشركة هي اللي بتتحملها ومش بتتخصم من أرباح أو بونص المسوّق.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            مصروف التيست بيتسجل من صفحة مصروفات المسوّق، لأنه جزء من التمويل الإعلاني وليس مبلغًا إضافيًا.
+          </p>
         </div>
         <div>
           <Label className="text-xs">ملاحظات</Label>
