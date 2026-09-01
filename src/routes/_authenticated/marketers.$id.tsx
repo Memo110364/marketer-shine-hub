@@ -92,6 +92,19 @@ function MarketerDetails() {
       ),
   });
 
+  // Test spend is a slice of the advertising funding above, so it has to be
+  // netted off rather than added — see TestSpendSection for the equation.
+  const { data: allTestSpend = [] } = useQuery({
+    queryKey: ["marketer-test-spend-all", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("test_spend_entries").select("amount, test_date")
+        .eq("marketer_id", id);
+      if (error) throw error;
+      return (data ?? []) as { amount: number; test_date: string }[];
+    },
+  });
+
   const lifetimePieces = useMemo(() => {
     let total = 0;
     for (const o of allOrders) {
@@ -113,6 +126,12 @@ function MarketerDetails() {
   const spend = useMemo(
     () => allSpend.filter((t) => inRange(t.transaction_date)),
     [allSpend, fromDate, toDate],
+  );
+  const testSpendInRange = useMemo(
+    () => allTestSpend
+      .filter((t) => inRange(t.test_date))
+      .reduce((s, t) => s + Number(t.amount || 0), 0),
+    [allTestSpend, fromDate, toDate],
   );
 
   const counts = ORDER_STATUS_KEYS.reduce((a, k) => {
@@ -136,11 +155,15 @@ function MarketerDetails() {
   const netCommissions = orders
     .filter((o) => NET_PROFIT_STATUSES.includes(o.status as OrderStatus))
     .reduce((s, o) => s + Number(o.commission || 0), 0);
-  // الإنفاق الإعلاني فقط (يستثني المرتبات ومصاريف Test Ads اللي بتتحملها
-  // الشركة) — يشمل Meta/TikTok/Easy Order/أخرى
-  const totalSpend = spend
-    .filter((t) => t.spend_type !== "salary" && t.spend_type !== "test_ads")
-    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  // الإنفاق الإعلاني المحتسب (يستثني المرتبات) — يشمل Meta/TikTok/Easy
+  // Order/أخرى، مطروحًا منه مصروف التيست لأنه جزء من نفس التمويل وليس
+  // مبلغًا إضافيًا، فلا يُحمَّل على المسوّق.
+  const totalSpend = Math.max(
+    spend
+      .filter((t) => t.spend_type !== "salary")
+      .reduce((s, t) => s + Number(t.amount || 0), 0) - testSpendInRange,
+    0,
+  );
   const periodProfit = netCommissions - totalSpend;
   const delivered = counts.delivered + counts.done;
   const deliveryRate = total > 0 ? delivered / total : 0;

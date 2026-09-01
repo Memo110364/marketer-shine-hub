@@ -62,16 +62,31 @@ export const ROLE_LABELS = {
   marketer: "مسوّق",
 } as const;
 
+// 'test_ads' is intentionally absent: test spend is a classification of
+// existing advertising funding, recorded in test_spend_entries — not a
+// transaction that adds to funding. The database rejects new test_ads rows.
 export const SPEND_TYPE_LABELS = {
   meta_ads: "Meta Ads",
   tiktok_ads: "Tiktok Ads",
   easy_order: "Easy Order",
-  test_ads: "Test Ads",
   salary: "Salary",
   other: "Other",
 } as const;
 
 export type SpendType = keyof typeof SPEND_TYPE_LABELS;
+
+// Advertising funding = the codes issued to the marketer. Test spend is
+// carved out of this, never added on top.
+export const AD_FUNDING_SPEND_TYPES: SpendType[] = ["meta_ads", "tiktok_ads"];
+
+export const TEST_RESULT_LABELS = {
+  successful: "ناجح",
+  promising: "واعد ويحتاج اختبار إضافي",
+  weak: "ضعيف",
+  discontinued: "تم إيقاف المنتج",
+} as const;
+
+export type TestResult = keyof typeof TEST_RESULT_LABELS;
 
 export const SYSTEM_FIELDS = [
   { key: "external_order_id", label: "رقم الطلب" },
