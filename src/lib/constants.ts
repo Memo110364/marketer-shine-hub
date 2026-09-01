@@ -80,6 +80,7 @@ export type SpendType = keyof typeof SPEND_TYPE_LABELS;
 export const AD_FUNDING_SPEND_TYPES: SpendType[] = ["meta_ads", "tiktok_ads"];
 
 export const TEST_RESULT_LABELS = {
+  in_progress: "جاري الاختبار",
   successful: "ناجح",
   promising: "واعد ويحتاج اختبار إضافي",
   weak: "ضعيف",
@@ -87,6 +88,22 @@ export const TEST_RESULT_LABELS = {
 } as const;
 
 export type TestResult = keyof typeof TEST_RESULT_LABELS;
+
+/** Tone per result, so the same colour reads the same everywhere. */
+export const TEST_RESULT_TONE: Record<TestResult, string> = {
+  in_progress: "text-[var(--info)] border-[var(--info)]/40",
+  successful: "text-[var(--success)] border-[var(--success)]/40",
+  promising: "text-[var(--warning-foreground)] border-[var(--warning)]/50",
+  weak: "text-[var(--destructive)] border-[var(--destructive)]/40",
+  discontinued: "text-muted-foreground border-border",
+};
+
+/**
+ * Marker written by 20260830132000_migrate_legacy_test_ads_records.sql for
+ * rows carried over from the old test_ads spend type, where no product was
+ * ever recorded. Their descriptive fields can be filled in later.
+ */
+export const LEGACY_TEST_PRODUCT_PLACEHOLDER = "غير محدد — سجل قديم";
 
 export const SYSTEM_FIELDS = [
   { key: "external_order_id", label: "رقم الطلب" },
