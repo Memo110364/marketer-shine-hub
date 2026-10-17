@@ -50,7 +50,14 @@ Deno.serve(async (req) => {
   const appSecret = Deno.env.get("META_APP_SECRET");
   if (!appId || !appSecret) return fail("server_not_configured");
 
-  const redirectUri = `${url.protocol}//${url.host}/functions/v1/meta-oauth-callback`;
+  // Must be byte-for-byte identical to the redirect_uri meta-oauth's "start"
+  // action sent Meta in the authorize request — built from the incoming
+  // request's own host/protocol, that string isn't guaranteed to match the
+  // public project domain registered in Meta's App Domains / Valid OAuth
+  // Redirect URIs (Supabase's edge runtime can present req.url differently
+  // from the public-facing URL), which Meta then rejects at token exchange.
+  const supabaseUrlForRedirect = Deno.env.get("SUPABASE_URL")!;
+  const redirectUri = `${supabaseUrlForRedirect}/functions/v1/meta-oauth-callback`;
 
   // 1) Exchange code → short-lived user access token
   const tokenUrl = new URL("https://graph.facebook.com/v21.0/oauth/access_token");
