@@ -108,6 +108,7 @@ function AdAccountsPage() {
               <Button onClick={() => setEditing(null)}><Plus className="ml-1" />إضافة حساب إعلاني</Button>
             </DialogTrigger>
             <AccountDialog
+              key={editing?.id ?? "new"}
               account={editing}
               marketers={marketers as { id: string; name: string }[]}
               onDone={() => { setOpen(false); setEditing(null); refresh(); }}
