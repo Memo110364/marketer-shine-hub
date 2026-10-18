@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth-context";
+import { invokeFn } from "@/lib/edge-functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { KpiCard } from "@/components/KpiCard";
 import { fmtDate } from "@/lib/format";
-import { Megaphone, Plug, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, Receipt, History, Link2, Shield, Eye, CheckCircle2, ChevronLeft } from "lucide-react";
+import { Megaphone, Plug, AlertTriangle, RefreshCw, Plus, Pencil, Trash2, Receipt, History, Link2, Shield, Eye, CheckCircle2, ChevronLeft, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/ad-accounts")({
@@ -52,15 +54,33 @@ type Account = {
   marketers?: { name: string } | null;
 };
 
+type DigestPreview = {
+  dry_run: boolean;
+  as_of_date: string;
+  marketers_count: number;
+  messages: { marketer: string; text: string }[];
+};
+
 function AdAccountsPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const { role } = useAuth();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Account | null>(null);
   const [deleting, setDeleting] = useState<Account | null>(null);
   const [spendFor, setSpendFor] = useState<Account | null>(null);
   const [logsFor, setLogsFor] = useState<Account | null>(null);
   const [metaConnectOpen, setMetaConnectOpen] = useState(false);
+  const [digestPreview, setDigestPreview] = useState<DigestPreview | null>(null);
+
+  const digestMut = useMutation({
+    mutationFn: () => invokeFn<DigestPreview>("daily-marketer-digest", { dry_run: true }),
+    onSuccess: (data) => {
+      setDigestPreview(data);
+      toast.success(`جُهّز التقرير لـ ${data.marketers_count} مسوّق — تجربة بس، لم يُرسل شيء`);
+    },
+    onError: (e: any) => toast.error("تعذر إعداد التقرير", { description: e.message ?? String(e) }),
+  });
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["ad-accounts"],
@@ -100,6 +120,16 @@ function AdAccountsPage() {
           <p className="text-sm text-muted-foreground">إدارة حسابات Meta و TikTok والمزامنة المستقبلية</p>
         </div>
         <div className="flex items-center gap-2">
+          {role === "admin" && (
+            <Button variant="outline" onClick={() => digestMut.mutate()} disabled={digestMut.isPending}>
+              {digestMut.isPending ? (
+                <Loader2 className="ml-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="ml-1 h-4 w-4" />
+              )}
+              اختبار التقرير اليومي (تجربة)
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setMetaConnectOpen(true)}>
             <Link2 className="ml-1 h-4 w-4" />ربط حساب Meta
           </Button>
@@ -201,6 +231,32 @@ function AdAccountsPage() {
       {logsFor && (
         <SyncLogsDialog account={logsFor} onClose={() => setLogsFor(null)} />
       )}
+
+      {/* Daily digest preview — dry run only, nothing sent to Telegram */}
+      <Dialog open={!!digestPreview} onOpenChange={(o) => !o && setDigestPreview(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              معاينة التقرير اليومي — تجربة ({digestPreview?.as_of_date})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70vh] overflow-y-auto space-y-4">
+            {digestPreview?.messages.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">لا يوجد مسوّقون نشطون</div>
+            ) : (
+              digestPreview?.messages.map((m) => (
+                <pre
+                  key={m.marketer}
+                  dir="rtl"
+                  className="whitespace-pre-wrap rounded-lg border bg-muted/40 p-3 text-sm font-sans"
+                >
+                  {m.text}
+                </pre>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Meta connect modal */}
       <MetaConnectDialog
