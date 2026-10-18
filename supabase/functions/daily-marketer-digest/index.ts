@@ -1,13 +1,19 @@
 // Daily ops digest — one Telegram message per active marketer, posted to a
 // single admin/account-manager group. Summarizes month-to-date spend,
-// commission, top products, delivery status and an end-of-month projection,
-// plus two advisory flags (spend > commission; manual vs Meta-synced spend
-// mismatch). This is a read-only reporting job: it never writes to any
-// financial or bonus table, and deliberately duplicates the bonus engine's
-// "performance ad spend" arithmetic (funding - test spend) rather than
-// calling load_bonus_month_inputs, which requires a real admin/account-
-// manager JWT (auth.uid()) that a cron-triggered service-role call doesn't
-// have.
+// commission, top products, delivery status and an end-of-month
+// profit/loss projection, plus two advisory flags (spend > commission;
+// manual vs Meta-synced spend mismatch). This is a read-only reporting
+// job: it never writes to any financial or bonus table.
+//
+// The projection reuses the same "الربح المتوقع" figure already shown to
+// admins on the main dashboard (get_dashboard_summary: delivered
+// commissions + commission already recorded on in_delivery orders) rather
+// than inventing a new one, netted against month-to-date spend.
+//
+// Deliberately duplicates the bonus engine's "performance ad spend"
+// arithmetic (funding - test spend) rather than calling
+// load_bonus_month_inputs, which requires a real admin/account-manager
+// JWT (auth.uid()) that a cron-triggered call doesn't have.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -49,10 +55,6 @@ function fmtMoney(n: number): string {
   return Math.round(n).toLocaleString("en-US") + " ج.م";
 }
 
-function daysInMonth(year: number, month1to12: number): number {
-  return new Date(Date.UTC(year, month1to12, 0)).getUTCDate();
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -86,11 +88,9 @@ Deno.serve(async (req) => {
     const dryRun = body?.dry_run !== false; // default true — must opt OUT explicitly to actually send
     const asOf: string = body?.as_of_date || new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-    const [y, m, d] = asOf.split("-").map(Number);
+    const [y, m] = asOf.split("-").map(Number);
     const periodStart = `${y}-${String(m).padStart(2, "0")}-01`;
     const periodEnd = asOf;
-    const totalDaysInMonth = daysInMonth(y, m);
-    const daysElapsed = Math.max(d, 1);
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
@@ -112,11 +112,14 @@ Deno.serve(async (req) => {
         .lte("order_date", periodEnd);
       if (oErr) throw new Error(oErr.message);
 
-      let inDelivery = 0, delivered = 0, returned = 0, commission = 0;
+      let inDelivery = 0, delivered = 0, returned = 0, commission = 0, inDeliveryCommission = 0;
       const productQty = new Map<string, number>();
       for (const o of orders ?? []) {
         const status = o.status as string;
-        if (status === "in_delivery") inDelivery++;
+        if (status === "in_delivery") {
+          inDelivery++;
+          inDeliveryCommission += Number(o.commission || 0);
+        }
         if (DELIVERED_STATUSES.includes(status)) delivered++;
         if (RETURNED_STATUSES.includes(status)) returned++;
         if (DELIVERED_STATUSES.includes(status)) commission += Number(o.commission || 0);
@@ -201,9 +204,12 @@ Deno.serve(async (req) => {
         lastProductLine = items[0]?.base_product_name ?? "—";
       }
 
-      const projectedCommission = (commission / daysElapsed) * totalDaysInMonth;
-      const projectedSpend = (performanceAdSpend / daysElapsed) * totalDaysInMonth;
-      const projectedProfit = projectedCommission - projectedSpend;
+      // Reuses the exact "الربح المتوقع" figure already shown to admins on
+      // the main dashboard (get_dashboard_summary: delivered_commissions +
+      // in_delivery_commissions) rather than inventing a new projection —
+      // net against month-to-date spend (not projected) for a profit/loss.
+      const expectedCommission = commission + inDeliveryCommission;
+      const projectedProfit = expectedCommission - performanceAdSpend;
 
       const lines: string[] = [];
       lines.push(`📊 *تقرير يومي — ${mk.name}* (كود: ${mk.marketer_code})`);
@@ -232,7 +238,7 @@ Deno.serve(async (req) => {
       lines.push("");
       const sign = projectedProfit >= 0 ? "مكسب" : "خسارة";
       lines.push(`📉 توقع نهاية الشهر: ${sign} متوقع ≈ ${fmtMoney(Math.abs(projectedProfit))}`);
-      lines.push(`(بناءً على نفس المعدل الحالي، مُسقَط على باقي أيام الشهر)`);
+      lines.push(`(عمولة المُسلّم + عمولة اللي لسه في الشحن، ناقص الصرف من بداية الشهر)`);
 
       messages.push({ marketer: mk.name, text: lines.join("\n") });
     }
