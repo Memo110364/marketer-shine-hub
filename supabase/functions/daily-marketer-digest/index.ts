@@ -61,6 +61,19 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // verify_jwt only checks the Authorization header is SOME validly signed
+    // Supabase JWT — the public anon key (baked into the frontend bundle)
+    // satisfies that. This function reads every marketer's financial data
+    // and can send real Telegram messages, so it must additionally require
+    // the actual service-role key — i.e. only our own cron job, never a
+    // browser holding the anon key.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const callerToken = authHeader.replace(/^Bearer\s+/i, "");
+    if (callerToken !== serviceRoleKey) {
+      return json({ error: "Forbidden: service-role access only" }, 403);
+    }
+
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
     if (!botToken || !chatId) {
