@@ -138,7 +138,8 @@ Deno.serve(async (req) => {
       throw new Error("This account has no linked Meta ad account id");
     marketerId = account.marketer_id;
 
-    // Authorization: admin, or the account manager who owns this marketer.
+    // Authorization: admin, the account manager who owns this marketer, or
+    // the marketer themselves syncing their own account.
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -152,6 +153,14 @@ Deno.serve(async (req) => {
         .eq("id", account.marketer_id)
         .maybeSingle();
       authorized = marketer?.account_manager_id === userId;
+    }
+    if (!authorized && roleSet.has("marketer") && account.marketer_id) {
+      const { data: myMarketer } = await supabaseAdmin
+        .from("marketers")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      authorized = myMarketer?.id === account.marketer_id;
     }
     if (!authorized) throw new Error("Forbidden: not authorized to sync this ad account");
 
