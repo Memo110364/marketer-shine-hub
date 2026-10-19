@@ -21,7 +21,7 @@ import {
   type OrderStatus, type SpendType,
 } from "@/lib/constants";
 import {
-  ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp, Package,
+  ArrowRight, Plus, Loader2, Trophy, Info, ShoppingBag, DollarSign, Wallet, TrendingUp, Package, Megaphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -290,6 +290,11 @@ function MarketerDetails() {
           <Button variant="outline" asChild>
             <Link to="/marketers/$id/bonus" params={{ id }}>
               <Trophy className="h-4 w-4 ml-1" /> البونص والمستحقات
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/marketers/$id/ad-performance" params={{ id }}>
+              <Megaphone className="h-4 w-4 ml-1" /> أداء الإعلانات
             </Link>
           </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>

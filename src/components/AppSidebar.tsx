@@ -19,6 +19,7 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
+  { to: "/me", label: "صفحتي", icon: Trophy, roles: ["marketer"] },
   { to: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "account_manager", "marketer"] },
   { to: "/marketers", label: "المسوّقون", icon: Users, roles: ["admin", "account_manager"] },
   { to: "/orders", label: "الطلبات", icon: ShoppingBag, roles: ["admin", "account_manager", "marketer"] },

@@ -34,9 +34,12 @@ async function syncOrderItems(opts: {
   totalCommission: number;
 }) {
   const items = parseProductField(opts.rawProductField);
-  // Always wipe & rewrite — keeps things consistent on re-import.
-  await supabase.from("order_items").delete().eq("order_id", opts.orderId);
+  // A status-only update sheet (e.g. a courier's return report) has no
+  // product column at all, which parses to zero items here — that must
+  // leave the existing items alone, not erase them. Only a row that
+  // actually carries product data gets to wipe & rewrite.
   if (items.length === 0) return;
+  await supabase.from("order_items").delete().eq("order_id", opts.orderId);
   const totalQty = items.reduce((s, it) => s + it.quantity, 0) || 1;
   const rows = items.map((it) => ({
     order_id: opts.orderId,
@@ -76,6 +79,7 @@ type PreparedRow = {
   resolve: { marketerCode: string; sku: string; pname: string; sname: string; cname: string };
   // for updates: existing row id + diffed fields summary
   existingId?: string;
+  existingRawData?: Record<string, any> | null;
   changedFields?: string[];
   statusChanged?: boolean;
   oldStatus?: OrderStatus;
@@ -391,7 +395,7 @@ function ImportPage() {
       const slice = externalIds.slice(i, i + 500);
       const { data: existing } = await supabase
         .from("orders")
-        .select("id, external_order_id, marketer_id, product_id, shipping_company_id, customer_name, customer_phone, governorate, quantity, price, commission, status, order_date, delivered_date")
+        .select("id, external_order_id, marketer_id, product_id, shipping_company_id, customer_name, customer_phone, governorate, quantity, price, commission, status, order_date, delivered_date, raw_data")
         .in("external_order_id", slice);
       (existing ?? []).forEach((row: any) => {
         if (row.external_order_id) existingByExt.set(row.external_order_id, row);
@@ -428,6 +432,7 @@ function ImportPage() {
       } else {
         p.action = "update";
         p.existingId = existing.id;
+        p.existingRawData = existing.raw_data ?? null;
         p.changedFields = changed;
         p.statusChanged = changed.includes("status");
         p.oldStatus = existing.status as OrderStatus;
@@ -611,9 +616,14 @@ function ImportPage() {
           for (const f of item.changedFields ?? []) {
             patch[f] = (fullPayload as any)[f];
           }
-          // Always bump updated_at + raw_data + import_batch_id link
+          // Always bump updated_at + import_batch_id link. raw_data is
+          // merged, not replaced — a status-only update sheet (e.g. a
+          // courier's return report) has no product column at all, and
+          // overwriting raw_data with that row would silently erase the
+          // product info the original full import recorded. Keys the new
+          // row does carry still update normally.
           patch.updated_at = new Date().toISOString();
-          patch.raw_data = item.payload.raw_data;
+          patch.raw_data = { ...(item.existingRawData ?? {}), ...(item.payload.raw_data ?? {}) };
           patch.import_batch_id = batch.id;
 
           const { error: updErr } = await supabase
