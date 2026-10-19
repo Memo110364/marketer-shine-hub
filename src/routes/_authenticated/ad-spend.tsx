@@ -22,7 +22,8 @@ export const Route = createFileRoute("/_authenticated/ad-spend")({
 });
 
 function AdSpendPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const canAdd = role === "admin" || role === "account_manager";
   const qc = useQueryClient();
   const [marketerId, setMarketerId] = useState("all");
   const [spendType, setSpendType] = useState<string>("all");
@@ -89,16 +90,18 @@ function AdSpendPage() {
           <h2 className="text-2xl font-display font-bold">الإنفاق الإعلاني</h2>
           <p className="text-sm text-muted-foreground">معاملات شحن المحفظة الإعلانية</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="ml-1" />إضافة مصروف إعلاني</Button>
-          </DialogTrigger>
-          <AddExpenseDialog
-            marketers={marketers}
-            userId={user?.id ?? null}
-            onDone={() => { setOpen(false); qc.invalidateQueries({ queryKey: ["ad-spend"] }); }}
-          />
-        </Dialog>
+        {canAdd && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button><Plus className="ml-1" />إضافة مصروف إعلاني</Button>
+            </DialogTrigger>
+            <AddExpenseDialog
+              marketers={marketers}
+              userId={user?.id ?? null}
+              onDone={() => { setOpen(false); qc.invalidateQueries({ queryKey: ["ad-spend"] }); }}
+            />
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -1,16 +1,12 @@
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { useOwnMarketer } from "@/lib/use-own-marketer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/KpiCard";
-import { MarketerProductPerformance } from "@/components/MarketerProductPerformance";
-import { MarketerTestOffersBoard } from "@/components/MarketerTestOffersBoard";
-import { Button } from "@/components/ui/button";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
-import {
-  Trophy, ShoppingBag, TrendingUp, Wallet, Percent, Megaphone, Loader2, ArrowLeft,
-} from "lucide-react";
+import { Trophy, ShoppingBag, TrendingUp, Wallet, Percent, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/me")({
   component: MyPage,
@@ -45,7 +41,7 @@ type BonusTier = {
 };
 
 function MyPage() {
-  const { user, role } = useAuth();
+  const { role } = useAuth();
 
   if (role && role !== "marketer") {
     throw redirect({ to: "/dashboard" });
@@ -55,19 +51,7 @@ function MyPage() {
   const year = today.getFullYear();
   const month = today.getMonth() + 1;
 
-  const { data: marketer, isLoading: loadingMarketer } = useQuery({
-    queryKey: ["my-marketer", user?.id],
-    enabled: !!user,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("marketers")
-        .select("id, name, marketer_code")
-        .eq("user_id", user!.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
+  const { data: marketer, isLoading: loadingMarketer } = useOwnMarketer();
 
   const { data: preview, isLoading: loadingPreview } = useQuery({
     queryKey: ["my-bonus-preview", marketer?.id, year, month],
@@ -190,24 +174,6 @@ function MyPage() {
             <KpiCard label="الإنفاق الإعلاني من بداية الشهر" value={fmtCurrency(preview.ad_spend)} icon={Wallet} tone="warning" />
             <KpiCard label="صافي الربح قبل البونص" value={fmtCurrency(preview.net_profit_before_bonus)} icon={TrendingUp}
               tone={preview.net_profit_before_bonus >= 0 ? "success" : "destructive"} />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/marketers/$id/ad-performance" params={{ id: marketer.id }}>
-                <Megaphone className="h-4 w-4 ml-1" /> أداء إعلاناتي <ArrowLeft className="h-4 w-4 mr-1" />
-              </Link>
-            </Button>
-          </div>
-
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">منتجات متاحة للتيست</h3>
-            <MarketerTestOffersBoard marketerId={marketer.id} />
-          </div>
-
-          <div>
-            <h3 className="text-lg font-display font-bold mb-3">نتايج المنتجات</h3>
-            <MarketerProductPerformance marketerId={marketer.id} />
           </div>
         </>
       )}

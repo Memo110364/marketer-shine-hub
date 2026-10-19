@@ -73,6 +73,7 @@ function AdPerformancePage() {
   const { role } = useAuth();
   const qc = useQueryClient();
   const canSync = role === "admin" || role === "account_manager";
+  const isMarketer = role === "marketer";
   const [rangeDays, setRangeDays] = useState("30");
 
   const { data: m } = useQuery({
@@ -240,33 +241,48 @@ function AdPerformancePage() {
   return (
     <div className="space-y-6" dir="rtl">
       <div>
-        <Button asChild variant="ghost" size="sm" className="mb-2">
-          <Link to="/marketers/$id" params={{ id }}>
-            <ArrowRight className="h-4 w-4 ml-1" /> رجوع للمسوق
-          </Link>
-        </Button>
-        <h2 className="text-2xl font-display font-bold">أداء الإعلانات — {m?.name ?? ""}</h2>
+        {!isMarketer && (
+          <Button asChild variant="ghost" size="sm" className="mb-2">
+            <Link to="/marketers/$id" params={{ id }}>
+              <ArrowRight className="h-4 w-4 ml-1" /> رجوع للمسوق
+            </Link>
+          </Button>
+        )}
+        <h2 className="text-2xl font-display font-bold">
+          {isMarketer ? "أداء إعلاناتي" : `أداء الإعلانات — ${m?.name ?? ""}`}
+        </h2>
         <div className="text-sm text-muted-foreground mt-1">{m?.marketer_code}</div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" asChild>
-          <Link to="/marketers/$id/expenses" params={{ id }}>
-            <Wallet className="h-4 w-4 ml-1" /> المصروفات
-          </Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link to="/marketers/$id/bonus" params={{ id }}>
-            <Trophy className="h-4 w-4 ml-1" /> البونص والمستحقات
-          </Link>
-        </Button>
-        <Button asChild>
-          <Link to="/marketers/$id/ad-performance" params={{ id }}>
-            <Megaphone className="h-4 w-4 ml-1" /> أداء الإعلانات
-          </Link>
-        </Button>
-      </div>
+      {/* Tabs — only relevant when an admin/account_manager is navigating this marketer's own pages */}
+      {!isMarketer && (
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/marketers/$id/expenses" params={{ id }}>
+              <Wallet className="h-4 w-4 ml-1" /> المصروفات
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/marketers/$id/bonus" params={{ id }}>
+              <Trophy className="h-4 w-4 ml-1" /> البونص والمستحقات
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link to="/marketers/$id/ad-performance" params={{ id }}>
+              <Megaphone className="h-4 w-4 ml-1" /> أداء الإعلانات
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      {isMarketer && accounts.length === 0 && (
+        <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground" />
+          <div>
+            مفيش حساب إعلاني مربوط بحسابك لسه — تواصل مع مدير حسابك عشان يربطه، وبعدها هتظهر الأرقام هنا تلقائيًا.
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-4 flex flex-wrap items-end gap-4">
