@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/KpiCard";
+import { MarketerProductPerformance } from "@/components/MarketerProductPerformance";
 import { Button } from "@/components/ui/button";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
 import {
@@ -196,6 +197,11 @@ function MyPage() {
                 <Megaphone className="h-4 w-4 ml-1" /> أداء إعلاناتي <ArrowLeft className="h-4 w-4 mr-1" />
               </Link>
             </Button>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-display font-bold mb-3">نتايج المنتجات</h3>
+            <MarketerProductPerformance marketerId={marketer.id} />
           </div>
         </>
       )}
