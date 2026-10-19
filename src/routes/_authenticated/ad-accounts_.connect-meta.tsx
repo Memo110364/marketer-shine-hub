@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -235,6 +236,10 @@ function MetaErrorBanner({
 
 function ConnectMetaWizard() {
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isMarketer = role === "marketer";
+  const backTo = isMarketer ? ("/my-ad-performance" as const) : ("/ad-accounts" as const);
+  const backLabel = isMarketer ? "أداء إعلاناتي" : "حسابات الإعلانات";
   const search = Route.useSearch();
   const oauthState = search.state ?? null;
   const [step, setStep] = useState<number>(
@@ -362,9 +367,9 @@ function ConnectMetaWizard() {
       });
     },
     onSuccess: () => {
-      console.log("[ConnectMeta] link success — redirecting to /ad-accounts");
+      console.log(`[ConnectMeta] link success — redirecting to ${backTo}`);
       toast.success("تم ربط حساب Meta بنجاح");
-      navigate({ to: "/ad-accounts" });
+      navigate({ to: backTo });
     },
     onError: (e) => {
       console.error("[ConnectMeta] linkMetaAccount failed:", e);
@@ -380,7 +385,7 @@ function ConnectMetaWizard() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-              <Link to="/ad-accounts" className="hover:text-foreground">حسابات الإعلانات</Link>
+              <Link to={backTo} className="hover:text-foreground">{backLabel}</Link>
               <ChevronLeft className="h-3 w-3" />
               <span>مساعد ربط Meta</span>
             </div>
@@ -428,7 +433,7 @@ function ConnectMetaWizard() {
           />
         )}
         {step === 3 && selectedAccount && (
-          <StepSuccess account={selectedAccount} onDone={() => navigate({ to: "/ad-accounts" })} />
+          <StepSuccess account={selectedAccount} doneLabel={backLabel} onDone={() => navigate({ to: backTo })} />
         )}
     </div>
   );
@@ -673,7 +678,9 @@ function StepSelectAccount({
 
 /* ---------------- Step 3 ---------------- */
 
-function StepSuccess({ account, onDone }: { account: MockAccount; onDone: () => void }) {
+function StepSuccess({
+  account, onDone, doneLabel,
+}: { account: MockAccount; onDone: () => void; doneLabel: string }) {
   return (
     <Card>
       <CardContent className="p-6 md:p-10 space-y-6 text-center">
@@ -703,7 +710,7 @@ function StepSuccess({ account, onDone }: { account: MockAccount; onDone: () => 
 
         <div className="flex justify-center pt-2">
           <Button size="lg" onClick={onDone} className="min-w-64 h-12">
-            العودة إلى حسابات الإعلانات
+            العودة إلى {doneLabel}
             <ArrowRight className="mr-2 h-4 w-4 rotate-180" />
           </Button>
         </div>

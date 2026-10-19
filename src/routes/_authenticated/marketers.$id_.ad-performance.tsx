@@ -36,6 +36,7 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
+  Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -276,11 +277,16 @@ function AdPerformancePage() {
       )}
 
       {isMarketer && accounts.length === 0 && (
-        <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
-          <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground" />
-          <div>
-            مفيش حساب إعلاني مربوط بحسابك لسه — تواصل مع مدير حسابك عشان يربطه، وبعدها هتظهر الأرقام هنا تلقائيًا.
+        <div className="flex items-start justify-between gap-3 flex-wrap rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground shrink-0" />
+            <div>مفيش حساب إعلاني مربوط بحسابك لسه — اربطه بنفسك وهتظهر الأرقام هنا تلقائيًا.</div>
           </div>
+          <Button asChild size="sm">
+            <Link to="/ad-accounts/connect-meta">
+              <Link2 className="h-3.5 w-3.5 ml-1" /> إضافة حساب إعلاني
+            </Link>
+          </Button>
         </div>
       )}
 

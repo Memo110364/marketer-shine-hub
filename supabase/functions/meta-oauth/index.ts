@@ -156,14 +156,43 @@ Deno.serve(async (req) => {
       if (!session) throw new Error("OAuth session not found or expired");
       if (session.user_id !== userId) throw new Error("Forbidden");
 
+      // Marketers linking their own account get auto-assigned to themselves;
+      // admin/account_manager keep the existing behaviour of connecting the
+      // raw account first and assigning it to a marketer afterwards from
+      // "حسابات الإعلانات".
+      const { data: roleRows } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      const roles = new Set((roleRows ?? []).map((r: { role: string }) => r.role));
+      const isStaff = roles.has("admin") || roles.has("account_manager");
+
+      let ownMarketerId: string | null = null;
+      if (!isStaff && roles.has("marketer")) {
+        const { data: myMarketer } = await supabaseAdmin
+          .from("marketers")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        ownMarketerId = myMarketer?.id ?? null;
+        if (!ownMarketerId) {
+          throw new Error("حسابك لسه مش مربوط بسجل مسوّق — تواصل مع مدير الحساب.");
+        }
+      }
+
       const { data: existing } = await supabaseAdmin
         .from("ad_accounts")
-        .select("id")
+        .select("id, marketer_id")
         .eq("platform", "meta")
         .eq("external_account_id", externalId)
         .maybeSingle();
 
-      const payload = {
+      // Never let a marketer take over an account already linked to someone else.
+      if (ownMarketerId && existing?.marketer_id && existing.marketer_id !== ownMarketerId) {
+        throw new Error("الحساب الإعلاني ده مربوط بالفعل بمسوّق تاني. تواصل مع مدير الحساب.");
+      }
+
+      const payload: Record<string, unknown> = {
         platform: "meta" as const,
         external_account_id: externalId,
         ad_account_id: externalId,
@@ -173,6 +202,7 @@ Deno.serve(async (req) => {
         access_status: "active",
         connection_status: "connected",
       };
+      if (ownMarketerId) payload.marketer_id = ownMarketerId;
 
       let adAccountId: string;
       if (existing?.id) {
