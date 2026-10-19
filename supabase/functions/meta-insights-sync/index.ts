@@ -164,21 +164,11 @@ Deno.serve(async (req) => {
     }
     if (!authorized) throw new Error("Forbidden: not authorized to sync this ad account");
 
-    const { data: secret, error: secretErr } = await supabaseAdmin
-      .from("ad_account_secrets")
-      .select("access_token, token_expires_at")
-      .eq("ad_account_id", adAccountId)
-      .maybeSingle();
-    if (secretErr) throw new Error(secretErr.message);
-    if (!secret?.access_token)
-      throw new Error("No access token stored for this ad account — reconnect it");
-    if (secret.token_expires_at && new Date(secret.token_expires_at) < new Date()) {
-      await supabaseAdmin
-        .from("ad_accounts")
-        .update({ connection_status: "expired" })
-        .eq("id", adAccountId);
-      throw new Error("Access token expired — reconnect this ad account");
-    }
+    // One long-lived System User token (set up once in our Business Manager)
+    // reads every ad account shared with us as a partner — no per-account
+    // secret or expiry to manage (see meta-oauth's "verify_and_link" action).
+    const systemUserToken = Deno.env.get("META_SYSTEM_USER_TOKEN");
+    if (!systemUserToken) throw new Error("META_SYSTEM_USER_TOKEN not configured");
 
     const { data: logRow, error: logErr } = await supabaseAdmin
       .from("integration_sync_logs")
@@ -193,7 +183,7 @@ Deno.serve(async (req) => {
     if (logErr) throw new Error(logErr.message);
     logId = logRow.id;
 
-    const accessToken = secret.access_token as string;
+    const accessToken = systemUserToken;
     const externalAccountId = account.external_account_id as string;
 
     // 1) Campaign registry
