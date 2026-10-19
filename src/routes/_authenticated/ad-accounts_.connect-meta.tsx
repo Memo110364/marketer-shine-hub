@@ -357,7 +357,7 @@ function ConnectMetaWizard() {
         state: oauthState,
         externalId: selectedAccount.externalId,
       });
-      return invokeFn<{ adAccountId: string }>("meta-oauth", {
+      const linkResult = await invokeFn<{ adAccountId: string }>("meta-oauth", {
         action: "link",
         state: oauthState,
         externalId: selectedAccount.externalId,
@@ -365,10 +365,19 @@ function ConnectMetaWizard() {
         currency: selectedAccount.currency,
         business: selectedAccount.business,
       });
+      // Pull the first batch of performance data right away so numbers show
+      // up without anyone having to press a separate "sync now" button —
+      // best-effort: a sync hiccup here must never undo a successful link.
+      try {
+        await invokeFn("meta-insights-sync", { ad_account_id: linkResult.adAccountId, days: 30 });
+      } catch (syncError) {
+        console.error("[ConnectMeta] initial sync failed (non-fatal):", syncError);
+      }
+      return linkResult;
     },
     onSuccess: () => {
       console.log(`[ConnectMeta] link success — redirecting to ${backTo}`);
-      toast.success("تم ربط حساب Meta بنجاح");
+      toast.success("تم ربط حساب Meta بنجاح وجاري سحب بيانات الأداء");
       navigate({ to: backTo });
     },
     onError: (e) => {
