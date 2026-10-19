@@ -20,6 +20,9 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { to: "/me", label: "صفحتي", icon: Trophy, roles: ["marketer"] },
+  { to: "/my-products", label: "نتايج المنتجات", icon: Package, roles: ["marketer"] },
+  { to: "/my-test-offers", label: "منتجات متاحة للتيست", icon: FlaskConical, roles: ["marketer"] },
+  { to: "/my-ad-performance", label: "أداء إعلاناتي", icon: Megaphone, roles: ["marketer"] },
   { to: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "account_manager", "marketer"] },
   { to: "/marketers", label: "المسوّقون", icon: Users, roles: ["admin", "account_manager"] },
   { to: "/orders", label: "الطلبات", icon: ShoppingBag, roles: ["admin", "account_manager", "marketer"] },
@@ -64,7 +67,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {visible.map((item) => {
-                const active = path === item.to || (item.to !== "/dashboard" && path.startsWith(item.to));
+                const active = path === item.to
+                  || (item.to !== "/dashboard" && path.startsWith(item.to))
+                  // the marketer's own ad-performance nav item redirects to /marketers/$id/ad-performance
+                  || (item.to === "/my-ad-performance" && path.startsWith("/marketers/") && path.endsWith("/ad-performance"));
                 return (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton asChild isActive={active}>

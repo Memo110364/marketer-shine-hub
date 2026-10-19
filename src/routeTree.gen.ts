@@ -19,6 +19,9 @@ import { Route as AuthenticatedAdSpendRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedBonusCalculatorRouteImport } from './routes/_authenticated/bonus-calculator'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedMeRouteImport } from './routes/_authenticated/me'
+import { Route as AuthenticatedMyAdPerformanceRouteImport } from './routes/_authenticated/my-ad-performance'
+import { Route as AuthenticatedMyProductsRouteImport } from './routes/_authenticated/my-products'
+import { Route as AuthenticatedMyTestOffersRouteImport } from './routes/_authenticated/my-test-offers'
 import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedShippingRouteImport } from './routes/_authenticated/shipping'
@@ -87,6 +90,23 @@ const AuthenticatedMeRoute = AuthenticatedMeRouteImport.update({
   path: '/me',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedMyAdPerformanceRoute =
+  AuthenticatedMyAdPerformanceRouteImport.update({
+    id: '/my-ad-performance',
+    path: '/my-ad-performance',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMyProductsRoute = AuthenticatedMyProductsRouteImport.update({
+  id: '/my-products',
+  path: '/my-products',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedMyTestOffersRoute =
+  AuthenticatedMyTestOffersRouteImport.update({
+    id: '/my-test-offers',
+    path: '/my-test-offers',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -195,6 +215,9 @@ export interface FileRoutesByFullPath {
   '/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/me': typeof AuthenticatedMeRoute
+  '/my-ad-performance': typeof AuthenticatedMyAdPerformanceRoute
+  '/my-products': typeof AuthenticatedMyProductsRoute
+  '/my-test-offers': typeof AuthenticatedMyTestOffersRoute
   '/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
@@ -223,6 +246,9 @@ export interface FileRoutesByTo {
   '/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/me': typeof AuthenticatedMeRoute
+  '/my-ad-performance': typeof AuthenticatedMyAdPerformanceRoute
+  '/my-products': typeof AuthenticatedMyProductsRoute
+  '/my-test-offers': typeof AuthenticatedMyTestOffersRoute
   '/products': typeof AuthenticatedProductsRouteWithChildren
   '/shipping': typeof AuthenticatedShippingRoute
   '/test-offers': typeof AuthenticatedTestOffersRoute
@@ -252,6 +278,9 @@ export interface FileRoutesById {
   '/_authenticated/bonus-calculator': typeof AuthenticatedBonusCalculatorRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/me': typeof AuthenticatedMeRoute
+  '/_authenticated/my-ad-performance': typeof AuthenticatedMyAdPerformanceRoute
+  '/_authenticated/my-products': typeof AuthenticatedMyProductsRoute
+  '/_authenticated/my-test-offers': typeof AuthenticatedMyTestOffersRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRouteWithChildren
   '/_authenticated/products': typeof AuthenticatedProductsRouteWithChildren
   '/_authenticated/shipping': typeof AuthenticatedShippingRoute
@@ -282,6 +311,9 @@ export interface FileRouteTypes {
     | '/bonus-calculator'
     | '/dashboard'
     | '/me'
+    | '/my-ad-performance'
+    | '/my-products'
+    | '/my-test-offers'
     | '/orders'
     | '/products'
     | '/shipping'
@@ -310,6 +342,9 @@ export interface FileRouteTypes {
     | '/bonus-calculator'
     | '/dashboard'
     | '/me'
+    | '/my-ad-performance'
+    | '/my-products'
+    | '/my-test-offers'
     | '/products'
     | '/shipping'
     | '/test-offers'
@@ -338,6 +373,9 @@ export interface FileRouteTypes {
     | '/_authenticated/bonus-calculator'
     | '/_authenticated/dashboard'
     | '/_authenticated/me'
+    | '/_authenticated/my-ad-performance'
+    | '/_authenticated/my-products'
+    | '/_authenticated/my-test-offers'
     | '/_authenticated/orders'
     | '/_authenticated/products'
     | '/_authenticated/shipping'
@@ -435,6 +473,27 @@ declare module '@tanstack/react-router' {
       path: '/me'
       fullPath: '/me'
       preLoaderRoute: typeof AuthenticatedMeRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/my-ad-performance': {
+      id: '/_authenticated/my-ad-performance'
+      path: '/my-ad-performance'
+      fullPath: '/my-ad-performance'
+      preLoaderRoute: typeof AuthenticatedMyAdPerformanceRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/my-products': {
+      id: '/_authenticated/my-products'
+      path: '/my-products'
+      fullPath: '/my-products'
+      preLoaderRoute: typeof AuthenticatedMyProductsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/my-test-offers': {
+      id: '/_authenticated/my-test-offers'
+      path: '/my-test-offers'
+      fullPath: '/my-test-offers'
+      preLoaderRoute: typeof AuthenticatedMyTestOffersRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/orders': {
@@ -593,6 +652,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedBonusCalculatorRoute: typeof AuthenticatedBonusCalculatorRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedMeRoute: typeof AuthenticatedMeRoute
+  AuthenticatedMyAdPerformanceRoute: typeof AuthenticatedMyAdPerformanceRoute
+  AuthenticatedMyProductsRoute: typeof AuthenticatedMyProductsRoute
+  AuthenticatedMyTestOffersRoute: typeof AuthenticatedMyTestOffersRoute
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRouteWithChildren
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRouteWithChildren
   AuthenticatedShippingRoute: typeof AuthenticatedShippingRoute
@@ -614,6 +676,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBonusCalculatorRoute: AuthenticatedBonusCalculatorRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedMeRoute: AuthenticatedMeRoute,
+  AuthenticatedMyAdPerformanceRoute: AuthenticatedMyAdPerformanceRoute,
+  AuthenticatedMyProductsRoute: AuthenticatedMyProductsRoute,
+  AuthenticatedMyTestOffersRoute: AuthenticatedMyTestOffersRoute,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRouteWithChildren,
   AuthenticatedProductsRoute: AuthenticatedProductsRouteWithChildren,
   AuthenticatedShippingRoute: AuthenticatedShippingRoute,
