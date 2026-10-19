@@ -236,6 +236,55 @@ Deno.serve(async (req) => {
       return json({ adAccountId });
     }
 
+    if (action === "unlink") {
+      const adAccountId = body?.ad_account_id as string;
+      if (!adAccountId) throw new Error("ad_account_id is required");
+
+      const { data: account, error: accErr } = await supabaseAdmin
+        .from("ad_accounts")
+        .select("id, marketer_id")
+        .eq("id", adAccountId)
+        .maybeSingle();
+      if (accErr) throw new Error(accErr.message);
+      if (!account) throw new Error("Ad account not found");
+
+      const { data: roleRows } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      const roles = new Set((roleRows ?? []).map((r: { role: string }) => r.role));
+      let authorized = roles.has("admin");
+      if (!authorized && roles.has("account_manager") && account.marketer_id) {
+        const { data: marketer } = await supabaseAdmin
+          .from("marketers")
+          .select("account_manager_id")
+          .eq("id", account.marketer_id)
+          .maybeSingle();
+        authorized = marketer?.account_manager_id === userId;
+      }
+      if (!authorized && roles.has("marketer") && account.marketer_id) {
+        const { data: myMarketer } = await supabaseAdmin
+          .from("marketers")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        authorized = myMarketer?.id === account.marketer_id;
+      }
+      if (!authorized) throw new Error("Forbidden: not authorized to disconnect this ad account");
+
+      // Revoke our stored access token and mark the account not connected.
+      // Historical campaigns/spend/insights rows are left untouched — this
+      // only severs the live Meta connection, never deletes performance data.
+      await supabaseAdmin.from("ad_account_secrets").delete().eq("ad_account_id", adAccountId);
+      const { error: updErr } = await supabaseAdmin
+        .from("ad_accounts")
+        .update({ connection_status: "not_connected" })
+        .eq("id", adAccountId);
+      if (updErr) throw new Error(updErr.message);
+
+      return json({ ok: true });
+    }
+
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

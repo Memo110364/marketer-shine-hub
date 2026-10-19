@@ -37,6 +37,7 @@ import {
   Loader2,
   AlertTriangle,
   Link2,
+  Unlink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -186,6 +187,19 @@ function AdPerformancePage() {
     },
   });
 
+  const unlink = useMutation({
+    mutationFn: async (adAccountId: string) =>
+      invokeFn<{ ok: boolean }>("meta-oauth", { action: "unlink", ad_account_id: adAccountId }),
+    onSuccess: () => {
+      toast.success("تم فصل الحساب الإعلاني");
+      qc.invalidateQueries({ queryKey: ["marketer-ad-accounts", id] });
+    },
+    onError: (error: unknown) => {
+      const e = error as { message?: string } | null;
+      toast.error("تعذر فصل الحساب", { description: e?.message ?? String(error) });
+    },
+  });
+
   const insightsByCampaign = useMemo(() => {
     const map = new Map<
       string,
@@ -276,17 +290,40 @@ function AdPerformancePage() {
         </div>
       )}
 
-      {isMarketer && accounts.length === 0 && (
+      {isMarketer && !accounts.some((a) => a.connection_status === "connected") && (
         <div className="flex items-start justify-between gap-3 flex-wrap rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
           <div className="flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 mt-0.5 text-warning-foreground shrink-0" />
-            <div>مفيش حساب إعلاني مربوط بحسابك لسه — اربطه بنفسك وهتظهر الأرقام هنا تلقائيًا.</div>
+            <div>
+              {accounts.length === 0
+                ? "مفيش حساب إعلاني مربوط بحسابك لسه — اربطه بنفسك وهتظهر الأرقام هنا تلقائيًا."
+                : "الحساب الإعلاني محتاج إعادة ربط (الصلاحية انتهت أو الاتصال اتقطع)."}
+            </div>
           </div>
           <Button asChild size="sm">
             <Link to="/ad-accounts/connect-meta">
-              <Link2 className="h-3.5 w-3.5 ml-1" /> إضافة حساب إعلاني
+              <Link2 className="h-3.5 w-3.5 ml-1" />
+              {accounts.length === 0 ? "إضافة حساب إعلاني" : "إعادة ربط الحساب"}
             </Link>
           </Button>
+        </div>
+      )}
+
+      {isMarketer && accounts.some((a) => a.connection_status === "connected") && (
+        <div className="flex flex-wrap gap-2">
+          {accounts.filter((a) => a.connection_status === "connected").map((a) => (
+            <div key={a.id} className="flex items-center gap-2 rounded-xl border bg-success/5 border-success/30 px-3 py-2 text-sm">
+              <span className="text-success font-medium">{a.account_name ?? a.external_account_id}</span>
+              <span className="text-xs text-muted-foreground">متصل</span>
+              <Button
+                size="sm" variant="ghost" className="h-7 text-destructive"
+                onClick={() => { if (confirm("فصل الحساب الإعلاني ده؟ أرقام الأداء القديمة هتفضل محفوظة، بس المزامنة هتوقف لحد ما تربطه تاني.")) unlink.mutate(a.id); }}
+                disabled={unlink.isPending}
+              >
+                <Unlink className="h-3.5 w-3.5 ml-1" /> فصل الحساب
+              </Button>
+            </div>
+          ))}
         </div>
       )}
 
