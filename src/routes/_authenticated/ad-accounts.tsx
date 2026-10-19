@@ -124,6 +124,8 @@ function AdAccountsPage() {
         <KpiCard label="آخر مزامنة" value={stats.last} icon={RefreshCw} tone="info" />
       </div>
 
+      <RecentSyncFailures />
+
       <Card>
         <CardHeader><CardTitle className="text-base">الحسابات المسجّلة</CardTitle></CardHeader>
         <Table>
@@ -390,6 +392,49 @@ function ManualSpendDialog({ account, onClose }: { account: Account; onClose: ()
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function RecentSyncFailures() {
+  const { data: failures = [] } = useQuery({
+    queryKey: ["recent-sync-failures"],
+    queryFn: async () => {
+      const { data } = await (supabase.from("integration_sync_logs") as any)
+        .select("id, sync_started_at, error_message, ad_accounts(account_name, marketers(name))")
+        .eq("status", "error")
+        .order("sync_started_at", { ascending: false })
+        .limit(15);
+      return (data ?? []) as any[];
+    },
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  if (failures.length === 0) return null;
+
+  return (
+    <Card className="border-destructive/30">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-4 w-4" /> آخر مزامنات فشلت ({failures.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        {failures.map((f) => (
+          <div key={f.id} className="flex items-start justify-between gap-3 text-xs border-b last:border-0 pb-1.5 last:pb-0">
+            <div>
+              <span className="font-medium">{f.ad_accounts?.account_name ?? "—"}</span>
+              {f.ad_accounts?.marketers?.name && (
+                <span className="text-muted-foreground"> — {f.ad_accounts.marketers.name}</span>
+              )}
+              <div className="text-muted-foreground">{fmtDate(f.sync_started_at)}</div>
+            </div>
+            <div className="text-destructive max-w-[55%] text-left truncate" title={f.error_message ?? ""}>
+              {f.error_message ?? "—"}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

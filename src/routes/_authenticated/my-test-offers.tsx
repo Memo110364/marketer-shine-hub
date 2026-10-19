@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useOwnMarketer } from "@/lib/use-own-marketer";
 import { Card, CardContent } from "@/components/ui/card";
 import { MarketerTestOffersBoard } from "@/components/MarketerTestOffersBoard";
+import { TestSpendSection } from "@/components/TestSpendSection";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/my-test-offers")({
@@ -39,6 +40,11 @@ function MyTestOffersPage() {
         <p className="text-sm text-muted-foreground mt-1">قبول تيست منتج هنا استرشادي فقط ولا يؤثر على أرقام حسابك</p>
       </div>
       <MarketerTestOffersBoard marketerId={marketer.id} />
+
+      <div>
+        <h3 className="text-lg font-display font-bold mb-3">سجل اختباراتي</h3>
+        <TestSpendSection marketerId={marketer.id} />
+      </div>
     </div>
   );
 }
