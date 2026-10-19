@@ -61,9 +61,15 @@ Deno.serve(async (req) => {
       url.searchParams.set("redirect_uri", redirectUri);
       url.searchParams.set("state", state);
       url.searchParams.set("response_type", "code");
-      url.searchParams.set("scope", "ads_read,business_management");
+      // A Facebook Login for Business config_id defines its own permission
+      // set — sending `scope` alongside it makes Meta reject the request
+      // ("Feature Unavailable") for anyone but the app's own admins/devs.
       const configId = Deno.env.get("META_LOGIN_CONFIG_ID");
-      if (configId) url.searchParams.set("config_id", configId);
+      if (configId) {
+        url.searchParams.set("config_id", configId);
+      } else {
+        url.searchParams.set("scope", "ads_read,business_management");
+      }
 
       return json({ authorizeUrl: url.toString() });
     }
