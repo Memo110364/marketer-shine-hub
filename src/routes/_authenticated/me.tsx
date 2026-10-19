@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/KpiCard";
 import { MarketerProductPerformance } from "@/components/MarketerProductPerformance";
+import { MarketerTestOffersBoard } from "@/components/MarketerTestOffersBoard";
 import { Button } from "@/components/ui/button";
 import { fmtCurrency, fmtNumber, fmtPercent } from "@/lib/format";
 import {
@@ -197,6 +198,11 @@ function MyPage() {
                 <Megaphone className="h-4 w-4 ml-1" /> أداء إعلاناتي <ArrowLeft className="h-4 w-4 mr-1" />
               </Link>
             </Button>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-display font-bold mb-3">منتجات متاحة للتيست</h3>
+            <MarketerTestOffersBoard marketerId={marketer.id} />
           </div>
 
           <div>
