@@ -51,11 +51,120 @@ const STATUS_LABEL = {
   rejected: { label: "مرفوض", variant: "destructive" as const },
 };
 
+type MarketerLinkChoice =
+  | { mode: "skip" }
+  | { mode: "existing"; marketerId: string; label: string }
+  | { mode: "new"; name: string; marketerCode: string };
+
+const SKIP_LINK: MarketerLinkChoice = { mode: "skip" };
+
+/** Links (or creates) a marketers row to this user's auth id. Only ever
+ * touches marketers with no login yet (user_id IS NULL), so it can never
+ * steal another marketer's account. */
+async function applyMarketerLink(userId: string, choice: MarketerLinkChoice): Promise<void> {
+  if (choice.mode === "skip") return;
+  if (choice.mode === "existing") {
+    const { error } = await supabase
+      .from("marketers")
+      .update({ user_id: userId })
+      .eq("id", choice.marketerId)
+      .is("user_id", null);
+    if (error) throw new Error("فشل ربط المسوّق: " + error.message);
+    return;
+  }
+  const name = choice.name.trim();
+  const marketerCode = choice.marketerCode.trim();
+  if (!name || !marketerCode) throw new Error("اسم المسوّق وكوده مطلوبان");
+  const { error } = await supabase.from("marketers").insert({
+    name, marketer_code: marketerCode, user_id: userId, status: "active",
+  });
+  if (error) {
+    if ((error as any).code === "23505") throw new Error("كود المسوّق مستخدم من قبل");
+    throw new Error("فشل إنشاء المسوّق: " + error.message);
+  }
+}
+
+function MarketerLinkField({
+  value, onChange,
+}: {
+  value: MarketerLinkChoice;
+  onChange: (v: MarketerLinkChoice) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
+
+  const { data: matches = [], isFetching } = useQuery({
+    queryKey: ["marketer-link-search", search],
+    enabled: search.trim().length >= 2,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketers")
+        .select("id, name, marketer_code")
+        .is("user_id", null)
+        .or(`name.ilike.%${search.trim()}%,marketer_code.ilike.%${search.trim()}%`)
+        .limit(8);
+      return (data ?? []) as { id: string; name: string; marketer_code: string }[];
+    },
+  });
+
+  return (
+    <div className="space-y-2 rounded-lg border p-3">
+      <Label className="text-xs">ربط حساب الدخول بسجل مسوّق (اختياري لكن موصى به)</Label>
+      <div className="flex gap-2 text-xs">
+        <Button type="button" size="sm" variant={value.mode === "skip" ? "default" : "outline"}
+          onClick={() => onChange(SKIP_LINK)}>بدون ربط</Button>
+        <Button type="button" size="sm" variant={value.mode === "existing" ? "default" : "outline"}
+          onClick={() => onChange({ mode: "existing", marketerId: "", label: "" })}>مسوّق موجود</Button>
+        <Button type="button" size="sm" variant={value.mode === "new" ? "default" : "outline"}
+          onClick={() => onChange({ mode: "new", name: newName, marketerCode: newCode })}>مسوّق جديد</Button>
+      </div>
+
+      {value.mode === "existing" && (
+        <div className="space-y-1">
+          <Input placeholder="ابحث بالاسم أو الكود..." value={search}
+            onChange={(e) => setSearch(e.target.value)} className="h-9" />
+          {value.marketerId && (
+            <div className="text-xs text-success">مختار: {value.label}</div>
+          )}
+          {search.trim().length >= 2 && (
+            <div className="rounded-md border divide-y max-h-36 overflow-y-auto">
+              {isFetching ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">جاري البحث...</div>
+              ) : matches.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">لا يوجد مسوّقين غير مربوطين بهذا الاسم</div>
+              ) : matches.map((m) => (
+                <button key={m.id} type="button"
+                  className="w-full text-right px-2 py-1.5 text-xs hover:bg-muted"
+                  onClick={() => onChange({ mode: "existing", marketerId: m.id, label: `${m.name} (${m.marketer_code})` })}>
+                  {m.name} <span className="text-muted-foreground font-mono">({m.marketer_code})</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {value.mode === "new" && (
+        <div className="grid grid-cols-2 gap-2">
+          <Input placeholder="اسم المسوّق" value={newName}
+            onChange={(e) => { setNewName(e.target.value); onChange({ mode: "new", name: e.target.value, marketerCode: newCode }); }}
+            className="h-9" />
+          <Input placeholder="كود المسوّق" dir="ltr" value={newCode}
+            onChange={(e) => { setNewCode(e.target.value); onChange({ mode: "new", name: newName, marketerCode: e.target.value }); }}
+            className="h-9" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UsersPage() {
   const { role } = useAuth();
   const qc = useQueryClient();
   const [approveUser, setApproveUser] = useState<ProfileRow | null>(null);
   const [pickedRole, setPickedRole] = useState<AppRole>("marketer");
+  const [marketerLink, setMarketerLink] = useState<MarketerLinkChoice>(SKIP_LINK);
   const [busy, setBusy] = useState(false);
   const [assignFor, setAssignFor] = useState<ProfileRow | null>(null);
 
@@ -93,6 +202,9 @@ function UsersPage() {
     if (!approveUser) return;
     setBusy(true);
     try {
+      if (pickedRole === "marketer") {
+        await applyMarketerLink(approveUser.id, marketerLink);
+      }
       // Remove existing roles for clean assignment
       await supabase.from("user_roles").delete().eq("user_id", approveUser.id);
       const { error: roleErr } = await supabase
@@ -106,11 +218,13 @@ function UsersPage() {
       if (statusErr) throw statusErr;
       toast.success("تمت الموافقة وتعيين الدور");
       setApproveUser(null);
+      setMarketerLink(SKIP_LINK);
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
       qc.invalidateQueries({ queryKey: ["all-user-roles"] });
-    } catch (e) {
+      qc.invalidateQueries({ queryKey: ["marketers"] });
+    } catch (e: any) {
       console.error(e);
-      toast.error("فشلت العملية");
+      toast.error(e?.message ?? "فشلت العملية");
     } finally {
       setBusy(false);
     }
@@ -228,7 +342,7 @@ function UsersPage() {
         </Table>
       </Card>
 
-      <Dialog open={!!approveUser} onOpenChange={(o) => !o && setApproveUser(null)}>
+      <Dialog open={!!approveUser} onOpenChange={(o) => { if (!o) { setApproveUser(null); setMarketerLink(SKIP_LINK); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>الموافقة على الحساب</DialogTitle></DialogHeader>
           <div className="space-y-3">
@@ -237,7 +351,7 @@ function UsersPage() {
             </p>
             <div className="space-y-1">
               <Label>اختر الدور</Label>
-              <Select value={pickedRole} onValueChange={(v) => setPickedRole(v as AppRole)}>
+              <Select value={pickedRole} onValueChange={(v) => { setPickedRole(v as AppRole); setMarketerLink(SKIP_LINK); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(ROLE_LABELS).map(([k, v]) => (
@@ -246,6 +360,9 @@ function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
+            {pickedRole === "marketer" && (
+              <MarketerLinkField value={marketerLink} onChange={setMarketerLink} />
+            )}
           </div>
           <DialogFooter>
             <Button onClick={approve} disabled={busy}>
@@ -371,10 +488,11 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("marketer");
+  const [marketerLink, setMarketerLink] = useState<MarketerLinkChoice>(SKIP_LINK);
   const [busy, setBusy] = useState(false);
 
   function reset() {
-    setFullName(""); setEmail(""); setPassword(""); setRole("marketer");
+    setFullName(""); setEmail(""); setPassword(""); setRole("marketer"); setMarketerLink(SKIP_LINK);
   }
 
   async function submit() {
@@ -384,15 +502,29 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
     }
     setBusy(true);
     try {
-      await invokeFn("admin-create-user", { full_name: fullName, email, password, role });
+      const { id } = await invokeFn<{ id: string }>("admin-create-user", { full_name: fullName, email, password, role });
+      if (role === "marketer") {
+        try {
+          await applyMarketerLink(id, marketerLink);
+        } catch (linkErr: any) {
+          console.error(linkErr);
+          toast.warning("تم إنشاء المستخدم، لكن فشل ربطه بالمسوّق", { description: linkErr?.message });
+          qc.invalidateQueries({ queryKey: ["all-profiles"] });
+          qc.invalidateQueries({ queryKey: ["all-user-roles"] });
+          reset();
+          onClose();
+          return;
+        }
+      }
       toast.success("تم إنشاء المستخدم");
       qc.invalidateQueries({ queryKey: ["all-profiles"] });
       qc.invalidateQueries({ queryKey: ["all-user-roles"] });
+      qc.invalidateQueries({ queryKey: ["marketers"] });
       reset();
       onClose();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("فشل إنشاء المستخدم");
+      toast.error(e?.message ?? "فشل إنشاء المستخدم");
     } finally {
       setBusy(false);
     }
@@ -417,7 +549,7 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
           <div className="space-y-1">
             <Label>الدور</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+            <Select value={role} onValueChange={(v) => { setRole(v as AppRole); setMarketerLink(SKIP_LINK); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.entries(ROLE_LABELS).map(([k, v]) => (
@@ -426,6 +558,9 @@ function CreateUserDialog({ open, onClose }: { open: boolean; onClose: () => voi
               </SelectContent>
             </Select>
           </div>
+          {role === "marketer" && (
+            <MarketerLinkField value={marketerLink} onChange={setMarketerLink} />
+          )}
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={busy}>
