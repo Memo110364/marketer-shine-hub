@@ -14,12 +14,18 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS } from "@/lib/constants";
-import { Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus } from "lucide-react";
+import {
+  Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus, Pencil, Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { invokeFn } from "@/lib/edge-functions";
 
@@ -167,6 +173,27 @@ function UsersPage() {
   const [marketerLink, setMarketerLink] = useState<MarketerLinkChoice>(SKIP_LINK);
   const [busy, setBusy] = useState(false);
   const [assignFor, setAssignFor] = useState<ProfileRow | null>(null);
+  const [editUser, setEditUser] = useState<ProfileRow | null>(null);
+  const [deleteUser, setDeleteUser] = useState<ProfileRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  async function confirmDeleteUser() {
+    if (!deleteUser) return;
+    setDeleteBusy(true);
+    try {
+      await invokeFn("admin-manage-user", { action: "delete", user_id: deleteUser.id });
+      toast.success("تم حذف المستخدم");
+      setDeleteUser(null);
+      qc.invalidateQueries({ queryKey: ["all-profiles"] });
+      qc.invalidateQueries({ queryKey: ["all-user-roles"] });
+      qc.invalidateQueries({ queryKey: ["marketers"] });
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message ?? "فشل حذف المستخدم");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   if (role && role !== "admin") {
     throw redirect({ to: "/dashboard" });
@@ -333,6 +360,13 @@ function UsersPage() {
                           <UsersIcon className="h-4 w-4 ml-1" /> المسوّقون
                         </Button>
                       )}
+                      <Button size="sm" variant="ghost" onClick={() => setEditUser(u)}>
+                        <Pencil className="h-4 w-4 ml-1" /> تعديل
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteUser(u)}>
+                        <Trash2 className="h-4 w-4 ml-1" /> حذف
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -374,7 +408,113 @@ function UsersPage() {
       </Dialog>
 
       <AssignMarketersDialog user={assignFor} onClose={() => setAssignFor(null)} />
+
+      <EditUserDialog user={editUser} onClose={() => setEditUser(null)} onSaved={() => {
+        qc.invalidateQueries({ queryKey: ["all-profiles"] });
+      }} />
+
+      <AlertDialog open={!!deleteUser} onOpenChange={(o) => !o && setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف المستخدم؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              سيتم حذف حساب {deleteUser?.full_name} ({deleteUser?.email}) نهائيًا — الحساب لن يقدر يدخل النظام تاني.
+              لو كان مربوط بسجل مسوّق، السجل نفسه (والطلبات والبونص المرتبطة به) هيفضل موجود، بس هيبقى من غير حساب دخول.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteBusy}
+              onClick={(e) => { e.preventDefault(); confirmDeleteUser(); }}
+            >
+              {deleteBusy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+              حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+function EditUserDialog({
+  user, onClose, onSaved,
+}: {
+  user: ProfileRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFullName(user.full_name ?? "");
+      setEmail(user.email ?? "");
+      setPassword("");
+    }
+  }, [user]);
+
+  async function save() {
+    if (!user) return;
+    if (!fullName.trim() || !email.trim()) {
+      toast.error("الاسم والبريد مطلوبان");
+      return;
+    }
+    if (password && password.length < 8) {
+      toast.error("كلمة السر الجديدة لازم تكون 8 أحرف على الأقل");
+      return;
+    }
+    setBusy(true);
+    try {
+      await invokeFn("admin-manage-user", {
+        action: "update",
+        user_id: user.id,
+        full_name: fullName.trim(),
+        email: email.trim(),
+        ...(password ? { password } : {}),
+      });
+      toast.success("تم تحديث بيانات المستخدم");
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message ?? "فشل تحديث المستخدم");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>تعديل بيانات المستخدم</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>الاسم الكامل</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>البريد الإلكتروني</Label>
+            <Input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>كلمة سر جديدة (اختياري — سيبها فاضية لو مش عايز تغيّرها)</Label>
+            <Input type="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={busy}>
+            {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            حفظ
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
