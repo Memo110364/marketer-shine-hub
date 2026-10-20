@@ -204,7 +204,10 @@ function TestOffersPage() {
 }
 
 function AddOfferDialog({ onDone }: { onDone: () => void }) {
-  const [unlisted, setUnlisted] = useState(false);
+  // Default to typing the name: a test-offer product is usually brand new
+  // and not in the catalogue yet, so searching first would almost always
+  // come up empty.
+  const [unlisted, setUnlisted] = useState(true);
   const [product, setProduct] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const [freeText, setFreeText] = useState("");
@@ -265,10 +268,10 @@ function AddOfferDialog({ onDone }: { onDone: () => void }) {
           <Label>المنتج *</Label>
           {unlisted ? (
             <>
-              <Input value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="اكتب اسم المنتج" />
+              <Input value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="اكتب اسم المنتج الجديد" autoFocus />
               <button type="button" className="text-xs text-primary hover:underline"
                 onClick={() => { setUnlisted(false); setFreeText(""); }}>
-                رجوع للاختيار من قائمة المنتجات
+                المنتج موجود بالفعل في الكتالوج — اختاره من القائمة
               </button>
             </>
           ) : product ? (

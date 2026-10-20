@@ -106,19 +106,7 @@ async function fetchGraph(url: URL): Promise<GraphResponse> {
 }
 
 // deno-lint-ignore no-explicit-any
-async function syncOneAccount(supabaseAdmin: any, account: AdAccountRow) {
-  const { data: secret, error: secretErr } = await supabaseAdmin
-    .from("ad_account_secrets")
-    .select("access_token, token_expires_at")
-    .eq("ad_account_id", account.id)
-    .maybeSingle();
-  if (secretErr) throw new Error(secretErr.message);
-  if (!secret?.access_token) throw new Error("No access token stored for this ad account");
-  if (secret.token_expires_at && new Date(secret.token_expires_at) < new Date()) {
-    await supabaseAdmin.from("ad_accounts").update({ connection_status: "expired" }).eq("id", account.id);
-    throw new Error("Access token expired — needs reconnect");
-  }
-
+async function syncOneAccount(supabaseAdmin: any, account: AdAccountRow, accessToken: string) {
   const { data: logRow, error: logErr } = await supabaseAdmin
     .from("integration_sync_logs")
     .insert({ platform: "meta", ad_account_id: account.id, marketer_id: account.marketer_id, status: "running" })
@@ -128,7 +116,6 @@ async function syncOneAccount(supabaseAdmin: any, account: AdAccountRow) {
   const logId = logRow.id;
 
   try {
-    const accessToken = secret.access_token as string;
     const externalAccountId = account.external_account_id as string;
 
     const campaignsUrl = new URL(`https://graph.facebook.com/${GRAPH_VERSION}/${externalAccountId}/campaigns`);
@@ -284,6 +271,11 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
+    // One shared System User token reads every connected account — see
+    // meta-oauth's "verify_and_link" action for how an account gets shared.
+    const systemUserToken = Deno.env.get("META_SYSTEM_USER_TOKEN");
+    if (!systemUserToken) throw new Error("META_SYSTEM_USER_TOKEN not configured");
+
     const { data: accounts, error } = await supabaseAdmin
       .from("ad_accounts")
       .select("id, marketer_id, platform, external_account_id, connection_status, currency")
@@ -295,7 +287,7 @@ Deno.serve(async (req) => {
     const results: Array<{ ad_account_id: string; ok: boolean; detail: unknown }> = [];
     for (const account of (accounts ?? []) as AdAccountRow[]) {
       try {
-        const r = await syncOneAccount(supabaseAdmin, account);
+        const r = await syncOneAccount(supabaseAdmin, account, systemUserToken);
         results.push({ ad_account_id: account.id, ok: true, detail: r });
       } catch (e) {
         results.push({ ad_account_id: account.id, ok: false, detail: e instanceof Error ? e.message : String(e) });
