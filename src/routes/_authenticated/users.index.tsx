@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ROLE_LABELS } from "@/lib/constants";
 import {
-  Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus, Pencil, Trash2,
+  Loader2, CheckCircle2, XCircle, Users as UsersIcon, UserPlus, Pencil, Trash2, Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { invokeFn } from "@/lib/edge-functions";
@@ -173,6 +173,7 @@ function UsersPage() {
   const [marketerLink, setMarketerLink] = useState<MarketerLinkChoice>(SKIP_LINK);
   const [busy, setBusy] = useState(false);
   const [assignFor, setAssignFor] = useState<ProfileRow | null>(null);
+  const [linkFor, setLinkFor] = useState<ProfileRow | null>(null);
   const [editUser, setEditUser] = useState<ProfileRow | null>(null);
   const [deleteUser, setDeleteUser] = useState<ProfileRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -360,6 +361,11 @@ function UsersPage() {
                           <UsersIcon className="h-4 w-4 ml-1" /> المسوّقون
                         </Button>
                       )}
+                      {u.status === "approved" && primaryRole === "marketer" && (
+                        <Button size="sm" variant="outline" onClick={() => setLinkFor(u)}>
+                          <Link2 className="h-4 w-4 ml-1" /> ربط بسجل مسوّق
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" onClick={() => setEditUser(u)}>
                         <Pencil className="h-4 w-4 ml-1" /> تعديل
                       </Button>
@@ -408,6 +414,8 @@ function UsersPage() {
       </Dialog>
 
       <AssignMarketersDialog user={assignFor} onClose={() => setAssignFor(null)} />
+
+      <LinkMarketerDialog user={linkFor} onClose={() => setLinkFor(null)} />
 
       <EditUserDialog user={editUser} onClose={() => setEditUser(null)} onSaved={() => {
         qc.invalidateQueries({ queryKey: ["all-profiles"] });
@@ -615,6 +623,98 @@ function AssignMarketersDialog({ user, onClose }: { user: ProfileRow | null; onC
           <Button onClick={save} disabled={busy}>
             {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
             حفظ
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LinkMarketerDialog({ user, onClose }: { user: ProfileRow | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [choice, setChoice] = useState<MarketerLinkChoice>(SKIP_LINK);
+  const [busy, setBusy] = useState(false);
+
+  const { data: currentLink, isLoading: loadingCurrent } = useQuery({
+    queryKey: ["marketer-link-current", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketers")
+        .select("id, name, marketer_code")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; name: string; marketer_code: string } | null;
+    },
+  });
+
+  useEffect(() => { setChoice(SKIP_LINK); }, [user?.id]);
+
+  async function unlink() {
+    if (!currentLink) return;
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("marketers").update({ user_id: null }).eq("id", currentLink.id);
+      if (error) throw error;
+      toast.success("تم إلغاء الربط");
+      qc.invalidateQueries({ queryKey: ["marketer-link-current", user?.id] });
+      qc.invalidateQueries({ queryKey: ["marketers"] });
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message ?? "فشل إلغاء الربط");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save() {
+    if (!user) return;
+    setBusy(true);
+    try {
+      await applyMarketerLink(user.id, choice);
+      toast.success("تم الربط");
+      qc.invalidateQueries({ queryKey: ["marketer-link-current", user.id] });
+      qc.invalidateQueries({ queryKey: ["marketers"] });
+      setChoice(SKIP_LINK);
+      onClose();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message ?? "فشل الربط");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!user} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>ربط {user?.full_name} بسجل مسوّق</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {loadingCurrent ? (
+            <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin" /></div>
+          ) : currentLink ? (
+            <div className="rounded-lg border p-3 text-sm flex items-center justify-between gap-2">
+              <div>
+                مربوط حاليًا بـ: <span className="font-medium">{currentLink.name}</span>{" "}
+                <span className="text-muted-foreground font-mono">({currentLink.marketer_code})</span>
+              </div>
+              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive shrink-0"
+                onClick={unlink} disabled={busy}>
+                إلغاء الربط
+              </Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">الحساب ده مش مربوط بأي سجل مسوّق حاليًا.</p>
+          )}
+          <MarketerLinkField value={choice} onChange={setChoice} />
+        </div>
+        <DialogFooter>
+          <Button onClick={save} disabled={busy || choice.mode === "skip"}>
+            {busy && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+            حفظ الربط
           </Button>
         </DialogFooter>
       </DialogContent>
