@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +62,9 @@ function AuthLayout() {
           <header className="h-14 flex items-center border-b bg-card/50 backdrop-blur sticky top-0 z-10">
             <SidebarTrigger className="mx-3" />
             <h1 className="font-display font-semibold text-base">منصة أداء المسوّقين</h1>
+            <div className="mr-auto ml-3">
+              <NotificationBell />
+            </div>
           </header>
           <main className="flex-1 p-4 md:p-6 overflow-x-auto">
             <Outlet />
