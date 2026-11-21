@@ -8,6 +8,7 @@ import {
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth, type AppRole } from "@/lib/auth-context";
+import { usePendingSpendRequests } from "@/lib/notifications";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +17,8 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: AppRole[];
+  /** show the count of ad-spend edits waiting for approval on this item */
+  pendingSpendBadge?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -24,11 +27,11 @@ const NAV: NavItem[] = [
   { to: "/my-test-offers", label: "منتجات متاحة للتيست", icon: FlaskConical, roles: ["marketer"] },
   { to: "/my-ad-performance", label: "أداء إعلاناتي", icon: Megaphone, roles: ["marketer"] },
   { to: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard, roles: ["admin", "account_manager", "marketer"] },
-  { to: "/marketers", label: "المسوّقون", icon: Users, roles: ["admin", "account_manager"] },
+  { to: "/marketers", label: "المسوّقون", icon: Users, roles: ["admin", "account_manager"], pendingSpendBadge: true },
   { to: "/orders", label: "الطلبات", icon: ShoppingBag, roles: ["admin", "account_manager", "marketer"] },
   { to: "/orders/import", label: "استيراد الطلبات", icon: Upload, roles: ["admin", "account_manager"] },
   { to: "/orders/update-status", label: "تحديث حالات الطلبات", icon: RefreshCw, roles: ["admin", "account_manager"] },
-  { to: "/ad-spend", label: "الإنفاق الإعلاني", icon: Wallet, roles: ["admin", "account_manager", "marketer"] },
+  { to: "/ad-spend", label: "الإنفاق الإعلاني", icon: Wallet, roles: ["admin", "account_manager", "marketer"], pendingSpendBadge: true },
   { to: "/products", label: "أداء المنتجات", icon: Package, roles: ["admin", "account_manager"] },
   { to: "/shipping", label: "شركات الشحن", icon: Truck, roles: ["admin", "account_manager"] },
   { to: "/ad-accounts", label: "حسابات الإعلانات", icon: Megaphone, roles: ["admin", "account_manager"] },
@@ -43,6 +46,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, role, signOut } = useAuth();
+  const { count: pendingSpendCount } = usePendingSpendRequests();
 
   const visible = NAV.filter((i) => role && i.roles.includes(role));
 
@@ -71,12 +75,27 @@ export function AppSidebar() {
                   || (item.to !== "/dashboard" && path.startsWith(item.to))
                   // the marketer's own ad-performance nav item redirects to /marketers/$id/ad-performance
                   || (item.to === "/my-ad-performance" && path.startsWith("/marketers/") && path.endsWith("/ad-performance"));
+                const badge = item.pendingSpendBadge ? pendingSpendCount : 0;
                 return (
                   <SidebarMenuItem key={item.to}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <Link to={item.to} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        {!collapsed && <span>{item.label}</span>}
+                      <Link
+                        to={item.to}
+                        className="flex items-center gap-3"
+                        title={badge > 0 ? `${badge} تعديل على المصروف الإعلاني بانتظار الموافقة` : undefined}
+                      >
+                        <span className="relative shrink-0">
+                          <item.icon className="h-4 w-4" />
+                          {collapsed && badge > 0 && (
+                            <span className="absolute -top-1 -left-1 h-2 w-2 rounded-full bg-destructive" />
+                          )}
+                        </span>
+                        {!collapsed && <span className="flex-1">{item.label}</span>}
+                        {!collapsed && badge > 0 && (
+                          <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center">
+                            {badge}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

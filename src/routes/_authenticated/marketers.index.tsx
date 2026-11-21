@@ -16,7 +16,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Eye, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Loader2, Clock } from "lucide-react";
+import { usePendingSpendRequests } from "@/lib/notifications";
 import { MARKETER_STATUS } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ function MarketersPage() {
   const [form, setForm] = useState<typeof empty>(empty);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { countByMarketer: pendingSpendByMarketer } = usePendingSpendRequests();
 
   const { data: marketers = [], isLoading } = useQuery({
     queryKey: ["marketers"],
@@ -179,9 +181,23 @@ function MarketersPage() {
               <TableRow key={m.id}>
                 <TableCell className="font-mono">{m.marketer_code}</TableCell>
                 <TableCell className="font-medium">
-                  <Link to="/marketers/$id" params={{ id: m.id }} className="hover:underline text-primary">
-                    {m.name}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link to="/marketers/$id" params={{ id: m.id }} className="hover:underline text-primary">
+                      {m.name}
+                    </Link>
+                    {(pendingSpendByMarketer[m.id] ?? 0) > 0 && (
+                      <Link
+                        to="/marketers/$id/expenses"
+                        params={{ id: m.id }}
+                        title="تعديل على المصروف الإعلاني بانتظار موافقتك"
+                      >
+                        <Badge variant="outline" className="text-amber-600 border-amber-500/50 gap-1">
+                          <Clock className="h-3 w-3" />
+                          {pendingSpendByMarketer[m.id]} تعديل بانتظار الموافقة
+                        </Badge>
+                      </Link>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell dir="ltr">{m.phone ?? "—"}</TableCell>
                 <TableCell dir="ltr">{m.whatsapp ?? "—"}</TableCell>
