@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import * as XLSX from "xlsx";
@@ -16,7 +16,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { KpiCard } from "@/components/KpiCard";
 import { fmtCurrency, fmtDate, fmtNumber } from "@/lib/format";
 import { SPEND_TYPE_LABELS, AD_FUNDING_SPEND_TYPES, type SpendType } from "@/lib/constants";
-import { Wallet, Receipt, TrendingDown, Plus, FileDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { usePendingSpendRequests } from "@/lib/notifications";
+import { Wallet, Receipt, TrendingDown, Plus, FileDown, Clock, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/ad-spend")({
@@ -133,6 +135,7 @@ function AdSpendPage() {
   const { user, role } = useAuth();
   const canAdd = role === "admin" || role === "account_manager";
   const qc = useQueryClient();
+  const { items: pendingRequests } = usePendingSpendRequests();
   const [marketerId, setMarketerId] = useState("all");
   const [spendType, setSpendType] = useState<string>("all");
   const [from, setFrom] = useState("");
@@ -246,6 +249,38 @@ function AdSpendPage() {
           </div>
         )}
       </div>
+
+      {pendingRequests.length > 0 && (
+        <Card className="border-amber-500/50 bg-amber-500/5 p-4 space-y-2">
+          <div className="flex items-center gap-2 font-semibold text-sm">
+            <Clock className="h-4 w-4 text-amber-600" />
+            {pendingRequests.length} تعديل على الإنفاق الإعلاني بانتظار موافقتك
+          </div>
+          <ul className="space-y-1.5">
+            {pendingRequests.slice(0, 5).map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant={r.action === "delete" ? "destructive" : "secondary"}>
+                  {r.action === "delete" ? "حذف" : "تعديل"}
+                </Badge>
+                <span className="font-medium">{r.marketers?.name ?? "—"}</span>
+                {r.reason && <span className="text-xs text-muted-foreground">السبب: {r.reason}</span>}
+                <Link
+                  to="/marketers/$id/expenses"
+                  params={{ id: r.marketer_id }}
+                  className="text-primary hover:underline inline-flex items-center gap-1 text-xs"
+                >
+                  راجع واعتمد من هنا <ArrowLeft className="h-3 w-3" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {pendingRequests.length > 5 && (
+            <p className="text-xs text-muted-foreground">
+              و{pendingRequests.length - 5} طلب آخر — افتح صفحة مصروفات كل مسوّق لمراجعتها.
+            </p>
+          )}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <KpiCard label="إجمالي الإنفاق (محفظة)" value={fmtCurrency(total)} icon={Wallet} tone="warning" />
