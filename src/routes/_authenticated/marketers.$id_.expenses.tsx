@@ -17,7 +17,7 @@ import { fmtCurrency, fmtDate } from "@/lib/format";
 import { fetchAll } from "@/lib/fetch-all";
 import { SPEND_TYPE_LABELS, type SpendType } from "@/lib/constants";
 import { TestSpendSection } from "@/components/TestSpendSection";
-import { ArrowRight, Download, Wallet, Pencil, Trash2, Check, X, Clock } from "lucide-react";
+import { ArrowRight, Download, Wallet, Pencil, Trash2, Check, X, Clock, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/marketers/$id_/expenses")({
@@ -55,6 +55,46 @@ function ExpensesPage() {
         supabase.from("ad_spend_transactions").select("*")
           .eq("marketer_id", id).order("transaction_date", { ascending: false }).range(a, b),
       ),
+  });
+
+  // Where each transaction stands with the shipping-audit system
+  // (audit.angazny.com): the outbox row the triggers keep for it.
+  const { data: syncRows = [] } = useQuery({
+    queryKey: ["ad-spend-sync", id],
+    queryFn: async () => {
+      const { data } = await (supabase.from("ad_spend_sync_queue") as any)
+        .select("transaction_id, op, status, last_error, synced_at")
+        .eq("marketer_id", id);
+      return (data ?? []) as any[];
+    },
+    refetchInterval: 60_000,
+  });
+
+  const syncByTx = useMemo(
+    () => Object.fromEntries(syncRows.map((r) => [r.transaction_id, r])),
+    [syncRows],
+  );
+
+  const syncPending = syncRows.filter((r) => r.status === "pending").length;
+  const syncFailed = syncRows.filter((r) => r.status === "failed").length;
+
+  // "طلب مزامنة": re-queue this marketer's whole spend history, then ask
+  // the edge function to send it now instead of waiting for the cron run.
+  const requestSync = useMutation({
+    mutationFn: async () => {
+      const { data: queued, error } = await (supabase.rpc as any)("request_ad_spend_sync", { p_marketer_id: id });
+      if (error) throw error;
+
+      const { data, error: sendError } = await supabase.functions.invoke("audit-ad-spend-sync");
+      if (sendError) throw sendError;
+
+      return { queued: Number(queued ?? 0), sent: Number((data as any)?.sent ?? 0) };
+    },
+    onSuccess: ({ queued, sent }) => {
+      toast.success(`اتبعت ${sent} من ${queued} معاملة لنظام المراجعة`);
+      qc.invalidateQueries({ queryKey: ["ad-spend-sync", id] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "المزامنة فشلت"),
   });
 
   const { data: requests = [] } = useQuery({
@@ -200,10 +240,36 @@ function ExpensesPage() {
             مصروفات المسوق {m?.name ? `— ${m.name}` : ""}
           </h2>
         </div>
-        <Button onClick={exportCsv} variant="outline">
-          <Download className="h-4 w-4 ml-1" /> تصدير CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => requestSync.mutate()}
+            variant="outline"
+            disabled={requestSync.isPending}
+            title="إعادة إرسال كل مصروف المسوق لنظام مراجعة الشحن"
+          >
+            <RefreshCw className={`h-4 w-4 ml-1 ${requestSync.isPending ? "animate-spin" : ""}`} />
+            طلب مزامنة
+          </Button>
+          <Button onClick={exportCsv} variant="outline">
+            <Download className="h-4 w-4 ml-1" /> تصدير CSV
+          </Button>
+        </div>
       </div>
+
+      {(syncPending > 0 || syncFailed > 0) && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {syncPending > 0 && (
+            <Badge variant="outline" className="text-amber-600 border-amber-500/40">
+              <Clock className="h-3 w-3 ml-1" /> {syncPending} معاملة مستنية تتبعت لنظام المراجعة
+            </Badge>
+          )}
+          {syncFailed > 0 && (
+            <Badge variant="outline" className="text-destructive border-destructive/40">
+              <AlertTriangle className="h-3 w-3 ml-1" /> {syncFailed} معاملة نظام المراجعة رفضها
+            </Badge>
+          )}
+        </div>
+      )}
 
       <TestSpendSection marketerId={id} />
 
@@ -317,11 +383,12 @@ function ExpensesPage() {
             <TableHead>المبلغ</TableHead>
             <TableHead>كود فوري</TableHead>
             <TableHead>ملاحظات</TableHead>
+            <TableHead>نظام المراجعة</TableHead>
             <TableHead className="w-[140px]">إجراءات</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">لا توجد معاملات</TableCell></TableRow>
             ) : filtered.map((t) => {
               const pending = pendingByTx[t.id];
               return (
@@ -331,6 +398,7 @@ function ExpensesPage() {
                   <TableCell className="font-medium">{fmtCurrency(Number(t.amount))}</TableCell>
                   <TableCell dir="ltr">{t.fawry_code ?? "—"}</TableCell>
                   <TableCell>{t.notes ?? "—"}</TableCell>
+                  <TableCell>{renderSyncState(syncByTx[t.id])}</TableCell>
                   <TableCell>
                     {pending ? (
                       <Badge variant="outline" className="text-amber-600 border-amber-500/40">
@@ -542,5 +610,42 @@ function DeleteDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+/**
+ * Where one transaction stands with the shipping-audit system. No row at
+ * all means it was recorded before the two systems were joined and nothing
+ * has touched it since, so the next "طلب مزامنة" is what sends it.
+ */
+function renderSyncState(row: any) {
+  if (!row) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  if (row.status === "sent") {
+    return (
+      <Badge variant="outline" className="text-emerald-600 border-emerald-500/40">
+        <Check className="h-3 w-3 ml-1" /> {row.op === "delete" ? "اتشال" : "اتبعت"}
+      </Badge>
+    );
+  }
+
+  if (row.status === "failed") {
+    return (
+      <Badge variant="outline" className="text-destructive border-destructive/40" title={row.last_error ?? ""}>
+        <AlertTriangle className="h-3 w-3 ml-1" /> {row.last_error ?? "فشلت"}
+      </Badge>
+    );
+  }
+
+  if (row.status === "skipped") {
+    return <span className="text-xs text-muted-foreground" title={row.last_error ?? ""}>{row.last_error ?? "اتخطت"}</span>;
+  }
+
+  return (
+    <Badge variant="outline" className="text-amber-600 border-amber-500/40">
+      <Clock className="h-3 w-3 ml-1" /> مستنية
+    </Badge>
   );
 }
