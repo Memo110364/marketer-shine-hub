@@ -359,6 +359,44 @@ export type Database = {
           },
         ]
       }
+      ad_spend_sync_queue: {
+        Row: {
+          last_error: string | null
+          marketer_id: string | null
+          op: string
+          queued_at: string
+          status: string
+          synced_at: string | null
+          transaction_id: string
+        }
+        Insert: {
+          last_error?: string | null
+          marketer_id?: string | null
+          op: string
+          queued_at?: string
+          status?: string
+          synced_at?: string | null
+          transaction_id: string
+        }
+        Update: {
+          last_error?: string | null
+          marketer_id?: string | null
+          op?: string
+          queued_at?: string
+          status?: string
+          synced_at?: string | null
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_spend_sync_queue_marketer_id_fkey"
+            columns: ["marketer_id"]
+            isOneToOne: false
+            referencedRelation: "marketers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_spend_transactions: {
         Row: {
           ad_account_id: string | null
@@ -1633,6 +1671,14 @@ export type Database = {
       preview_monthly_bonus: {
         Args: { _marketer_id: string; _month: number; _year: number }
         Returns: Json
+      }
+      queue_ad_spend_sync: {
+        Args: { p_marketer_id: string; p_op: string; p_transaction_id: string }
+        Returns: undefined
+      }
+      request_ad_spend_sync: {
+        Args: { p_marketer_id?: string }
+        Returns: number
       }
       revoke_bonus_tier_override: {
         Args: { _bonus_id: string; _reason?: string }
