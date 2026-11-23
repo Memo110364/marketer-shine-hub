@@ -24,6 +24,29 @@ const BATCH = 500;
 // a run still finishes well inside the function's time.
 const MAX_BATCHES = 10;
 
+// PostgREST takes the ids in the query string, and a few hundred UUIDs
+// overflow the URL, so every `in` list goes over in slices this size.
+const IDS_PER_REQUEST = 50;
+
+/** @returns the list cut into slices of at most `size`. */
+function slices<T>(items: T[], size = IDS_PER_REQUEST): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    out.push(items.slice(i, i + size));
+  }
+
+  return out;
+}
+
+/** A thrown PostgREST error is a plain object, which String() turns into nothing readable. */
+function describe(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return error !== null && typeof error === "object" ? JSON.stringify(error) : String(error);
+}
+
 // What the audit system answers for a record, and what it means for the
 // queue row. A record it refuses stays visible with its reason rather than
 // being retried forever.
@@ -127,16 +150,20 @@ Deno.serve(async (req) => {
       queuedTotal += rows.length;
       const upsertIds = rows.filter((r) => r.op === "upsert").map((r) => r.transaction_id);
 
-      const { data: spend, error: spendError } = upsertIds.length === 0
-        ? { data: [], error: null }
-        : await admin
+      const spend: SpendRow[] = [];
+
+      for (const ids of slices(upsertIds)) {
+        const { data, error } = await admin
           .from("ad_spend_transactions")
           .select("id, amount, fawry_code, transaction_date, spend_type, marketers(name, marketer_code)")
-          .in("id", upsertIds);
+          .in("id", ids);
 
-      if (spendError) throw spendError;
+        if (error) throw error;
 
-      const byId = new Map((spend ?? []).map((s) => [(s as unknown as SpendRow).id, s as unknown as SpendRow]));
+        spend.push(...((data ?? []) as unknown as SpendRow[]));
+      }
+
+      const byId = new Map(spend.map((row) => [row.id, row]));
 
       const records = rows.map((row) => {
         const record = byId.get(row.transaction_id);
@@ -174,10 +201,13 @@ Deno.serve(async (req) => {
         // The whole batch was refused: each row keeps its reason, and the
         // run stops rather than hammering a system that is down.
         const reason = `نظام المراجعة رد بـ ${response.status}: ${text.slice(0, 300)}`;
-        await admin
-          .from("ad_spend_sync_queue")
-          .update({ status: "failed", last_error: reason })
-          .in("transaction_id", rows.map((r) => r.transaction_id));
+
+        for (const ids of slices(rows.map((r) => r.transaction_id))) {
+          await admin
+            .from("ad_spend_sync_queue")
+            .update({ status: "failed", last_error: reason })
+            .in("transaction_id", ids);
+        }
 
         return json({ error: reason, queued: queuedTotal, sent, counts }, 502);
       }
@@ -194,20 +224,23 @@ Deno.serve(async (req) => {
         byOutcome.set(outcome, [...(byOutcome.get(outcome) ?? []), row.transaction_id]);
       }
 
-      for (const [outcome, ids] of byOutcome) {
+      for (const [outcome, all] of byOutcome) {
         const known = OUTCOMES[outcome] ?? { status: "failed" as const, note: `رد مش مفهوم: ${outcome}` };
-        const { error } = await admin
-          .from("ad_spend_sync_queue")
-          .update({
-            status: known.status,
-            last_error: known.note ?? null,
-            synced_at: known.status === "failed" ? null : now,
-          })
-          .in("transaction_id", ids);
 
-        if (error) throw error;
+        for (const ids of slices(all)) {
+          const { error } = await admin
+            .from("ad_spend_sync_queue")
+            .update({
+              status: known.status,
+              last_error: known.note ?? null,
+              synced_at: known.status === "failed" ? null : now,
+            })
+            .in("transaction_id", ids);
 
-        if (known.status !== "failed") sent += ids.length;
+          if (error) throw error;
+        }
+
+        if (known.status !== "failed") sent += all.length;
       }
 
       // A short batch means the queue is drained; a full one may not be.
@@ -219,6 +252,6 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("audit-ad-spend-sync failed", error);
 
-    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
+    return json({ error: describe(error) }, 500);
   }
 });
